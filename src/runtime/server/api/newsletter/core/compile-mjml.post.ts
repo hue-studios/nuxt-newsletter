@@ -1,22 +1,15 @@
-// server/api/newsletter/compile-mjml.post.ts
-import mjml2html from "mjml";
+// src/runtime/server/api/newsletter/core/compile-mjml.post.ts
+import { createDirectus, rest, readItem, readItems } from "@directus/sdk";
+import mjml from "mjml";
 import Handlebars from "handlebars";
-import {
-  createDirectus,
-  rest,
-  readItem,
-  updateItem,
-  readItems,
-} from "@directus/sdk";
 
 export default defineEventHandler(async (event) => {
   try {
     const config = useRuntimeConfig();
     const body = await readBody(event);
 
-    const { newsletter_id } = body;
-
-    if (!newsletter_id) {
+    // Validate input
+    if (!body.newsletter_id) {
       throw createError({
         statusCode: 400,
         statusMessage: "Newsletter ID is required",
@@ -24,36 +17,25 @@ export default defineEventHandler(async (event) => {
     }
 
     // Initialize Directus client
-    const directus = createDirectus(config.public.directusUrl as string).with(
+    const directus = createDirectus(config.public.newsletter.directusUrl).with(
       rest()
     );
 
-    // Fetch newsletter with blocks and block types
+    // Fetch newsletter with blocks
     const newsletter = await directus.request(
-      readItem("newsletters", newsletter_id, {
+      readItem("newsletters", body.newsletter_id, {
         fields: [
           "*",
           "blocks.id",
           "blocks.sort",
-          "blocks.title",
-          "blocks.subtitle",
-          "blocks.text_content",
-          "blocks.image_url",
-          "blocks.image_alt_text",
-          "blocks.image_caption",
-          "blocks.button_text",
-          "blocks.button_url",
-          "blocks.background_color",
-          "blocks.text_color",
-          "blocks.text_align",
-          "blocks.padding",
-          "blocks.font_size",
-          "blocks.content",
+          "blocks.field_data",
           "blocks.block_type.id",
           "blocks.block_type.name",
           "blocks.block_type.slug",
           "blocks.block_type.mjml_template",
-          "blocks.block_type.field_visibility_config",
+          "blocks.block_type.default_values",
+          "template_id.mjml_template",
+          "template_id.default_values",
         ],
       })
     );
@@ -66,103 +48,65 @@ export default defineEventHandler(async (event) => {
     }
 
     // Sort blocks by sort order
-    const sortedBlocks =
-      newsletter.blocks?.sort((a: any, b: any) => a.sort - b.sort) || [];
+    const sortedBlocks = (newsletter.blocks || []).sort(
+      (a: any, b: any) => (a.sort || 0) - (b.sort || 0)
+    );
 
-    // Compile each block with MJML
-    let compiledBlocks = "";
+    // Register Handlebars helpers
+    registerHandlebarsHelpers();
 
-    for (const block of sortedBlocks) {
-      if (!block.block_type?.mjml_template) {
-        console.warn(`Block ${block.id} has no MJML template`);
-        continue;
-      }
-
-      try {
-        // Prepare block data for Handlebars
-        const blockData = {
-          // Content fields
-          title: block.title || "",
-          subtitle: block.subtitle || "",
-          text_content: block.text_content || "",
-
-          // Image fields
-          image_url: block.image_url || "",
-          image_alt_text: block.image_alt_text || "",
-          image_caption: block.image_caption || "",
-
-          // Button fields
-          button_text: block.button_text || "",
-          button_url: block.button_url || "",
-
-          // Styling fields
-          background_color: block.background_color || "#ffffff",
-          text_color: block.text_color || "#333333",
-          text_align: block.text_align || "center",
-          padding: block.padding || "20px 0",
-          font_size: block.font_size || "14px",
-
-          // Newsletter-level variables
-          newsletter_title: newsletter.title,
-          newsletter_from: newsletter.from_name,
-          unsubscribe_url: "{{unsubscribe_url}}",
-          preferences_url: "{{preferences_url}}",
-          subscriber_name: "{{subscriber_name}}",
-          company_name: "{{company_name}}",
-        };
-
-        // Compile Handlebars template
-        const template = Handlebars.compile(block.block_type.mjml_template);
-        const blockMjml = template(blockData);
-
-        // Store compiled MJML for this block
-        await directus.request(
-          updateItem("newsletter_blocks", block.id, {
-            mjml_output: blockMjml,
-          })
-        );
-
-        compiledBlocks += blockMjml + "\n";
-      } catch (error) {
-        console.error(`Error compiling block ${block.id}:`, error);
-        throw createError({
-          statusCode: 500,
-          statusMessage: `Error compiling block ${block.id}: ${error.message}`,
-        });
-      }
-    }
-
-    // Build complete MJML document
-    const completeMjml = `
+    // Build MJML content
+    let mjmlContent = `
       <mjml>
         <mj-head>
-          <mj-title>${newsletter.subject_line || newsletter.title}</mj-title>
-          <mj-preview>${newsletter.preview_text || ""}</mj-preview>
+          <mj-title>${escapeHtml(
+            newsletter.subject_line || newsletter.title
+          )}</mj-title>
+          <mj-preview>${escapeHtml(
+            newsletter.preview_text || newsletter.title
+          )}</mj-preview>
           <mj-attributes>
-            <mj-all font-family="system-ui, -apple-system, sans-serif" />
+            <mj-all font-family="Arial, sans-serif" />
             <mj-text font-size="14px" color="#333333" line-height="1.6" />
-            <mj-section background-color="#ffffff" />
+            <mj-section padding="0px" />
           </mj-attributes>
-          <mj-style inline="inline">
-            .newsletter-content { max-width: 600px; }
-            .button { border-radius: 6px; }
+          <mj-style>
+            .newsletter-wrapper { max-width: 600px; margin: 0 auto; }
+            .unsubscribe-link { color: #999999; font-size: 12px; }
           </mj-style>
         </mj-head>
         <mj-body>
-          ${compiledBlocks}
-          
-          <!-- Footer -->
-          <mj-section background-color="#f8f9fa" padding="40px 20px">
+    `;
+
+    // Process each block
+    const warnings: string[] = [];
+    for (const block of sortedBlocks) {
+      try {
+        const blockHtml = await processBlock(block, newsletter, warnings);
+        mjmlContent += blockHtml;
+      } catch (error: any) {
+        console.error(`Error processing block ${block.id}:`, error);
+        warnings.push(
+          `Block ${block.id} (${block.block_type?.name}): ${error.message}`
+        );
+      }
+    }
+
+    // Add unsubscribe footer
+    mjmlContent += `
+          <mj-section background-color="#f8f9fa" padding="20px">
             <mj-column>
-              <mj-text align="center" font-size="12px" color="#666666">
-                <p>You received this email because you subscribed to our newsletter.</p>
+              <mj-text align="center" font-size="12px" color="#6c757d">
                 <p>
-                  <a href="{{unsubscribe_url}}" style="color: #666666;">Unsubscribe</a> |
-                  <a href="{{preferences_url}}" style="color: #666666;">Update Preferences</a>
+                  You received this email because you're subscribed to our newsletter.
+                  <br />
+                  <a href="{{unsubscribe_url}}" class="unsubscribe-link">Unsubscribe</a> | 
+                  <a href="{{preferences_url}}" class="unsubscribe-link">Update preferences</a>
                 </p>
-                <p>© ${new Date().getFullYear()} ${
-      newsletter.from_name || "Newsletter"
-    }. All rights reserved.</p>
+                <p>
+                  ${escapeHtml(newsletter.from_name || "Newsletter")} <br />
+                  ${escapeHtml(newsletter.from_email || "")}
+                </p>
               </mj-text>
             </mj-column>
           </mj-section>
@@ -171,35 +115,201 @@ export default defineEventHandler(async (event) => {
     `;
 
     // Compile MJML to HTML
-    const mjmlResult = mjml2html(completeMjml, {
+    const mjmlResult = mjml(mjmlContent, {
       validationLevel: "soft",
-      minify: true,
+      fonts: {
+        Arial:
+          "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap",
+      },
     });
 
     if (mjmlResult.errors.length > 0) {
-      console.warn("MJML compilation warnings:", mjmlResult.errors);
+      mjmlResult.errors.forEach((error) => {
+        warnings.push(`MJML Error: ${error.message} (Line ${error.line})`);
+      });
     }
 
-    // Update newsletter with compiled content
+    // Update newsletter with compiled HTML
     await directus.request(
-      updateItem("newsletters", newsletter_id, {
-        compiled_mjml: completeMjml,
+      updateItem("newsletters", body.newsletter_id, {
         compiled_html: mjmlResult.html,
+        compiled_at: new Date().toISOString(),
+        compilation_warnings: warnings.length > 0 ? warnings : null,
       })
     );
 
     return {
       success: true,
-      message: "MJML compiled successfully",
-      warnings: mjmlResult.errors.length > 0 ? mjmlResult.errors : null,
-      blocks_compiled: sortedBlocks.length,
-      html_size: mjmlResult.html.length,
+      html: mjmlResult.html,
+      warnings,
+      stats: {
+        blocks_processed: sortedBlocks.length,
+        compilation_time: new Date().toISOString(),
+        html_size: mjmlResult.html.length,
+      },
     };
   } catch (error: any) {
     console.error("MJML compilation error:", error);
+
     throw createError({
       statusCode: error.statusCode || 500,
-      statusMessage: error.statusMessage || "MJML compilation failed",
+      statusMessage: error.statusMessage || "Failed to compile newsletter",
+      data: {
+        error: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
     });
   }
 });
+
+// Process individual block
+async function processBlock(
+  block: any,
+  newsletter: any,
+  warnings: string[]
+): Promise<string> {
+  const blockType = block.block_type;
+
+  if (!blockType?.mjml_template) {
+    warnings.push(`Block ${block.id}: No MJML template found`);
+    return `<!-- Block ${block.id}: No template -->\n`;
+  }
+
+  // Merge default values with block data
+  const defaultValues = blockType.default_values || {};
+  const fieldData = block.field_data || {};
+  const mergedData = { ...defaultValues, ...fieldData };
+
+  // Add newsletter context
+  const templateData = {
+    ...mergedData,
+    newsletter: {
+      title: newsletter.title,
+      subject_line: newsletter.subject_line,
+      from_name: newsletter.from_name,
+      from_email: newsletter.from_email,
+    },
+    block: {
+      id: block.id,
+      sort: block.sort,
+      type: blockType.slug,
+    },
+  };
+
+  try {
+    // Compile Handlebars template
+    const template = Handlebars.compile(blockType.mjml_template);
+    const compiledMjml = template(templateData);
+
+    return compiledMjml + "\n";
+  } catch (error: any) {
+    throw new Error(`Template compilation failed: ${error.message}`);
+  }
+}
+
+// Register custom Handlebars helpers
+function registerHandlebarsHelpers() {
+  // Safe string helper
+  Handlebars.registerHelper("safe", function (value: any) {
+    return new Handlebars.SafeString(value || "");
+  });
+
+  // URL helper
+  Handlebars.registerHelper("url", function (path: string, base?: string) {
+    const config = useRuntimeConfig();
+    const baseUrl = base || config.public.siteUrl || "http://localhost:3000";
+
+    if (path.startsWith("http")) {
+      return path;
+    }
+
+    return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  });
+
+  // Image helper with Directus asset URL
+  Handlebars.registerHelper(
+    "image",
+    function (fileId: string, transform?: any) {
+      if (!fileId) return "";
+
+      const config = useRuntimeConfig();
+      let url = `${config.public.newsletter.directusUrl}/assets/${fileId}`;
+
+      if (transform) {
+        const params = new URLSearchParams();
+        Object.entries(transform).forEach(([key, value]) => {
+          params.set(key, String(value));
+        });
+        url += `?${params.toString()}`;
+      }
+
+      return url;
+    }
+  );
+
+  // Date formatting helper
+  Handlebars.registerHelper(
+    "date",
+    function (date: string | Date, format?: string) {
+      const d = typeof date === "string" ? new Date(date) : date;
+
+      if (!d || isNaN(d.getTime())) {
+        return "";
+      }
+
+      switch (format) {
+        case "short":
+          return d.toLocaleDateString();
+        case "long":
+          return d.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        case "time":
+          return d.toLocaleTimeString();
+        default:
+          return d.toISOString().split("T")[0];
+      }
+    }
+  );
+
+  // Conditional helper
+  Handlebars.registerHelper("if_eq", function (a: any, b: any, options: any) {
+    return a === b ? options.fn(this) : options.inverse(this);
+  });
+
+  // Loop helper with index
+  Handlebars.registerHelper(
+    "each_with_index",
+    function (array: any[], options: any) {
+      let result = "";
+
+      for (let i = 0; i < array.length; i++) {
+        result += options.fn({
+          ...array[i],
+          index: i,
+          first: i === 0,
+          last: i === array.length - 1,
+        });
+      }
+
+      return result;
+    }
+  );
+}
+
+// HTML escape utility
+function escapeHtml(unsafe: string): string {
+  if (typeof unsafe !== "string") {
+    return "";
+  }
+
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}

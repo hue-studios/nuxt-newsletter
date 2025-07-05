@@ -1,80 +1,63 @@
-import sgMail from "@sendgrid/mail";
+// src/runtime/server/api/newsletter/core/send.post.ts
 import {
   createDirectus,
   rest,
   readItem,
-  updateItem,
+  readItems,
   createItem,
+  updateItem,
 } from "@directus/sdk";
+import { EmailService } from "~/server/utils/email";
+import { validators, getValidatedData } from "~/server/middleware/validation";
 
 export default defineEventHandler(async (event) => {
   try {
+    // Apply validation middleware
+    await validators.sendNewsletter(event);
+    const {
+      newsletter_id,
+      mailing_list_ids,
+      scheduled_at,
+      send_immediately,
+      ab_test_config,
+    } = getValidatedData(event, "body");
+
     const config = useRuntimeConfig();
-    const body = await readBody(event);
 
-    const { newsletter_id, mailing_list_id, send_type = "regular" } = body;
-
-    if (!newsletter_id || !mailing_list_id) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Newsletter ID and mailing list ID are required",
-      });
-    }
-
-    // Validate SendGrid configuration
-    if (!config.sendgridApiKey) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: "SendGrid API key not configured",
-      });
-    }
-
-    // Initialize SendGrid
-    sgMail.setApiKey(config.sendgridApiKey);
-
-    // Initialize Directus client
-    const directus = createDirectus(config.public.directusUrl as string).with(
+    // Initialize services
+    const directus = createDirectus(config.public.newsletter.directusUrl).with(
       rest()
     );
+    const emailService = new EmailService({
+      apiKey: config.newsletter.sendgridApiKey,
+      defaultFromEmail: config.newsletter.defaultFromEmail,
+      defaultFromName: config.newsletter.defaultFromName,
+      webhookSecret: config.newsletter.webhookSecret,
+    });
 
-    // Fetch newsletter and mailing list
+    // Fetch newsletter with validation
     const newsletter = await directus.request(
       readItem("newsletters", newsletter_id, {
-        fields: [
-          "id",
-          "title",
-          "subject_line",
-          "from_name",
-          "from_email",
-          "compiled_html",
-          "is_ab_test",
-          "ab_test_subject_b",
-        ],
+        fields: ["*"],
       })
     );
 
-    const mailingList = await directus.request(
-      readItem("mailing_lists", mailing_list_id, {
-        fields: [
-          "id",
-          "name",
-          "subscribers.subscribers_id.id",
-          "subscribers.subscribers_id.email",
-          "subscribers.subscribers_id.name",
-          "subscribers.subscribers_id.first_name",
-          "subscribers.subscribers_id.status",
-          "subscribers.subscribers_id.custom_fields",
-        ],
-      })
-    );
-
-    if (!newsletter || !mailingList) {
+    if (!newsletter) {
       throw createError({
         statusCode: 404,
-        statusMessage: "Newsletter or mailing list not found",
+        statusMessage: "Newsletter not found",
       });
     }
 
+    // Validate newsletter status
+    if (newsletter.status !== "ready_to_send") {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Newsletter must be in 'ready_to_send' status",
+      });
+    }
+
+    // Check if newsletter is compiled
     if (!newsletter.compiled_html) {
       throw createError({
         statusCode: 400,
@@ -82,16 +65,23 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Filter active subscribers
-    const activeSubscribers =
-      mailingList.subscribers?.filter(
-        (sub: any) => sub.subscribers_id?.status === "active"
-      ) || [];
-
-    if (activeSubscribers.length === 0) {
+    // Validate scheduling
+    const sendTime = scheduled_at ? new Date(scheduled_at) : new Date();
+    if (sendTime < new Date() && !send_immediately) {
       throw createError({
         statusCode: 400,
-        statusMessage: "No active subscribers in mailing list",
+        statusMessage: "Scheduled time must be in the future",
+      });
+    }
+
+    // Fetch subscribers from mailing lists
+    const subscribers = await fetchSubscribers(directus, mailing_list_ids);
+
+    if (subscribers.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage:
+          "No active subscribers found in the selected mailing lists",
       });
     }
 
@@ -99,130 +89,362 @@ export default defineEventHandler(async (event) => {
     const sendRecord = await directus.request(
       createItem("newsletter_sends", {
         newsletter_id,
-        mailing_list_id,
-        status: "sending",
-        send_type,
-        total_recipients: activeSubscribers.length,
+        mailing_list_ids: mailing_list_ids.join(","),
+        total_recipients: subscribers.length,
+        scheduled_at: sendTime.toISOString(),
+        status: send_immediately ? "sending" : "scheduled",
+        created_by: event.context.user?.id || null,
+        ab_test_enabled: ab_test_config?.enabled || false,
+        ab_test_percentage: ab_test_config?.percentage || 0,
+        ab_test_variant_subject: ab_test_config?.variant_subject || null,
       })
     );
 
-    try {
-      // Prepare email data
-      const fromEmail =
-        newsletter.from_email ||
-        config.defaultFromEmail ||
-        "newsletter@example.com";
-      const fromName = newsletter.from_name || "Newsletter";
-
-      // Handle A/B testing subject lines
-      const subjectLine =
-        send_type === "ab_test_b" && newsletter.ab_test_subject_b
-          ? newsletter.ab_test_subject_b
-          : newsletter.subject_line;
-
-      // Generate unsubscribe tokens and personalize emails
-      const personalizations = activeSubscribers.map((subscriber: any) => {
-        const sub = subscriber.subscribers_id;
-        const unsubscribeToken = generateUnsubscribeToken(
-          sub.email,
-          config.secretKey
-        );
-        const unsubscribeUrl = `${
-          config.public.siteUrl
-        }/unsubscribe?email=${encodeURIComponent(
-          sub.email
-        )}&token=${unsubscribeToken}`;
-        const preferencesUrl = `${
-          config.public.siteUrl
-        }/preferences?email=${encodeURIComponent(
-          sub.email
-        )}&token=${unsubscribeToken}`;
-
-        // Personalize HTML content
-        const personalizedHtml = newsletter.compiled_html
-          .replace(/{{unsubscribe_url}}/g, unsubscribeUrl)
-          .replace(/{{preferences_url}}/g, preferencesUrl)
-          .replace(
-            /{{subscriber_name}}/g,
-            sub.name || sub.first_name || "Subscriber"
-          )
-          .replace(/{{company_name}}/g, sub.custom_fields?.company || "");
-
-        return {
-          to: [{ email: sub.email, name: sub.name || "" }],
-          custom_args: {
-            newsletter_id: newsletter_id.toString(),
-            subscriber_id: sub.id.toString(),
-            send_record_id: sendRecord.id.toString(),
-          },
-        };
-      });
-
-      // Send email
-      const emailData = {
-        from: { email: fromEmail, name: fromName },
-        subject: subjectLine,
-        html: newsletter.compiled_html,
-        personalizations,
-        tracking_settings: {
-          click_tracking: { enable: true, enable_text: true },
-          open_tracking: { enable: true },
-        },
-        categories: ["newsletter", send_type],
-        custom_args: {
-          newsletter_id: newsletter_id.toString(),
-          send_record_id: sendRecord.id.toString(),
-        },
-      };
-
-      await sgMail.send(emailData);
-
-      // Update send record
-      await directus.request(
-        updateItem("newsletter_sends", sendRecord.id, {
-          status: "sent",
-          sent_count: activeSubscribers.length,
-          sent_at: new Date().toISOString(),
-        })
-      );
-
-      // Update newsletter status
-      await directus.request(
-        updateItem("newsletters", newsletter_id, {
-          status: "sent",
-        })
+    // Handle immediate sending
+    if (send_immediately) {
+      const result = await processSend(
+        emailService,
+        directus,
+        newsletter,
+        subscribers,
+        sendRecord,
+        ab_test_config
       );
 
       return {
         success: true,
-        message: `Newsletter sent to ${activeSubscribers.length} subscribers`,
-        send_record_id: sendRecord.id,
-        recipients: activeSubscribers.length,
+        message: "Newsletter sent successfully",
+        details: result,
       };
-    } catch (error: any) {
-      // Update send record with error
-      await directus.request(
-        updateItem("newsletter_sends", sendRecord.id, {
-          status: "failed",
-          error_log: error.message,
-        })
-      );
-      throw error;
     }
-  } catch (error: any) {
-    console.error("Newsletter send error:", error);
 
-    if (error.code && error.code >= 400) {
-      // SendGrid error
-      throw createError({
-        statusCode: 400,
-        statusMessage: `SendGrid error: ${error.message}`,
-      });
+    // Handle scheduled sending
+    await scheduleNewsletter(
+      newsletter_id,
+      sendRecord.id,
+      sendTime,
+      subscribers,
+      ab_test_config
+    );
+
+    return {
+      success: true,
+      message: "Newsletter scheduled successfully",
+      details: {
+        newsletter_id,
+        send_record_id: sendRecord.id,
+        scheduled_at: sendTime.toISOString(),
+        total_recipients: subscribers.length,
+        ab_test_enabled: ab_test_config?.enabled || false,
+      },
+    };
+  } catch (error: any) {
+    console.error("Newsletter sending error:", error);
+
+    if (error.statusCode) {
+      throw error;
     }
 
     throw createError({
-      statusCode: error.statusCode || 500,
-      statusMessage: error.statusMessage || "Failed to send newsletter",
+      statusCode: 500,
+      statusMessage: "Failed to send newsletter",
+      data: {
+        error: error.message,
+        details:
+          process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
     });
   }
 });
+
+// Fetch active subscribers from mailing lists
+async function fetchSubscribers(directus: any, mailingListIds: number[]) {
+  const subscribers = await directus.request(
+    readItems("mailing_lists_subscribers", {
+      fields: [
+        "subscriber_id.id",
+        "subscriber_id.email",
+        "subscriber_id.name",
+        "subscriber_id.status",
+        "subscriber_id.preferences",
+        "subscriber_id.metadata",
+      ],
+      filter: {
+        mailing_list_id: { _in: mailingListIds },
+        subscriber_id: {
+          status: { _eq: "active" },
+          email: { _nnull: true },
+        },
+      },
+    })
+  );
+
+  // Deduplicate subscribers and flatten structure
+  const uniqueSubscribers = new Map();
+
+  subscribers.forEach((item: any) => {
+    const subscriber = item.subscriber_id;
+    if (subscriber && !uniqueSubscribers.has(subscriber.email)) {
+      uniqueSubscribers.set(subscriber.email, subscriber);
+    }
+  });
+
+  return Array.from(uniqueSubscribers.values());
+}
+
+// Process the actual sending
+async function processSend(
+  emailService: EmailService,
+  directus: any,
+  newsletter: any,
+  subscribers: any[],
+  sendRecord: any,
+  abTestConfig?: any
+) {
+  const startTime = new Date();
+
+  try {
+    let results = {
+      sent: 0,
+      failed: 0,
+      errors: [] as string[],
+      ab_test_results: null as any,
+    };
+
+    // Handle A/B testing
+    if (abTestConfig?.enabled) {
+      results = await processABTestSend(
+        emailService,
+        directus,
+        newsletter,
+        subscribers,
+        sendRecord,
+        abTestConfig
+      );
+    } else {
+      // Regular send
+      results = await processRegularSend(
+        emailService,
+        directus,
+        newsletter,
+        subscribers,
+        sendRecord
+      );
+    }
+
+    // Update send record
+    await directus.request(
+      updateItem("newsletter_sends", sendRecord.id, {
+        status: results.failed > 0 ? "completed_with_errors" : "completed",
+        sent_count: results.sent,
+        failed_count: results.failed,
+        completed_at: new Date().toISOString(),
+        processing_time: Date.now() - startTime.getTime(),
+        errors: results.errors.length > 0 ? results.errors.join("; ") : null,
+      })
+    );
+
+    // Update newsletter stats
+    await directus.request(
+      updateItem("newsletters", newsletter.id, {
+        status: "sent",
+        total_sent: (newsletter.total_sent || 0) + results.sent,
+        last_sent_at: new Date().toISOString(),
+        send_count: (newsletter.send_count || 0) + 1,
+      })
+    );
+
+    return {
+      send_record_id: sendRecord.id,
+      total_recipients: subscribers.length,
+      sent: results.sent,
+      failed: results.failed,
+      processing_time: Date.now() - startTime.getTime(),
+      ab_test_results: results.ab_test_results,
+    };
+  } catch (error: any) {
+    // Update send record with error
+    await directus.request(
+      updateItem("newsletter_sends", sendRecord.id, {
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        errors: error.message,
+      })
+    );
+
+    throw error;
+  }
+}
+
+// Process regular newsletter send
+async function processRegularSend(
+  emailService: EmailService,
+  directus: any,
+  newsletter: any,
+  subscribers: any[],
+  sendRecord: any
+) {
+  const batchSize = 100; // Send in batches
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < subscribers.length; i += batchSize) {
+    const batch = subscribers.slice(i, i + batchSize);
+
+    try {
+      await emailService.sendNewsletter(newsletter, batch, sendRecord);
+      sent += batch.length;
+
+      // Log batch success
+      await directus.request(
+        createItem("newsletter_send_logs", {
+          send_record_id: sendRecord.id,
+          batch_number: Math.floor(i / batchSize) + 1,
+          recipients_count: batch.length,
+          status: "sent",
+          sent_at: new Date().toISOString(),
+        })
+      );
+    } catch (error: any) {
+      failed += batch.length;
+      const errorMsg = `Batch ${Math.floor(i / batchSize) + 1}: ${
+        error.message
+      }`;
+      errors.push(errorMsg);
+
+      // Log batch failure
+      await directus.request(
+        createItem("newsletter_send_logs", {
+          send_record_id: sendRecord.id,
+          batch_number: Math.floor(i / batchSize) + 1,
+          recipients_count: batch.length,
+          status: "failed",
+          error_message: error.message,
+          sent_at: new Date().toISOString(),
+        })
+      );
+    }
+
+    // Update progress
+    const progress = Math.round(
+      ((i + batch.length) / subscribers.length) * 100
+    );
+    await directus.request(
+      updateItem("newsletter_sends", sendRecord.id, {
+        progress_percentage: progress,
+        sent_count: sent,
+        failed_count: failed,
+      })
+    );
+
+    // Small delay between batches to avoid rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  return { sent, failed, errors };
+}
+
+// Process A/B test send
+async function processABTestSend(
+  emailService: EmailService,
+  directus: any,
+  newsletter: any,
+  subscribers: any[],
+  sendRecord: any,
+  abTestConfig: any
+) {
+  const testPercentage = abTestConfig.percentage / 100;
+  const testGroupSize = Math.floor(subscribers.length * testPercentage);
+
+  // Split subscribers into groups
+  const shuffled = [...subscribers].sort(() => Math.random() - 0.5);
+  const groupA = shuffled.slice(0, testGroupSize);
+  const groupB = shuffled.slice(testGroupSize, testGroupSize * 2);
+  const remaining = shuffled.slice(testGroupSize * 2);
+
+  // Send variant A (original)
+  const resultA = await processRegularSend(
+    emailService,
+    directus,
+    newsletter,
+    groupA,
+    sendRecord
+  );
+
+  // Send variant B (with different subject)
+  const newsletterB = {
+    ...newsletter,
+    subject_line: abTestConfig.variant_subject,
+  };
+
+  const resultB = await processRegularSend(
+    emailService,
+    directus,
+    newsletterB,
+    groupB,
+    sendRecord
+  );
+
+  // For now, send remaining to variant A (you can implement winner selection later)
+  const resultRemaining =
+    remaining.length > 0
+      ? await processRegularSend(
+          emailService,
+          directus,
+          newsletter,
+          remaining,
+          sendRecord
+        )
+      : { sent: 0, failed: 0, errors: [] };
+
+  return {
+    sent: resultA.sent + resultB.sent + resultRemaining.sent,
+    failed: resultA.failed + resultB.failed + resultRemaining.failed,
+    errors: [...resultA.errors, ...resultB.errors, ...resultRemaining.errors],
+    ab_test_results: {
+      variant_a: {
+        subject: newsletter.subject_line,
+        recipients: groupA.length,
+        sent: resultA.sent,
+        failed: resultA.failed,
+      },
+      variant_b: {
+        subject: abTestConfig.variant_subject,
+        recipients: groupB.length,
+        sent: resultB.sent,
+        failed: resultB.failed,
+      },
+      remaining: {
+        recipients: remaining.length,
+        sent: resultRemaining.sent,
+        failed: resultRemaining.failed,
+      },
+    },
+  };
+}
+
+// Schedule newsletter for later sending (placeholder - implement with your preferred job queue)
+async function scheduleNewsletter(
+  newsletterId: number,
+  sendRecordId: number,
+  sendTime: Date,
+  subscribers: any[],
+  abTestConfig?: any
+) {
+  // This is a placeholder - you would implement this with:
+  // - Redis Queue (Bull, BullMQ)
+  // - Database-based job queue
+  // - Cron jobs
+  // - External service like Agenda.js
+
+  console.log(
+    `Newsletter ${newsletterId} scheduled for ${sendTime.toISOString()}`
+  );
+  console.log(
+    `Send record: ${sendRecordId}, Recipients: ${subscribers.length}`
+  );
+
+  // For now, we'll just log the schedule
+  // In production, you'd want to implement a proper job queue system
+}
