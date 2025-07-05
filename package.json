@@ -28,7 +28,6 @@
     "typecheck": "vue-tsc --noEmit",
     "prepack": "nuxt-module build",
     "prepare": "husky install"
-    
   },
   "dependencies": {
     "@directus/sdk": "^17.0.0",
