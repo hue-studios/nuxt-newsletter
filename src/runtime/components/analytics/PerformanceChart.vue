@@ -1,68 +1,53 @@
 <!-- src/runtime/components/analytics/PerformanceChart.vue -->
 <template>
-  <Card>
-    <CardHeader>
+  <UiCard>
+    <UiCardHeader>
       <div class="flex items-center justify-between">
         <div>
-          <CardTitle>Performance Over Time</CardTitle>
-          <CardDescription>
+          <UiCardTitle>Performance Over Time</UiCardTitle>
+          <UiCardDescription>
             Track your newsletter performance trends
-          </CardDescription>
+          </UiCardDescription>
         </div>
 
         <!-- Chart Controls -->
         <div class="flex items-center space-x-2">
-          <Select v-model="selectedMetric">
-            <SelectTrigger class="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="opens">Open Rate</SelectItem>
-              <SelectItem value="clicks">Click Rate</SelectItem>
-              <SelectItem value="both">Both Metrics</SelectItem>
-            </SelectContent>
-          </Select>
+          <UiSelect v-model="selectedMetric">
+            <UiSelectTrigger class="w-40">
+              <UiSelectValue placeholder="Select metric" />
+            </UiSelectTrigger>
+            <UiSelectContent>
+              <UiSelectItem value="opens">Open Rate</UiSelectItem>
+              <UiSelectItem value="clicks">Click Rate</UiSelectItem>
+              <UiSelectItem value="both">Both Metrics</UiSelectItem>
+            </UiSelectContent>
+          </UiSelect>
 
-          <Select v-model="timeRange">
-            <SelectTrigger class="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 Days</SelectItem>
-              <SelectItem value="30">30 Days</SelectItem>
-              <SelectItem value="90">90 Days</SelectItem>
-              <SelectItem value="365">1 Year</SelectItem>
-            </SelectContent>
-          </Select>
+          <UiSelect v-model="timeRange">
+            <UiSelectTrigger class="w-32">
+              <UiSelectValue placeholder="Time range" />
+            </UiSelectTrigger>
+            <UiSelectContent>
+              <UiSelectItem value="7">7 Days</UiSelectItem>
+              <UiSelectItem value="30">30 Days</UiSelectItem>
+              <UiSelectItem value="90">90 Days</UiSelectItem>
+              <UiSelectItem value="365">1 Year</UiSelectItem>
+            </UiSelectContent>
+          </UiSelect>
         </div>
       </div>
-    </CardHeader>
+    </UiCardHeader>
 
-    <CardContent>
+    <UiCardContent>
       <div class="h-80 w-full">
-        <!-- Using Recharts for the chart -->
-        <LineChart
+        <!-- Using nuxt-echarts -->
+        <EChart
           v-if="filteredData.length > 0"
-          :data="filteredData"
-          :margin="{ top: 5, right: 30, left: 20, bottom: 5 }"
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }}
-          tickFormatter="formatDate" /> <YAxis tick={{ fontSize: 12 }}
-          domain={[0, 'dataMax + 5']} />
-          <Tooltip
-            :content="CustomTooltip"
-            labelFormatter="formatTooltipDate"
-          />
-          <Legend />
-
-          <Line v-if="selectedMetric === 'opens' || selectedMetric === 'both'"
-          type="monotone" dataKey="opens" stroke="#10b981" strokeWidth="2"
-          dot={{ r: 4 }} name="Open Rate (%)" /> <Line v-if="selectedMetric ===
-          'clicks' || selectedMetric === 'both'" type="monotone"
-          dataKey="clicks" stroke="#3b82f6" strokeWidth="2" dot={{ r: 4 }}
-          name="Click Rate (%)" />
-        </LineChart>
+          :option="chartOption"
+          :loading="false"
+          class="h-full w-full"
+          autoresize
+        />
 
         <!-- Empty State -->
         <div
@@ -121,21 +106,11 @@
           </div>
         </div>
       </div>
-    </CardContent>
-  </Card>
+    </UiCardContent>
+  </UiCard>
 </template>
 
 <script setup lang="ts">
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
-
 interface ChartDataPoint {
   date: string;
   opens: number;
@@ -162,6 +137,121 @@ const filteredData = computed(() => {
   return props.data
     .filter((point) => new Date(point.date) >= cutoffDate)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+});
+
+const chartOption = computed(() => {
+  const series = [];
+
+  if (selectedMetric.value === "opens" || selectedMetric.value === "both") {
+    series.push({
+      name: "Open Rate (%)",
+      type: "line",
+      data: filteredData.value.map((point) => point.opens),
+      smooth: true,
+      itemStyle: {
+        color: "#10b981",
+      },
+      lineStyle: {
+        width: 2,
+      },
+      symbol: "circle",
+      symbolSize: 4,
+    });
+  }
+
+  if (selectedMetric.value === "clicks" || selectedMetric.value === "both") {
+    series.push({
+      name: "Click Rate (%)",
+      type: "line",
+      data: filteredData.value.map((point) => point.clicks),
+      smooth: true,
+      itemStyle: {
+        color: "#3b82f6",
+      },
+      lineStyle: {
+        width: 2,
+      },
+      symbol: "circle",
+      symbolSize: 4,
+    });
+  }
+
+  return {
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "white",
+      borderColor: "#e5e7eb",
+      borderWidth: 1,
+      textStyle: {
+        color: "#374151",
+      },
+      formatter: (params: any) => {
+        const date = filteredData.value[params[0].dataIndex].date;
+        const formattedDate = formatTooltipDate(date);
+        let html = `<div style="font-weight: 500; margin-bottom: 4px;">${formattedDate}</div>`;
+
+        params.forEach((param: any) => {
+          html += `
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${param.color}; margin-right: 8px;"></span>
+              <span style="color: #6b7280;">${param.seriesName}:</span>
+              <span style="font-weight: 500; margin-left: 4px;">${param.value}%</span>
+            </div>
+          `;
+        });
+
+        return html;
+      },
+    },
+    legend: {
+      data: series.map((s) => s.name),
+      bottom: 0,
+      textStyle: {
+        color: "#374151",
+        fontSize: 12,
+      },
+    },
+    grid: {
+      top: 20,
+      left: 30,
+      right: 30,
+      bottom: 40,
+      containLabel: true,
+    },
+    xAxis: {
+      type: "category",
+      data: filteredData.value.map((point) => formatDate(point.date)),
+      axisLine: {
+        lineStyle: {
+          color: "#e5e7eb",
+        },
+      },
+      axisLabel: {
+        color: "#6b7280",
+        fontSize: 12,
+      },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      axisLine: {
+        lineStyle: {
+          color: "#e5e7eb",
+        },
+      },
+      axisLabel: {
+        color: "#6b7280",
+        fontSize: 12,
+      },
+      splitLine: {
+        lineStyle: {
+          color: "#f3f4f6",
+          type: "dashed",
+        },
+      },
+    },
+    series,
+  };
 });
 
 const averageOpenRate = computed(() => {
@@ -232,41 +322,5 @@ const formatTooltipDate = (dateStr: string) => {
     day: "numeric",
     year: "numeric",
   });
-};
-
-// Custom Tooltip Component
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload || payload.length === 0) return null;
-
-  return h(
-    "div",
-    {
-      class: "bg-white p-3 border border-gray-200 rounded-lg shadow-lg",
-    },
-    [
-      h(
-        "p",
-        { class: "font-medium text-gray-900 mb-2" },
-        formatTooltipDate(label)
-      ),
-      ...payload.map((entry: any) =>
-        h(
-          "div",
-          {
-            key: entry.dataKey,
-            class: "flex items-center space-x-2 text-sm",
-          },
-          [
-            h("div", {
-              class: "w-3 h-3 rounded-full",
-              style: { backgroundColor: entry.color },
-            }),
-            h("span", { class: "text-gray-600" }, entry.name + ":"),
-            h("span", { class: "font-medium" }, entry.value + "%"),
-          ]
-        )
-      ),
-    ]
-  );
 };
 </script>
