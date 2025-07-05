@@ -27,7 +27,10 @@
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit",
     "prepack": "nuxt-module build",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "install-collections": "node scripts/install-directus-collections.js",
+    "install-advanced-blocks": "node scripts/create-advanced-blocks.js",
+    "setup-newsletter": "npm run install-collections && npm run install-advanced-blocks"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.49",
