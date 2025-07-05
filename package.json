@@ -1,0 +1,97 @@
+{
+  "name": "@your-org/nuxt-newsletter",
+  "version": "1.0.0",
+  "description": "Complete newsletter management system for Nuxt 3",
+  "main": "./dist/module.mjs",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/module.mjs",
+      "require": "./dist/module.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "nuxt-module build",
+    "dev": "nuxt-module build --stub && nuxt dev playground",
+    "dev:build": "nuxt-module build --stub",
+    "dev:prepare": "nuxt-module build --stub && nuxt prepare playground",
+    "release": "npm run lint && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "typecheck": "vue-tsc --noEmit",
+    "prepack": "nuxt-module build",
+    "prepare": "husky install"
+  },
+  "dependencies": {
+    "@directus/sdk": "^17.0.0",
+    "@gsap/business": "^3.12.2",
+    "@tiptap/core": "^2.1.13",
+    "@tiptap/extension-bold": "^2.1.13",
+    "@tiptap/extension-italic": "^2.1.13",
+    "@tiptap/extension-link": "^2.1.13",
+    "@tiptap/starter-kit": "^2.1.13",
+    "@tiptap/vue-3": "^2.1.13",
+    "@vueuse/core": "^10.5.0",
+    "@vueuse/nuxt": "^10.5.0",
+    "handlebars": "^4.7.8",
+    "mjml": "^4.14.1",
+    "@sendgrid/mail": "^8.1.3",
+    "sortablejs": "^1.15.0",
+    "vue-toastification": "^2.0.0-rc.5"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@nuxt/eslint-config": "^0.2.0",
+    "@nuxt/module-builder": "^0.5.5",
+    "@nuxt/schema": "^3.8.0",
+    "@nuxt/test-utils": "^3.8.0",
+    "@playwright/test": "^1.40.0",
+    "@types/mjml": "^4.7.4",
+    "@types/node": "^20.8.10",
+    "@vitest/coverage-c8": "^0.33.0",
+    "@vue/test-utils": "^2.4.2",
+    "changelogen": "^0.5.5",
+    "eslint": "^8.52.0",
+    "happy-dom": "^12.10.3",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.0.2",
+    "nuxt": "^3.8.0",
+    "playwright": "^1.40.0",
+    "typescript": "latest",
+    "vitest": "^0.34.6",
+    "vue-tsc": "^1.8.22"
+  },
+  "keywords": [
+    "nuxt",
+    "nuxt3",
+    "newsletter",
+    "email",
+    "mjml",
+    "directus",
+    "sendgrid",
+    "drag-drop",
+    "templates",
+    "analytics",
+    "marketing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/nuxt-newsletter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/nuxt-newsletter/issues"
+  },
+  "homepage": "https://github.com/your-org/nuxt-newsletter#readme",
+  "license": "MIT",
+  "author": "Your Organization",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
