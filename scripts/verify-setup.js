@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Setup Verification Script for @your-org/nuxt-newsletter
+ * Setup Verification Script for @hue-studios/nuxt-newsletter
+ * Updated for Tailwind CSS 4 support
  *
  * This script verifies that all required dependencies and configurations
  * are properly set up for the newsletter module to work correctly.
@@ -47,9 +48,11 @@ class NewsletterSetupVerifier {
       ...packageJson.devDependencies,
     };
 
+    // Updated for Tailwind CSS 4
     const requiredDeps = [
-      "@your-org/nuxt-newsletter",
-      "@nuxtjs/tailwindcss",
+      "@hue-studios/nuxt-newsletter",
+      "tailwindcss",
+      "@tailwindcss/vite",
       "shadcn-nuxt",
       "@nuxtjs/color-mode",
     ];
@@ -63,11 +66,30 @@ class NewsletterSetupVerifier {
       this.log("error", `Missing dependencies: ${missingDeps.join(", ")}`);
       this.log(
         "info",
-        "Run: npm install @nuxtjs/tailwindcss shadcn-nuxt @nuxtjs/color-mode"
+        "Run: npm install tailwindcss @tailwindcss/vite shadcn-nuxt @nuxtjs/color-mode"
       );
     } else {
       this.success.push("All required dependencies are installed");
       this.log("success", "All required dependencies found");
+    }
+
+    // Check Tailwind CSS version
+    if (dependencies.tailwindcss) {
+      const tailwindVersion = dependencies.tailwindcss.replace(/[\^\~]/, "");
+      if (tailwindVersion.startsWith("4.")) {
+        this.success.push(
+          `Tailwind CSS 4 detected: ${dependencies.tailwindcss}`
+        );
+        this.log("success", `Tailwind CSS 4: ${dependencies.tailwindcss}`);
+      } else {
+        this.warnings.push(
+          `Tailwind CSS 3 detected. Consider upgrading to v4 for better performance: ${dependencies.tailwindcss}`
+        );
+        this.log(
+          "warning",
+          `Tailwind CSS 3 detected: ${dependencies.tailwindcss}`
+        );
+      }
     }
 
     // Check versions
@@ -102,11 +124,11 @@ class NewsletterSetupVerifier {
       return;
     }
 
+    // Updated for Tailwind CSS 4 setup
     const requiredModules = [
-      "@nuxtjs/tailwindcss",
       "shadcn-nuxt",
       "@nuxtjs/color-mode",
-      "@your-org/nuxt-newsletter",
+      "@hue-studios/nuxt-newsletter",
     ];
 
     const missingModules = requiredModules.filter(
@@ -126,6 +148,23 @@ class NewsletterSetupVerifier {
     } else {
       this.success.push("All required modules are configured");
       this.log("success", "All required modules found in config");
+    }
+
+    // Check for Tailwind CSS 4 Vite plugin
+    if (
+      configContent.includes("tailwindcss()") &&
+      configContent.includes("vite:")
+    ) {
+      this.success.push("Tailwind CSS 4 Vite plugin detected");
+      this.log("success", "Tailwind CSS 4 Vite plugin configured");
+    } else {
+      this.warnings.push(
+        "Tailwind CSS 4 Vite plugin not detected in nuxt.config"
+      );
+      this.log("warning", "Tailwind CSS 4 Vite plugin not found");
+      this.log("info", "Add to your nuxt.config.ts:");
+      this.log("info", "import tailwindcss from '@tailwindcss/vite'");
+      this.log("info", "vite: { plugins: [tailwindcss()] }");
     }
 
     // Check for newsletter config
@@ -178,6 +217,15 @@ class NewsletterSetupVerifier {
       "badge.vue",
       "card.vue",
       "sonner.vue",
+      "tabs.vue",
+      "dropdown-menu.vue",
+      "select.vue",
+      "switch.vue",
+      "slider.vue",
+      "toast.vue",
+      "alert.vue",
+      "separator.vue",
+      "progress.vue",
     ];
 
     const existingComponents = fs.readdirSync(componentsPath);
@@ -227,12 +275,12 @@ class NewsletterSetupVerifier {
     if (!configPath) {
       this.warnings.push("tailwind.config.js not found");
       this.log("warning", "Tailwind config not found");
+      this.log("info", "Create a tailwind.config.js for optimal setup");
       return;
     }
 
     // Check if module paths are included
-    const modulePattern = /@your-org\/nuxt-newsletter/;
-    if (configContent.includes("@your-org/nuxt-newsletter")) {
+    if (configContent.includes("@hue-studios/nuxt-newsletter")) {
       this.success.push("Newsletter module paths included in Tailwind config");
       this.log("success", "Module paths found in Tailwind config");
     } else {
@@ -242,7 +290,7 @@ class NewsletterSetupVerifier {
       this.log("warning", "Add module paths to Tailwind content array");
       this.log(
         "info",
-        'Add: "./node_modules/@your-org/nuxt-newsletter/dist/**/*.{js,vue,ts}"'
+        'Add: "./node_modules/@hue-studios/nuxt-newsletter/dist/**/*.{js,vue,ts}"'
       );
     }
   }
@@ -291,14 +339,14 @@ class NewsletterSetupVerifier {
       this.log("warning", "Consider running the Directus setup script");
       this.log(
         "info",
-        "Download from: https://github.com/your-org/nuxt-newsletter/blob/main/scripts/install-directus-collections.js"
+        "Download from: https://github.com/hue-studios/nuxt-newsletter/blob/main/scripts/install-directus-collections.js"
       );
     }
   }
 
   printSummary() {
     console.log("\n" + "=".repeat(60));
-    console.log("📋 SETUP VERIFICATION SUMMARY");
+    console.log("📋 NEWSLETTER MODULE SETUP VERIFICATION");
     console.log("=".repeat(60));
 
     if (this.success.length > 0) {
@@ -320,7 +368,9 @@ class NewsletterSetupVerifier {
 
     if (this.errors.length === 0) {
       if (this.warnings.length === 0) {
-        console.log("🎉 Perfect! Your setup is complete and ready to go!");
+        console.log(
+          "🎉 Perfect! Your Tailwind CSS 4 setup is complete and ready to go!"
+        );
       } else {
         console.log(
           "✅ Setup is functional! Address warnings for optimal experience."
@@ -330,15 +380,16 @@ class NewsletterSetupVerifier {
       console.log("❌ Setup has critical issues that need to be resolved.");
       console.log("\n📚 For help, see:");
       console.log("   • README.md - Complete setup instructions");
-      console.log("   • MIGRATION.md - Migration guide");
       console.log("   • GitHub Issues - Report problems");
+      console.log("   • https://github.com/hue-studios/nuxt-newsletter");
     }
 
     console.log("");
   }
 
   async run() {
-    console.log("🔍 Verifying @your-org/nuxt-newsletter setup...\n");
+    console.log("🔍 Verifying @hue-studios/nuxt-newsletter setup...");
+    console.log("🚀 Tailwind CSS 4 support enabled!\n");
 
     await this.verifyPackageJson();
     await this.verifyNuxtConfig();
