@@ -253,31 +253,6 @@ export default defineNuxtPlugin(async () => {
 });
 ```
 
-### Creating Directus Tokens
-
-**Static Token (Option 1):**
-1. Go to Directus Admin → Settings → Roles & Permissions
-2. Create a new role with newsletter permissions
-3. Go to Users → Create a new user or edit existing
-4. In User settings → Token → Generate a static token
-5. Add the token to your environment variables
-
-**User Tokens (Option 2):**
-```typescript
-// Example: Getting user token in your auth system
-import { createDirectus, authentication, rest, login } from '@directus/sdk';
-
-const client = createDirectus('your-directus-url')
-  .with(authentication('json'))
-  .with(rest());
-
-// Login user and get token
-const result = await client.login({ email, password });
-const userToken = result.access_token;
-
-// Store token for newsletter module use
-```
-
 ## 📦 Directus Setup
 
 ### 1. Install Required Collections
@@ -318,51 +293,761 @@ Set up appropriate permissions in Directus for newsletter collections based on y
 }
 ```
 
-## 🎯 Usage
+## 🎯 Usage Guide
 
-### Basic Newsletter Management
+### Built-in Components
+
+The module provides several pre-built Vue components that you can use directly in your pages and components:
+
+#### Newsletter Management Components
 
 ```vue
-<!-- pages/newsletters.vue -->
+<!-- pages/admin/newsletters.vue -->
 <template>
-  <div>
-    <NewsletterList />
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6">Newsletter Management</h1>
+    
+    <!-- Newsletter List Component -->
+    <NewsletterList 
+      :show-filters="true"
+      :show-stats="true"
+      @newsletter-selected="handleNewsletterSelect"
+    />
   </div>
 </template>
 
 <script setup>
-// The component automatically handles authentication via Directus tokens
+// Optional: Handle newsletter selection
+const handleNewsletterSelect = (newsletter) => {
+  navigateTo(`/admin/newsletters/${newsletter.id}`)
+}
 </script>
 ```
 
-### Creating Newsletters Programmatically
-
-```typescript
-// Using the newsletter API
-const newsletter = await $fetch('/api/newsletter/create', {
-  method: 'POST',
-  body: {
-    title: 'My Newsletter',
-    subject_line: 'Welcome to our newsletter!',
-    from_email: 'newsletter@example.com',
-    from_name: 'Example Company',
-    template_id: 1
-  },
-  headers: {
-    'Authorization': `Bearer ${directusToken}`
-  }
-});
-```
-
-### Analytics Dashboard
+#### Newsletter Editor
 
 ```vue
-<!-- pages/newsletter/analytics/[id].vue -->
+<!-- pages/admin/newsletters/[id].vue -->
 <template>
-  <div>
-    <NewsletterAnalytics :newsletter-id="$route.params.id" />
+  <div class="h-screen flex flex-col">
+    <!-- Editor Header -->
+    <NewsletterEditorHeader 
+      :newsletter="newsletter"
+      :is-saving="isSaving"
+      @save="handleSave"
+      @send-test="handleSendTest"
+      @publish="handlePublish"
+    />
+    
+    <!-- Main Editor Interface -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Block Library Sidebar -->
+      <NewsletterBlockLibrary 
+        class="w-80 border-r"
+        @block-add="handleBlockAdd"
+      />
+      
+      <!-- Main Editor Canvas -->
+      <NewsletterEditor 
+        v-model="newsletter"
+        class="flex-1"
+        :preview-mode="false"
+        @content-change="handleContentChange"
+      />
+      
+      <!-- Properties Panel -->
+      <NewsletterPropertiesPanel 
+        class="w-80 border-l"
+        :selected-block="selectedBlock"
+        @properties-change="handlePropertiesChange"
+      />
+    </div>
   </div>
 </template>
+
+<script setup>
+const route = useRoute()
+const { newsletter, selectedBlock, isSaving } = useNewsletterEditor()
+
+// Load newsletter data
+await refresh()
+
+const handleSave = async () => {
+  await saveNewsletter()
+}
+
+const handleSendTest = async (email) => {
+  await sendTestEmail(email)
+}
+
+const handlePublish = async () => {
+  await publishNewsletter()
+}
+</script>
+```
+
+#### Analytics Dashboard
+
+```vue
+<!-- pages/admin/analytics/[id].vue -->
+<template>
+  <div class="container mx-auto p-6">
+    <NewsletterAnalyticsDashboard 
+      :newsletter-id="route.params.id"
+      :time-range="timeRange"
+      @time-range-change="handleTimeRangeChange"
+    />
+  </div>
+</template>
+
+<script setup>
+const route = useRoute()
+const timeRange = ref('30d')
+
+const handleTimeRangeChange = (range) => {
+  timeRange.value = range
+}
+</script>
+```
+
+#### Subscriber Management
+
+```vue
+<!-- pages/admin/subscribers.vue -->
+<template>
+  <div class="container mx-auto p-6">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold mb-2">Subscribers</h1>
+      <p class="text-gray-600">Manage your newsletter subscribers and mailing lists</p>
+    </div>
+    
+    <!-- Subscriber List with Import/Export -->
+    <SubscriberList 
+      :show-import="true"
+      :show-export="true"
+      :show-segments="true"
+      @subscriber-import="handleImport"
+      @subscriber-export="handleExport"
+    />
+  </div>
+</template>
+
+<script setup>
+const handleImport = async (file) => {
+  // Handle CSV import
+  await importSubscribers(file)
+}
+
+const handleExport = async () => {
+  // Handle subscriber export
+  await exportSubscribers()
+}
+</script>
+```
+
+### Custom Page Layouts
+
+#### Newsletter Admin Dashboard
+
+```vue
+<!-- pages/admin/dashboard.vue -->
+<template>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-xl font-semibold">Newsletter Dashboard</h1>
+          <div class="flex space-x-4">
+            <NuxtLink to="/admin/newsletters/new" class="btn btn-primary">
+              Create Newsletter
+            </NuxtLink>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+      <!-- Stats Overview -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <NewsletterStatsCard 
+          title="Total Subscribers"
+          :value="stats.totalSubscribers"
+          :change="stats.subscriberGrowth"
+          icon="users"
+        />
+        <NewsletterStatsCard 
+          title="Open Rate"
+          :value="`${stats.averageOpenRate}%`"
+          :change="stats.openRateChange"
+          icon="mail-open"
+        />
+        <NewsletterStatsCard 
+          title="Click Rate"
+          :value="`${stats.averageClickRate}%`"
+          :change="stats.clickRateChange"
+          icon="mouse-pointer"
+        />
+      </div>
+      
+      <!-- Recent Newsletters -->
+      <div class="bg-white rounded-lg shadow-sm border p-6">
+        <h2 class="text-lg font-semibold mb-4">Recent Newsletters</h2>
+        <NewsletterList 
+          :limit="5"
+          :show-filters="false"
+          compact
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+// Fetch dashboard stats
+const { data: stats } = await $fetch('/api/newsletter/stats')
+</script>
+```
+
+#### Public Newsletter Archive
+
+```vue
+<!-- pages/newsletters/index.vue -->
+<template>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+      <div class="container mx-auto px-6 py-8">
+        <h1 class="text-4xl font-bold text-center mb-4">Newsletter Archive</h1>
+        <p class="text-gray-600 text-center max-w-2xl mx-auto">
+          Browse our past newsletters and stay up to date with our latest content.
+        </p>
+      </div>
+    </header>
+    
+    <!-- Newsletter Grid -->
+    <div class="container mx-auto px-6 py-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <NewsletterPreviewCard 
+          v-for="newsletter in newsletters"
+          :key="newsletter.id"
+          :newsletter="newsletter"
+          @view="handleView"
+        />
+      </div>
+      
+      <!-- Load More -->
+      <div class="text-center mt-8" v-if="hasMore">
+        <button 
+          @click="loadMore"
+          class="btn btn-outline"
+          :disabled="loading"
+        >
+          Load More
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+// Fetch public newsletters
+const { newsletters, hasMore, loading, loadMore } = await usePublicNewsletters()
+
+const handleView = (newsletter) => {
+  navigateTo(`/newsletters/${newsletter.slug}`)
+}
+</script>
+```
+
+### Programmatic Usage with Composables
+
+#### Using the Core Newsletter Composable
+
+```vue
+<!-- components/MyNewsletterManager.vue -->
+<template>
+  <div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold">My Newsletters</h2>
+      <button @click="createNewsletter" class="btn btn-primary">
+        Create New
+      </button>
+    </div>
+    
+    <!-- Loading State -->
+    <div v-if="isLoading" class="text-center py-8">
+      <div class="spinner"></div>
+      <p>Loading newsletters...</p>
+    </div>
+    
+    <!-- Newsletter List -->
+    <div v-else class="space-y-4">
+      <div 
+        v-for="newsletter in newsletters"
+        :key="newsletter.id"
+        class="border rounded-lg p-4 hover:shadow-md transition-shadow"
+      >
+        <h3 class="font-semibold">{{ newsletter.title }}</h3>
+        <p class="text-gray-600 text-sm mb-2">{{ newsletter.subject_line }}</p>
+        <div class="flex space-x-2">
+          <button 
+            @click="editNewsletter(newsletter)"
+            class="btn btn-sm btn-outline"
+          >
+            Edit
+          </button>
+          <button 
+            @click="duplicateNewsletter(newsletter)"
+            class="btn btn-sm btn-outline"
+          >
+            Duplicate
+          </button>
+          <button 
+            @click="deleteNewsletter(newsletter.id)"
+            class="btn btn-sm btn-danger"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+// Use the newsletter composable
+const {
+  newsletters,
+  isLoading,
+  fetchNewsletters,
+  createNewsletter: createNewsletterApi,
+  updateNewsletter,
+  deleteNewsletter: deleteNewsletterApi
+} = useNewsletter()
+
+// Load newsletters on mount
+await fetchNewsletters()
+
+const createNewsletter = async () => {
+  const newsletter = await createNewsletterApi({
+    title: 'New Newsletter',
+    subject_line: 'Welcome to our newsletter',
+    from_email: 'newsletter@example.com',
+    from_name: 'Your Company',
+    category: 'general'
+  })
+  
+  // Navigate to editor
+  navigateTo(`/admin/newsletters/${newsletter.id}`)
+}
+
+const editNewsletter = (newsletter) => {
+  navigateTo(`/admin/newsletters/${newsletter.id}`)
+}
+
+const duplicateNewsletter = async (newsletter) => {
+  const duplicated = await createNewsletterApi({
+    title: `${newsletter.title} (Copy)`,
+    subject_line: newsletter.subject_line,
+    from_email: newsletter.from_email,
+    from_name: newsletter.from_name,
+    category: newsletter.category,
+    blocks: newsletter.blocks // Copy the content
+  })
+  
+  navigateTo(`/admin/newsletters/${duplicated.id}`)
+}
+
+const deleteNewsletter = async (id) => {
+  if (confirm('Are you sure you want to delete this newsletter?')) {
+    await deleteNewsletterApi(id)
+    await fetchNewsletters() // Refresh list
+  }
+}
+</script>
+```
+
+#### Advanced Analytics Usage
+
+```vue
+<!-- components/NewsletterAnalytics.vue -->
+<template>
+  <div class="space-y-6">
+    <!-- Overview Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-lg border">
+        <div class="text-2xl font-bold">{{ analytics.totalSent }}</div>
+        <div class="text-gray-600 text-sm">Total Sent</div>
+      </div>
+      <div class="bg-white p-4 rounded-lg border">
+        <div class="text-2xl font-bold text-green-600">{{ analytics.openRate }}%</div>
+        <div class="text-gray-600 text-sm">Open Rate</div>
+      </div>
+      <div class="bg-white p-4 rounded-lg border">
+        <div class="text-2xl font-bold text-blue-600">{{ analytics.clickRate }}%</div>
+        <div class="text-gray-600 text-sm">Click Rate</div>
+      </div>
+      <div class="bg-white p-4 rounded-lg border">
+        <div class="text-2xl font-bold text-red-600">{{ analytics.bounceRate }}%</div>
+        <div class="text-gray-600 text-sm">Bounce Rate</div>
+      </div>
+    </div>
+    
+    <!-- Engagement Timeline -->
+    <div class="bg-white p-6 rounded-lg border">
+      <h3 class="text-lg font-semibold mb-4">Engagement Timeline</h3>
+      <NewsletterEngagementChart :data="engagementData" />
+    </div>
+    
+    <!-- Top Links -->
+    <div class="bg-white p-6 rounded-lg border">
+      <h3 class="text-lg font-semibold mb-4">Top Clicked Links</h3>
+      <div class="space-y-2">
+        <div 
+          v-for="link in topLinks"
+          :key="link.url"
+          class="flex justify-between items-center p-2 hover:bg-gray-50 rounded"
+        >
+          <div class="truncate">{{ link.url }}</div>
+          <div class="text-sm text-gray-600">{{ link.clicks }} clicks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+interface Props {
+  newsletterId: string
+  timeRange?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  timeRange: '30d'
+})
+
+// Use analytics composable
+const { 
+  analytics, 
+  engagementData, 
+  topLinks,
+  fetchAnalytics 
+} = useNewsletterAnalytics()
+
+// Fetch analytics data
+await fetchAnalytics(props.newsletterId, props.timeRange)
+
+// Watch for time range changes
+watch(() => props.timeRange, async (newRange) => {
+  await fetchAnalytics(props.newsletterId, newRange)
+})
+</script>
+```
+
+### Custom Template Creation
+
+```vue
+<!-- components/TemplateCreator.vue -->
+<template>
+  <div class="max-w-4xl mx-auto p-6">
+    <h2 class="text-2xl font-bold mb-6">Create Newsletter Template</h2>
+    
+    <form @submit.prevent="saveTemplate" class="space-y-6">
+      <!-- Template Info -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Template Name</label>
+          <input 
+            v-model="template.name"
+            type="text"
+            class="w-full p-2 border rounded-md"
+            required
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Category</label>
+          <select 
+            v-model="template.category"
+            class="w-full p-2 border rounded-md"
+            required
+          >
+            <option value="marketing">Marketing</option>
+            <option value="newsletter">Newsletter</option>
+            <option value="announcement">Announcement</option>
+            <option value="product">Product</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Template Description -->
+      <div>
+        <label class="block text-sm font-medium mb-2">Description</label>
+        <textarea 
+          v-model="template.description"
+          class="w-full p-2 border rounded-md h-24"
+          placeholder="Describe this template..."
+        ></textarea>
+      </div>
+      
+      <!-- Template Builder -->
+      <div class="border rounded-lg p-4">
+        <h3 class="font-semibold mb-4">Template Layout</h3>
+        <NewsletterTemplateBuilder 
+          v-model="template.blocks"
+          @preview="showPreview = true"
+        />
+      </div>
+      
+      <!-- Actions -->
+      <div class="flex justify-end space-x-4">
+        <button 
+          type="button"
+          @click="showPreview = true"
+          class="btn btn-outline"
+        >
+          Preview
+        </button>
+        <button 
+          type="submit"
+          class="btn btn-primary"
+          :disabled="isSaving"
+        >
+          {{ isSaving ? 'Saving...' : 'Save Template' }}
+        </button>
+      </div>
+    </form>
+    
+    <!-- Preview Modal -->
+    <NewsletterPreviewModal 
+      v-if="showPreview"
+      :template="template"
+      @close="showPreview = false"
+    />
+  </div>
+</template>
+
+<script setup>
+const { createTemplate, isSaving } = useNewsletterTemplates()
+
+const template = ref({
+  name: '',
+  category: 'newsletter',
+  description: '',
+  blocks: []
+})
+
+const showPreview = ref(false)
+
+const saveTemplate = async () => {
+  try {
+    const saved = await createTemplate(template.value)
+    navigateTo(`/admin/templates/${saved.id}`)
+  } catch (error) {
+    console.error('Failed to save template:', error)
+  }
+}
+</script>
+```
+
+### Webhook Integration
+
+```typescript
+// server/api/webhook/newsletter.post.ts
+export default defineEventHandler(async (event) => {
+  try {
+    const body = await readBody(event)
+    const signature = getHeader(event, 'x-webhook-signature')
+    
+    // Verify webhook signature
+    const { verifyWebhookSignature } = useNewsletterWebhooks()
+    if (!verifyWebhookSignature(body, signature)) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Invalid webhook signature'
+      })
+    }
+    
+    // Process webhook events
+    for (const eventData of body.events) {
+      await processNewsletterEvent(eventData)
+    }
+    
+    return { success: true }
+  } catch (error) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Webhook processing failed'
+    })
+  }
+})
+
+async function processNewsletterEvent(eventData: any) {
+  const { trackNewsletterEvent } = useNewsletterAnalytics()
+  
+  switch (eventData.event) {
+    case 'delivered':
+      await trackNewsletterEvent(eventData.sg_message_id, 'delivered', {
+        timestamp: eventData.timestamp,
+        email: eventData.email
+      })
+      break
+      
+    case 'open':
+      await trackNewsletterEvent(eventData.sg_message_id, 'opened', {
+        timestamp: eventData.timestamp,
+        email: eventData.email,
+        user_agent: eventData.useragent
+      })
+      break
+      
+    case 'click':
+      await trackNewsletterEvent(eventData.sg_message_id, 'clicked', {
+        timestamp: eventData.timestamp,
+        email: eventData.email,
+        url: eventData.url
+      })
+      break
+      
+    case 'bounce':
+      await trackNewsletterEvent(eventData.sg_message_id, 'bounced', {
+        timestamp: eventData.timestamp,
+        email: eventData.email,
+        reason: eventData.reason
+      })
+      break
+  }
+}
+```
+
+### Public Subscription Form
+
+```vue
+<!-- components/NewsletterSubscriptionForm.vue -->
+<template>
+  <div class="bg-white p-6 rounded-lg shadow-md max-w-md mx-auto">
+    <h3 class="text-xl font-semibold mb-4">Subscribe to Our Newsletter</h3>
+    <p class="text-gray-600 mb-6">
+      Get the latest updates and insights delivered to your inbox.
+    </p>
+    
+    <form @submit.prevent="handleSubscribe" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-2">Email Address</label>
+        <input 
+          v-model="email"
+          type="email"
+          class="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="your@email.com"
+          required
+        />
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-2">First Name</label>
+        <input 
+          v-model="firstName"
+          type="text"
+          class="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="John"
+        />
+      </div>
+      
+      <!-- Mailing List Selection -->
+      <div v-if="mailingLists.length > 1">
+        <label class="block text-sm font-medium mb-2">Interests</label>
+        <div class="space-y-2">
+          <label 
+            v-for="list in mailingLists"
+            :key="list.id"
+            class="flex items-center"
+          >
+            <input 
+              v-model="selectedLists"
+              :value="list.id"
+              type="checkbox"
+              class="mr-2"
+            />
+            <span class="text-sm">{{ list.name }}</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- GDPR Consent -->
+      <div class="flex items-start space-x-2">
+        <input 
+          v-model="hasConsent"
+          type="checkbox"
+          class="mt-1"
+          required
+        />
+        <label class="text-sm text-gray-600">
+          I agree to receive marketing emails and understand I can 
+          unsubscribe at any time.
+        </label>
+      </div>
+      
+      <button 
+        type="submit"
+        class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 disabled:opacity-50"
+        :disabled="isSubmitting"
+      >
+        {{ isSubmitting ? 'Subscribing...' : 'Subscribe' }}
+      </button>
+    </form>
+    
+    <!-- Success Message -->
+    <div v-if="isSubscribed" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+      <p class="text-green-800 text-sm">
+        Thanks for subscribing! Please check your email to confirm your subscription.
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup>
+const { subscribeToNewsletter, fetchMailingLists } = useNewsletterSubscription()
+
+const email = ref('')
+const firstName = ref('')
+const selectedLists = ref([])
+const hasConsent = ref(false)
+const isSubmitting = ref(false)
+const isSubscribed = ref(false)
+
+// Fetch available mailing lists
+const { data: mailingLists } = await fetchMailingLists()
+
+const handleSubscribe = async () => {
+  isSubmitting.value = true
+  
+  try {
+    await subscribeToNewsletter({
+      email: email.value,
+      first_name: firstName.value,
+      mailing_lists: selectedLists.value.length ? selectedLists.value : [mailingLists[0].id],
+      source: 'website_signup',
+      consent_given: hasConsent.value,
+      consent_timestamp: new Date().toISOString()
+    })
+    
+    isSubscribed.value = true
+    
+    // Reset form
+    email.value = ''
+    firstName.value = ''
+    selectedLists.value = []
+    hasConsent.value = false
+    
+  } catch (error) {
+    console.error('Subscription failed:', error)
+    // Handle error (show toast, etc.)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+</script>
 ```
 
 ## 🔧 API Endpoints
@@ -449,75 +1134,84 @@ content: [
 ]
 ```
 
-**"Shadcn components not found"**
-```bash
-# Install required components
-npx shadcn-vue@latest add button input label textarea dialog badge card tabs dropdown-menu select switch slider toast alert separator progress sonner
+**"Component not found"**
+```typescript
+// Ensure the module is properly registered in nuxt.config.ts
+modules: [
+  '@hue-studios/nuxt-newsletter'
+]
 ```
 
-### SendGrid Issues
+### Common Issues
 
-**"SendGrid API key invalid"**
-- Verify API key is correct in environment variables
-- Check API key permissions in SendGrid dashboard
-- Ensure sender email is verified in SendGrid
+**Email delivery problems**
+- Verify SendGrid API key is correct
+- Check SendGrid sender verification
+- Ensure webhook URL is accessible
+- Review SendGrid logs for delivery status
 
-**"Webhook events not received"**
-- Verify webhook URL is accessible
-- Check webhook secret configuration
-- Enable webhook signature verification
+**Performance issues**
+- Enable caching for newsletter lists
+- Optimize image sizes in templates
+- Use pagination for large subscriber lists
+- Consider using Redis for session storage
 
-## 📈 Performance
+## 📈 Best Practices
 
-### Optimization Tips
+### Performance Optimization
 
-1. **Use pagination** for large subscriber lists
-2. **Enable caching** for newsletter templates
-3. **Optimize images** before adding to newsletters
-4. **Use CDN** for static assets
-5. **Monitor rate limits** for email sending
+1. **Use pagination** for large datasets:
+```vue
+<NewsletterList :limit="20" :offset="currentPage * 20" />
+```
 
-### Database Considerations
+2. **Implement caching** for frequently accessed data:
+```typescript
+// Cache newsletter templates
+const { data: templates } = await $fetch('/api/newsletter/templates', {
+  server: true,
+  key: 'newsletter-templates',
+  default: () => []
+})
+```
 
-- Index frequently queried fields (email, status, created_at)
-- Regular cleanup of old analytics data
-- Archive sent newsletters after 1 year
-- Use database partitioning for large subscriber lists
+3. **Optimize images** in newsletters:
+```typescript
+// Use responsive images in email templates
+const optimizedImageUrl = useOptimizedImage(originalUrl, {
+  width: 600,
+  quality: 80,
+  format: 'webp'
+})
+```
+
+### SEO & Accessibility
+
+1. **Use semantic HTML** in newsletter templates
+2. **Provide alt text** for all images
+3. **Ensure proper color contrast** in designs
+4. **Test with screen readers** for accessibility
+
+### Security Best Practices
+
+1. **Always validate input** on both client and server
+2. **Use HTTPS** for all newsletter-related endpoints
+3. **Implement rate limiting** for public endpoints
+4. **Regularly rotate** API keys and tokens
+5. **Monitor webhook endpoints** for suspicious activity
+
+## 📚 Additional Resources
+
+- [Directus Documentation](https://docs.directus.io/)
+- [SendGrid API Documentation](https://docs.sendgrid.com/)
+- [MJML Documentation](https://mjml.io/documentation/)
+- [Nuxt 3 Documentation](https://nuxt.com/docs)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/hue-studios/nuxt-newsletter.git
-cd nuxt-newsletter
-
-# Install dependencies
-pnpm install
-
-# Set up development environment
-cp .env.example .env
-pnpm dev:prepare
-
-# Start development server
-pnpm dev
-```
-
 ## 📄 License
 
-MIT License - see LICENSE file for details.
-
-## 🔗 Links
-
-- [GitHub Repository](https://github.com/hue-studios/nuxt-newsletter)
-- [Documentation](https://newsletter-docs.huestudios.com)
-- [Directus Documentation](https://docs.directus.io/)
-- [SendGrid Documentation](https://docs.sendgrid.com/)
-- [MJML Documentation](https://mjml.io/documentation/)
-
----
-
-Built with ❤️ by [Hue Studios](https://huestudios.com)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
