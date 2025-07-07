@@ -12,7 +12,7 @@ export default defineNuxtPlugin(() => {
       Draggable,
       ScrollTrigger,
       ScrollSmoother,
-      MorphSVGPlugin,
+      MorphSVGPlugin
     );
 
     // Make GSAP available globally for components that need it
@@ -29,3 +29,20 @@ export default defineNuxtPlugin(() => {
     };
   }
 });
+function defineNuxtPlugin(
+  arg0: () =>
+    | {
+        provide: {
+          gsap: {
+            gsap: typeof globalThis.gsap;
+            Draggable: typeof Draggable;
+            ScrollTrigger: typeof ScrollTrigger;
+            ScrollSmoother: typeof ScrollSmoother;
+            MorphSVGPlugin: gsap.plugins.MorphSVGPlugin;
+          };
+        };
+      }
+    | undefined
+) {
+  throw new Error("Function not implemented.");
+}

@@ -1,4 +1,3 @@
-<script lang="ts">
 import type {
   Newsletter,
   NewsletterBlock,
@@ -63,7 +62,9 @@ export function calculateReadingTime(blocks: NewsletterBlock[]): number {
     if (block.text_content) {
       // Strip HTML tags and count words
       const text = block.text_content.replace(/<[^>]*>/g, "");
-      totalWords += text.split(" ").filter((word) => word.length > 0).length;
+      totalWords += text
+        .split(" ")
+        .filter((word: string | any[]) => word.length > 0).length;
     }
   });
 
@@ -250,23 +251,41 @@ export function exportNewsletterData(newsletter: Newsletter) {
       tags: newsletter.tags,
     },
     blocks:
-      newsletter.blocks?.map((block) => ({
-        block_type_slug: block.block_type.slug,
-        sort: block.sort,
-        title: block.title,
-        subtitle: block.subtitle,
-        text_content: block.text_content,
-        image_url: block.image_url,
-        image_alt_text: block.image_alt_text,
-        image_caption: block.image_caption,
-        button_text: block.button_text,
-        button_url: block.button_url,
-        background_color: block.background_color,
-        text_color: block.text_color,
-        text_align: block.text_align,
-        padding: block.padding,
-        font_size: block.font_size,
-      })) || [],
+      newsletter.blocks?.map(
+        (block: {
+          block_type: { slug: any };
+          sort: any;
+          title: any;
+          subtitle: any;
+          text_content: any;
+          image_url: any;
+          image_alt_text: any;
+          image_caption: any;
+          button_text: any;
+          button_url: any;
+          background_color: any;
+          text_color: any;
+          text_align: any;
+          padding: any;
+          font_size: any;
+        }) => ({
+          block_type_slug: block.block_type.slug,
+          sort: block.sort,
+          title: block.title,
+          subtitle: block.subtitle,
+          text_content: block.text_content,
+          image_url: block.image_url,
+          image_alt_text: block.image_alt_text,
+          image_caption: block.image_caption,
+          button_text: block.button_text,
+          button_url: block.button_url,
+          background_color: block.background_color,
+          text_color: block.text_color,
+          text_align: block.text_align,
+          padding: block.padding,
+          font_size: block.font_size,
+        })
+      ) || [],
   };
 
   const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -281,4 +300,3 @@ export function exportNewsletterData(newsletter: Newsletter) {
 
   URL.revokeObjectURL(url);
 }
-</script>

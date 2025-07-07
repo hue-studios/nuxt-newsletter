@@ -1,9 +1,9 @@
 // test/newsletter.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
-import { createTestingPinia } from "@pinia/testing";
+// import { createTestingPinia } from "@pinia/testing";
 import NewsletterEditor from "../src/runtime/components/editor/NewsletterEditor.vue";
-import { useNewsletter } from "../src/runtime/composables/useNewsletter";
+import { useNewsletter } from "../src/runtime/composables/core/useNewsletter";
 
 // Mock GSAP with new import structure
 vi.mock("gsap", () => ({
@@ -53,7 +53,16 @@ vi.mock("gsap/MorphSVGPlugin", () => ({
 }));
 
 describe("NewsletterEditor", () => {
-  let wrapper;
+  let wrapper: {
+    find: (arg0: string) => {
+      [x: string]: any;
+      (): any;
+      new (): any;
+      exists: { (): any; new (): any };
+    };
+    text: () => any;
+    emitted: (arg0: string) => any;
+  };
   let mockNewsletter;
 
   beforeEach(() => {
@@ -75,9 +84,9 @@ describe("NewsletterEditor", () => {
       },
       global: {
         plugins: [
-          createTestingPinia({
-            createSpy: vi.fn,
-          }),
+          // createTestingPinia({
+          //   createSpy: vi.fn,
+          // }),
         ],
         stubs: {
           Button: true,
@@ -124,7 +133,7 @@ describe("NewsletterEditor", () => {
   });
 
   it("emits back event when back button clicked", async () => {
-    const backButton = wrapper.find("button[data-testid=\"back-button\"]");
+    const backButton = wrapper.find("button[data-testid='back-button']");
     if (backButton.exists()) {
       await backButton.trigger("click");
       expect(wrapper.emitted("back")).toBeTruthy();
@@ -194,7 +203,7 @@ describe("GSAP Integration", () => {
         },
       },
       global: {
-        plugins: [createTestingPinia({ createSpy: vi.fn })],
+        // plugins: [createTestingPinia({ createSpy: vi.fn })],
         stubs: {
           Button: true,
           Icon: true,
@@ -236,7 +245,7 @@ describe("Newsletter Editor Integration", () => {
         },
       },
       global: {
-        plugins: [createTestingPinia({ createSpy: vi.fn })],
+        // plugins: [createTestingPinia({ createSpy: vi.fn })],
         stubs: {
           Button: true,
           Icon: true,
