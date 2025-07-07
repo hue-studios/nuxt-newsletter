@@ -1,198 +1,109 @@
-<!-- components/NewsletterEditor.vue -->
 <template>
-  <div class="newsletter-editor h-screen flex bg-gray-50">
-    <!-- Left Sidebar - Block Library -->
-    <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
-      <div class="p-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">Block Library</h2>
-        <p class="text-sm text-gray-600 mt-1">Drag blocks to your newsletter</p>
-      </div>
-
-      <!-- Block Categories -->
-      <div class="flex-1 overflow-y-auto p-4">
-        <div
-          v-for="category in blockCategories"
-          :key="category.name"
-          class="mb-6"
-        >
-          <h3
-            class="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide"
-          >
-            {{ category.name }}
-          </h3>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div
-              v-for="blockType in category.blocks"
-              :key="blockType.id"
-              ref="blockLibraryItems"
-              :data-block-type-id="blockType.id"
-              class="block-library-item p-3 border border-gray-200 rounded-lg cursor-move hover:border-blue-400 hover:shadow-sm transition-all group"
-              @mousedown="initBlockDrag($event, blockType)"
-            >
-              <div class="flex items-center space-x-2">
-                <Icon
-                  :name="blockType.icon || 'lucide:square'"
-                  class="w-4 h-4 text-gray-500 group-hover:text-blue-500"
-                />
-                <span
-                  class="text-xs font-medium text-gray-700 group-hover:text-blue-700"
-                >
-                  {{ blockType.name }}
-                </span>
-              </div>
-              <p class="text-xs text-gray-500 mt-1 leading-tight">
-                {{ blockType.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Editor Area -->
-    <div class="flex-1 flex flex-col">
-      <!-- Top Toolbar -->
-      <div class="bg-white border-b border-gray-200 px-6 py-3">
-        <div class="flex items-center justify-between">
+  <div class="newsletter-editor min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <!-- Back Button & Title -->
           <div class="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" @click="$emit('back')">
+            <Button variant="ghost" @click="emit('back')">
               <Icon name="lucide:arrow-left" class="w-4 h-4 mr-2" />
               Back
             </Button>
-
-            <div class="flex items-center space-x-2">
-              <Input
-                v-model="newsletter.title"
-                placeholder="Newsletter title..."
-                class="font-medium text-lg border-none px-0 focus:ring-0"
-                @input="autoSave"
-              />
-              <Badge
-                :variant="
-                  newsletter.status === 'draft' ? 'secondary' : 'default'
-                "
-                class="ml-2"
-              >
-                {{ newsletter.status }}
-              </Badge>
+            <div>
+              <h1 class="text-xl font-semibold text-gray-900">
+                {{ newsletter.title }}
+              </h1>
+              <p class="text-sm text-gray-500">{{ newsletter.status }}</p>
             </div>
           </div>
 
-          <div class="flex items-center space-x-2">
-            <!-- View Toggle -->
-            <div class="flex border rounded-lg overflow-hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                :class="{
-                  'bg-blue-50 text-blue-600': !editorState.isPreviewMode,
-                }"
-                @click="setViewMode('edit')"
-              >
-                <Icon name="lucide:edit" class="w-4 h-4 mr-1" />
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                :class="{
-                  'bg-blue-50 text-blue-600': editorState.isPreviewMode,
-                }"
-                @click="setViewMode('preview')"
-              >
-                <Icon name="lucide:eye" class="w-4 h-4 mr-1" />
-                Preview
-              </Button>
-            </div>
-
-            <!-- Actions -->
-            <Button
-              variant="outline"
-              size="sm"
-              @click="compileAndPreview"
-              :disabled="editorState.isCompiling"
-            >
+          <!-- Actions -->
+          <div class="flex items-center space-x-3">
+            <Button variant="outline" @click="togglePreview">
               <Icon
-                name="lucide:refresh-cw"
-                class="w-4 h-4 mr-1"
-                :class="{ 'animate-spin': editorState.isCompiling }"
+                :name="
+                  editorState.isPreviewMode ? 'lucide:edit-3' : 'lucide:eye'
+                "
+                class="w-4 h-4 mr-2"
               />
-              Compile
+              {{ editorState.isPreviewMode ? "Edit" : "Preview" }}
             </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              @click="showSendTestDialog = true"
-            >
-              <Icon name="lucide:send" class="w-4 h-4 mr-1" />
-              Test Send
+            <Button variant="outline" @click="showSendTestDialog = true">
+              <Icon name="lucide:send" class="w-4 h-4 mr-2" />
+              Send Test
             </Button>
 
-            <Button
-              size="sm"
-              @click="saveNewsletter"
-              :disabled="editorState.isSaving"
-            >
-              <Icon
-                name="lucide:save"
-                class="w-4 h-4 mr-1"
-                :class="{ 'animate-pulse': editorState.isSaving }"
-              />
+            <Button @click="autoSave">
+              <Icon name="lucide:save" class="w-4 h-4 mr-2" />
               Save
             </Button>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Editor Content -->
-      <div class="flex-1 flex">
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="grid grid-cols-12 gap-6">
+        <!-- Block Library -->
+        <div class="col-span-3">
+          <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Blocks</h2>
+            </div>
+            <div class="p-4 space-y-3">
+              <Button
+                v-for="blockType in blockTypes"
+                :key="blockType.id"
+                variant="outline"
+                class="w-full justify-start h-auto p-3"
+                @click="addBlock(blockType)"
+                draggable="true"
+                @dragstart="handleBlockTypeStart(blockType, $event)"
+                @dragend="handleDragEnd"
+              >
+                <Icon :name="blockType.icon" class="w-4 h-4 mr-3" />
+                <div class="text-left">
+                  <div class="font-medium">{{ blockType.name }}</div>
+                  <div class="text-xs text-gray-500">
+                    {{ blockType.description }}
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <!-- Newsletter Canvas -->
-        <div class="flex-1 overflow-y-auto bg-gray-100 p-6">
-          <div class="max-w-2xl mx-auto">
-            <!-- Newsletter Preview/Editor -->
-            <div
-              v-if="!editorState.isPreviewMode"
-              class="bg-white rounded-lg shadow-sm min-h-[600px]"
-            >
-              <!-- Email Header Preview -->
-              <div class="border-b border-gray-200 p-4 bg-gray-50 rounded-t-lg">
-                <div
-                  class="flex items-center justify-between text-sm text-gray-600"
-                >
-                  <span
-                    >From: {{ newsletter.from_name }} &lt;{{
-                      newsletter.from_email
-                    }}&gt;</span
-                  >
-                  <span>{{ new Date().toLocaleDateString() }}</span>
-                </div>
-                <div class="mt-2">
-                  <div class="font-medium text-gray-900">
-                    {{ newsletter.subject_line }}
-                  </div>
-                  <div class="text-sm text-gray-600 mt-1">
-                    {{ newsletter.preview_text }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Newsletter Blocks -->
+        <div class="col-span-6">
+          <div class="bg-white rounded-lg shadow min-h-[600px]">
+            <div class="p-6">
               <div
                 ref="newsletterCanvas"
-                class="newsletter-canvas p-4 min-h-[500px]"
+                class="newsletter-canvas space-y-4"
                 @dragover="handleDragOver"
                 @drop="handleDrop"
               >
-                <transition-group name="block" tag="div">
+                <!-- Drop Zones -->
+                <div
+                  v-for="(zone, index) in dropZones"
+                  :key="`zone-${index}`"
+                  class="drop-zone"
+                  :class="{ active: activeDropZone === index }"
+                  :style="{ top: `${zone.y}px` }"
+                ></div>
+
+                <!-- Newsletter Blocks -->
+                <TransitionGroup name="block" tag="div">
                   <NewsletterBlock
-                    v-for="(block, index) in sortedBlocks"
-                    :key="`block-${block.id}`"
+                    v-for="(block, index) in newsletter.blocks"
+                    :key="block.id"
                     :block="block"
                     :index="index"
                     :is-selected="editorState.selectedBlock?.id === block.id"
-                    :is-last="index === sortedBlocks.length - 1"
+                    :is-last="index === newsletter.blocks.length - 1"
                     @select="selectBlock"
                     @update="updateBlock"
                     @delete="deleteBlock"
@@ -200,126 +111,63 @@
                     @move-up="moveBlockUp"
                     @move-down="moveBlockDown"
                   />
-                </transition-group>
+                </TransitionGroup>
 
                 <!-- Empty State -->
                 <div
-                  v-if="!sortedBlocks.length"
-                  class="flex flex-col items-center justify-center py-20 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg"
+                  v-if="newsletter.blocks.length === 0"
+                  class="text-center py-12 text-gray-500"
                 >
-                  <Icon name="lucide:plus-circle" class="w-12 h-12 mb-4" />
-                  <h3 class="text-lg font-medium mb-2">
-                    Start building your newsletter
-                  </h3>
-                  <p class="text-center text-sm">
-                    Drag blocks from the left sidebar or click below to add your
-                    first block
-                  </p>
-                  <Button
-                    variant="outline"
-                    class="mt-4"
-                    @click="showBlockPicker = true"
-                  >
-                    <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
-                    Add Block
-                  </Button>
+                  <Icon
+                    name="lucide:plus-circle"
+                    class="w-8 h-8 mx-auto mb-3"
+                  />
+                  <p>Drag blocks here to start building your newsletter</p>
                 </div>
-
-                <!-- Drop Zone Indicators -->
-                <div
-                  v-for="(zone, index) in dropZones"
-                  :key="`drop-zone-${index}`"
-                  :ref="(el) => setDropZoneRef(el, index)"
-                  class="drop-zone h-2 border-2 border-dashed border-transparent rounded transition-colors"
-                  :class="{
-                    'border-blue-400 bg-blue-50': zone.isActive,
-                  }"
-                  :style="{ top: zone.y + 'px' }"
-                ></div>
               </div>
-            </div>
-
-            <!-- MJML Preview -->
-            <div
-              v-else-if="newsletter.compiled_html"
-              class="bg-white rounded-lg shadow-sm overflow-hidden"
-            >
-              <div class="border-b border-gray-200 p-4 bg-gray-50">
-                <h3 class="font-medium text-gray-900">Email Preview</h3>
-                <p class="text-sm text-gray-600">
-                  How your newsletter will look in email clients
-                </p>
-              </div>
-              <div class="p-4">
-                <iframe
-                  :srcdoc="newsletter.compiled_html"
-                  class="w-full h-96 border border-gray-200 rounded"
-                  title="Newsletter Preview"
-                ></iframe>
-              </div>
-            </div>
-
-            <!-- Compilation Required -->
-            <div v-else class="bg-white rounded-lg shadow-sm p-8 text-center">
-              <Icon
-                name="lucide:code"
-                class="w-12 h-12 text-gray-400 mx-auto mb-4"
-              />
-              <h3 class="text-lg font-medium text-gray-900 mb-2">
-                Preview not available
-              </h3>
-              <p class="text-gray-600 mb-4">
-                Compile your newsletter to see the preview
-              </p>
-              <Button @click="compileAndPreview">
-                <Icon name="lucide:play" class="w-4 h-4 mr-2" />
-                Compile Newsletter
-              </Button>
             </div>
           </div>
         </div>
 
-        <!-- Right Sidebar - Block Properties -->
-        <div
-          v-if="editorState.selectedBlock && !editorState.isPreviewMode"
-          class="w-80 bg-white border-l border-gray-200 flex flex-col"
-        >
-          <div class="p-4 border-b border-gray-200">
-            <div class="flex items-center justify-between">
-              <h3 class="font-medium text-gray-900">Block Settings</h3>
-              <Button variant="ghost" size="sm" @click="selectBlock(null)">
-                <Icon name="lucide:x" class="w-4 h-4" />
-              </Button>
+        <!-- Properties Panel -->
+        <div class="col-span-3">
+          <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Properties</h2>
             </div>
-            <p class="text-sm text-gray-600 mt-1">
-              {{ editorState.selectedBlock.block_type.name }}
-            </p>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-4">
-            <BlockEditor
-              :block="editorState.selectedBlock"
-              @update="updateBlock"
-            />
+            <div class="p-4">
+              <BlockEditor
+                v-if="editorState.selectedBlock"
+                :block="editorState.selectedBlock"
+                @update="updateBlock"
+              />
+              <div v-else class="text-center text-gray-500 py-8">
+                <Icon
+                  name="lucide:mouse-pointer-click"
+                  class="w-8 h-8 mx-auto mb-3"
+                />
+                <p>Select a block to edit its properties</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Dialogs -->
+    <!-- Send Test Dialog -->
     <Dialog v-model:open="showSendTestDialog">
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Send Test Email</DialogTitle>
           <DialogDescription>
-            Enter email addresses to receive a test version of this newsletter
+            Send a test version of this newsletter to verify how it looks
           </DialogDescription>
         </DialogHeader>
 
         <div class="space-y-4">
           <div>
             <Label for="test-emails">Test Email Addresses</Label>
-            <Textarea
+            <Input
               id="test-emails"
               v-model="testEmails"
               placeholder="test@example.com, another@example.com"
@@ -362,6 +210,7 @@
 <script setup lang="ts">
 import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type {
   Newsletter,
   NewsletterBlock,
@@ -370,7 +219,7 @@ import type {
 
 // Register GSAP plugins
 if (process.client) {
-  gsap.registerPlugin(Draggable);
+  gsap.registerPlugin(Draggable, ScrollTrigger);
 }
 
 interface Props {
@@ -394,6 +243,7 @@ const {
   sendTestEmail: sendTest,
   selectBlock,
   autoSave,
+  togglePreview,
 } = useNewsletter();
 
 const {
@@ -413,385 +263,245 @@ const showBlockPicker = ref(false);
 const testEmails = ref("");
 const blockLibraryItems = ref<HTMLElement[]>([]);
 const newsletterCanvas = ref<HTMLElement>();
-const dropZones = ref<{ y: number; isActive: boolean }[]>([]);
-const draggedBlockType = ref<BlockType | null>(null);
+const dropZones = ref<any[]>([]);
+const activeDropZone = ref<number | null>(null);
 
-// Computed
-const sortedBlocks = computed(() => {
-  return newsletter.value.blocks?.sort((a, b) => a.sort - b.sort) || [];
-});
-
-const blockCategories = computed(() => {
-  const categories = new Map();
-
-  blockTypes.value.forEach((blockType) => {
-    const category = blockType.category || "content";
-    if (!categories.has(category)) {
-      categories.set(category, {
-        name: category.charAt(0).toUpperCase() + category.slice(1),
-        blocks: [],
-      });
-    }
-    categories.get(category).blocks.push(blockType);
-  });
-
-  return Array.from(categories.values());
-});
+// Drag and drop state
+let draggableInstances: any[] = [];
 
 // Methods
-const setViewMode = (mode: "edit" | "preview") => {
-  editorState.value.isPreviewMode = mode === "preview";
-};
+const addBlock = async (blockType: BlockType, index?: number) => {
+  const newBlock = await createBlock({
+    block_type_id: blockType.id,
+    newsletter_id: newsletter.value.id,
+    sort_order: index ?? newsletter.value.blocks.length,
+    title: `New ${blockType.name}`,
+    text_content: blockType.default_content || "",
+  });
 
-const compileAndPreview = async () => {
-  try {
-    await compileMJML(newsletter.value.id);
-    // Refresh newsletter data
-    emit("update", { ...newsletter.value });
-  } catch (error) {
-    console.error("Compilation failed:", error);
-  }
-};
-
-const saveNewsletter = async () => {
-  try {
-    const updated = await updateNewsletter(
-      newsletter.value.id,
-      newsletter.value
-    );
-    emit("update", updated);
-  } catch (error) {
-    console.error("Save failed:", error);
-  }
-};
-
-const initBlockDrag = (event: MouseEvent, blockType: BlockType) => {
-  if (!process.client) return;
-
-  draggedBlockType.value = blockType;
-  const element = event.currentTarget as HTMLElement;
-
-  // Create drag helper
-  const helper = element.cloneNode(true) as HTMLElement;
-  helper.style.position = "fixed";
-  helper.style.pointerEvents = "none";
-  helper.style.zIndex = "1000";
-  helper.style.opacity = "0.8";
-  helper.style.transform = "rotate(2deg) scale(0.95)";
-  document.body.appendChild(helper);
-
-  const startX = event.clientX;
-  const startY = event.clientY;
-
-  const onMouseMove = (e: MouseEvent) => {
-    helper.style.left = e.clientX - startX + element.offsetLeft + "px";
-    helper.style.top = e.clientY - startY + element.offsetTop + "px";
-
-    updateDropZones(e.clientY);
-  };
-
-  const onMouseUp = (e: MouseEvent) => {
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
-    document.body.removeChild(helper);
-
-    // Check if dropped on canvas
-    const canvas = newsletterCanvas.value;
-    if (canvas) {
-      const rect = canvas.getBoundingClientRect();
-      if (
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom
-      ) {
-        addBlockToNewsletter(blockType, e.clientY - rect.top);
-      }
+  if (newBlock) {
+    if (index !== undefined) {
+      newsletter.value.blocks.splice(index, 0, newBlock);
+    } else {
+      newsletter.value.blocks.push(newBlock);
     }
-
-    clearDropZones();
-    draggedBlockType.value = null;
-  };
-
-  document.addEventListener("mousemove", onMouseMove);
-  document.addEventListener("mouseup", onMouseUp);
+    emit("update", newsletter.value);
+  }
 };
 
-const updateDropZones = (mouseY: number) => {
-  const canvas = newsletterCanvas.value;
-  if (!canvas) return;
+const updateBlock = async (blockId: number, data: Partial<NewsletterBlock>) => {
+  const block = newsletter.value.blocks.find((b) => b.id === blockId);
+  if (!block) return;
 
-  const rect = canvas.getBoundingClientRect();
-  const relativeY = mouseY - rect.top;
+  Object.assign(block, data);
+  await updateBlockData(blockId, data);
+  emit("update", newsletter.value);
+};
 
-  // Calculate drop zones between blocks
-  const zones: { y: number; isActive: boolean }[] = [];
+const deleteBlock = async (blockId: number) => {
+  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  if (index === -1) return;
 
-  if (sortedBlocks.value.length === 0) {
-    zones.push({ y: 100, isActive: relativeY > 50 && relativeY < 150 });
-  } else {
-    // Zone before first block
-    zones.push({ y: 0, isActive: relativeY < 50 });
+  newsletter.value.blocks.splice(index, 1);
+  await deleteBlockData(blockId);
+  emit("update", newsletter.value);
+};
 
-    // Zones between blocks
-    sortedBlocks.value.forEach((_, index) => {
-      const y = (index + 1) * 100;
-      zones.push({
-        y,
-        isActive: relativeY > y - 25 && relativeY < y + 25,
-      });
-    });
-
-    // Zone after last block
-    const lastY = sortedBlocks.value.length * 100;
-    zones.push({
-      y: lastY + 50,
-      isActive: relativeY > lastY + 25,
-    });
+const duplicateBlock = async (block: NewsletterBlock) => {
+  const newBlock = await duplicateBlockData(block);
+  if (newBlock) {
+    const index = newsletter.value.blocks.findIndex((b) => b.id === block.id);
+    newsletter.value.blocks.splice(index + 1, 0, newBlock);
+    emit("update", newsletter.value);
   }
+};
+
+const moveBlockUp = (blockId: number) => {
+  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  if (index > 0) {
+    const block = newsletter.value.blocks.splice(index, 1)[0];
+    newsletter.value.blocks.splice(index - 1, 0, block);
+    reorderBlocks(newsletter.value.blocks);
+    emit("update", newsletter.value);
+  }
+};
+
+const moveBlockDown = (blockId: number) => {
+  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  if (index < newsletter.value.blocks.length - 1) {
+    const block = newsletter.value.blocks.splice(index, 1)[0];
+    newsletter.value.blocks.splice(index + 1, 0, block);
+    reorderBlocks(newsletter.value.blocks);
+    emit("update", newsletter.value);
+  }
+};
+
+// Drag and drop handlers
+const handleBlockTypeStart = (blockType: BlockType, event: DragEvent) => {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({ type: "block-type", data: blockType })
+    );
+    event.dataTransfer.effectAllowed = "copy";
+  }
+};
+
+const handleDragEnd = () => {
+  activeDropZone.value = null;
+  dropZones.value = [];
+};
+
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  // Calculate drop zones
+  if (newsletterCanvas.value) {
+    calculateDropZones();
+
+    const rect = newsletterCanvas.value.getBoundingClientRect();
+    const y = event.clientY - rect.top;
+
+    activeDropZone.value = getDropZoneIndex(y);
+  }
+};
+
+const handleDrop = async (event: DragEvent) => {
+  event.preventDefault();
+
+  try {
+    const data = event.dataTransfer?.getData("application/json");
+    if (!data) return;
+
+    const { type, data: dragData } = JSON.parse(data);
+
+    if (type === "block-type") {
+      const dropIndex = activeDropZone.value ?? newsletter.value.blocks.length;
+      await addBlock(dragData, dropIndex);
+    }
+  } catch (error) {
+    console.error("Drop error:", error);
+  } finally {
+    handleDragEnd();
+  }
+};
+
+const calculateDropZones = () => {
+  if (!newsletterCanvas.value) return;
+
+  const zones = [];
+  const containerRect = newsletterCanvas.value.getBoundingClientRect();
+
+  // Zone before first block
+  zones.push({ y: 0, height: 20 });
+
+  // Zones between blocks
+  const blockElements =
+    newsletterCanvas.value.querySelectorAll("[data-block-id]");
+  blockElements.forEach((element) => {
+    const rect = element.getBoundingClientRect();
+    const relativeY = rect.bottom - containerRect.top;
+    zones.push({ y: relativeY - 10, height: 20 });
+  });
 
   dropZones.value = zones;
 };
 
-const clearDropZones = () => {
-  dropZones.value = [];
-};
-
-const addBlockToNewsletter = async (blockType: BlockType, dropY: number) => {
-  // Calculate sort position based on drop location
-  let sort = sortedBlocks.value.length + 1;
-
-  if (sortedBlocks.value.length > 0) {
-    const blockHeight = 100; // Approximate block height
-    const dropIndex = Math.floor(dropY / blockHeight);
-    sort = Math.min(Math.max(dropIndex + 1, 1), sortedBlocks.value.length + 1);
-  }
-
-  try {
-    const newBlock = await createBlock({
-      newsletter_id: newsletter.value.id,
-      block_type: blockType.id,
-      sort,
-      title:
-        blockType.name === "Hero Section" ? "Welcome to our newsletter" : "",
-      text_content:
-        blockType.category === "content" ? "Add your content here..." : "",
-      background_color: "#ffffff",
-      text_color: "#333333",
-      text_align: "center",
-      padding: "20px 0",
-      font_size: "14px",
-    });
-
-    // Add to newsletter blocks
-    if (!newsletter.value.blocks) newsletter.value.blocks = [];
-    newsletter.value.blocks.push(newBlock);
-
-    // Auto-select the new block
-    selectBlock(newBlock);
-
-    // Trigger auto-save
-    autoSave(newsletter.value.id, newsletter.value);
-  } catch (error) {
-    console.error("Failed to add block:", error);
-  }
-};
-
-const addBlockFromPicker = async (blockType: BlockType) => {
-  await addBlockToNewsletter(blockType, sortedBlocks.value.length * 100);
-  showBlockPicker.value = false;
-};
-
-const updateBlock = async (blockId: number, data: Partial<NewsletterBlock>) => {
-  try {
-    const updated = await updateBlockData(blockId, data);
-
-    // Update local newsletter data
-    const blockIndex = newsletter.value.blocks?.findIndex(
-      (b) => b.id === blockId
-    );
-    if (blockIndex !== -1 && newsletter.value.blocks) {
-      newsletter.value.blocks[blockIndex] = {
-        ...newsletter.value.blocks[blockIndex],
-        ...updated,
-      };
+const getDropZoneIndex = (y: number): number => {
+  for (let i = 0; i < dropZones.value.length; i++) {
+    const zone = dropZones.value[i];
+    if (y >= zone.y && y <= zone.y + zone.height) {
+      return i;
     }
-
-    // Trigger auto-save
-    autoSave(newsletter.value.id, newsletter.value);
-  } catch (error) {
-    console.error("Failed to update block:", error);
   }
-};
-
-const deleteBlock = async (blockId: number) => {
-  try {
-    await deleteBlockData(blockId);
-
-    // Remove from local newsletter data
-    if (newsletter.value.blocks) {
-      newsletter.value.blocks = newsletter.value.blocks.filter(
-        (b) => b.id !== blockId
-      );
-    }
-
-    // Clear selection if deleted block was selected
-    if (editorState.value.selectedBlock?.id === blockId) {
-      selectBlock(null);
-    }
-
-    // Trigger auto-save
-    autoSave(newsletter.value.id, newsletter.value);
-  } catch (error) {
-    console.error("Failed to delete block:", error);
-  }
-};
-
-const duplicateBlock = async (block: NewsletterBlock) => {
-  try {
-    const duplicated = await duplicateBlockData(block);
-
-    // Add to local newsletter data
-    if (!newsletter.value.blocks) newsletter.value.blocks = [];
-    newsletter.value.blocks.push(duplicated);
-
-    // Auto-select the duplicated block
-    selectBlock(duplicated);
-
-    // Trigger auto-save
-    autoSave(newsletter.value.id, newsletter.value);
-  } catch (error) {
-    console.error("Failed to duplicate block:", error);
-  }
-};
-
-const moveBlockUp = async (blockId: number) => {
-  const blockIndex = sortedBlocks.value.findIndex((b) => b.id === blockId);
-  if (blockIndex <= 0) return;
-
-  const blocks = [...sortedBlocks.value];
-  const [block] = blocks.splice(blockIndex, 1);
-  blocks.splice(blockIndex - 1, 0, block);
-
-  const newOrder = blocks.map((b) => b.id);
-  await reorderBlocks(newsletter.value.id, newOrder);
-
-  // Update local data
-  if (newsletter.value.blocks) {
-    newsletter.value.blocks.forEach((block, index) => {
-      const newIndex = newOrder.indexOf(block.id);
-      if (newIndex !== -1) {
-        block.sort = newIndex + 1;
-      }
-    });
-  }
-};
-
-const moveBlockDown = async (blockId: number) => {
-  const blockIndex = sortedBlocks.value.findIndex((b) => b.id === blockId);
-  if (blockIndex >= sortedBlocks.value.length - 1) return;
-
-  const blocks = [...sortedBlocks.value];
-  const [block] = blocks.splice(blockIndex, 1);
-  blocks.splice(blockIndex + 1, 0, block);
-
-  const newOrder = blocks.map((b) => b.id);
-  await reorderBlocks(newsletter.value.id, newOrder);
-
-  // Update local data
-  if (newsletter.value.blocks) {
-    newsletter.value.blocks.forEach((block, index) => {
-      const newIndex = newOrder.indexOf(block.id);
-      if (newIndex !== -1) {
-        block.sort = newIndex + 1;
-      }
-    });
-  }
+  return dropZones.value.length;
 };
 
 const sendTestEmail = async () => {
-  try {
-    const emails = testEmails.value
-      .split(",")
-      .map((e) => e.trim())
-      .filter(Boolean);
-    if (emails.length === 0) return;
+  if (!testEmails.value.trim()) return;
 
-    await sendTest(newsletter.value.id, emails);
+  const emails = testEmails.value
+    .split(",")
+    .map((email) => email.trim())
+    .filter((email) => email);
+
+  try {
+    await sendTest(newsletter.value, emails);
     showSendTestDialog.value = false;
     testEmails.value = "";
-
-    // Show success message
-    console.log("Test email sent successfully");
   } catch (error) {
     console.error("Failed to send test email:", error);
   }
 };
 
-const handleDragOver = (event: DragEvent) => {
-  event.preventDefault();
-};
-
-const handleDrop = (event: DragEvent) => {
-  event.preventDefault();
-  // Handle native drag and drop if needed
-};
-
-const setDropZoneRef = (el: HTMLElement | null, index: number) => {
-  // Handle drop zone refs if needed
+const addBlockFromPicker = (blockType: BlockType) => {
+  addBlock(blockType);
+  showBlockPicker.value = false;
 };
 
 // Lifecycle
 onMounted(async () => {
   await fetchBlockTypes();
+
+  // Initialize GSAP animations
+  if (process.client && newsletterCanvas.value) {
+    // Setup any additional GSAP animations here
+    gsap.set(".newsletter-block", { scale: 1 });
+  }
 });
 
-// Watch for newsletter changes
-watch(
-  () => props.newsletter,
-  (newNewsletter) => {
-    newsletter.value = newNewsletter;
-  },
-  { deep: true }
-);
+onUnmounted(() => {
+  // Cleanup GSAP instances
+  draggableInstances.forEach((instance) => {
+    if (instance && instance.kill) {
+      instance.kill();
+    }
+  });
+});
 </script>
 
 <style scoped>
 .newsletter-editor {
-  font-family: system-ui, -apple-system, sans-serif;
-}
-
-.block-library-item {
-  transition: all 0.2s ease;
-}
-
-.block-library-item:hover {
-  transform: translateY(-1px);
-}
-
-.newsletter-canvas {
-  position: relative;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
 }
 
 .drop-zone {
   position: absolute;
   left: 0;
   right: 0;
+  height: 4px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
   z-index: 10;
+  pointer-events: none;
+}
+
+.drop-zone.active {
+  height: 8px;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .block-enter-active,
 .block-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.block-enter-from,
+.block-enter-from {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
+}
+
 .block-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(20px) scale(0.95);
 }
 
 .block-move {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>

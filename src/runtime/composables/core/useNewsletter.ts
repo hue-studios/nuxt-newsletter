@@ -1,127 +1,100 @@
 // src/runtime/composables/core/useNewsletter.ts
+import { ref, reactive, computed, onBeforeUnmount } from "vue";
+import { useDebounceFn } from "@vueuse/core";
 import { z } from "zod";
-import type { Newsletter, NewsletterBlock } from "~/types/newsletter";
+import { toast } from "vue-sonner";
+import type {
+  Newsletter,
+  NewsletterBlock,
+  EditorState,
+  CreateNewsletterData,
+  UpdateNewsletterData,
+} from "~/types/newsletter";
 
 // Validation schemas
 const NewsletterSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100, "Title too long"),
-  subject_line: z
-    .string()
-    .min(1, "Subject line is required")
-    .max(78, "Subject line too long"),
+  title: z.string().min(1, "Title is required").max(200),
+  subject_line: z.string().min(1, "Subject line is required").max(200),
+  from_name: z.string().min(1, "From name is required").max(100),
   from_email: z.string().email("Invalid email address"),
-  from_name: z.string().min(1, "From name is required"),
-  category: z.enum([
-    "company",
-    "product",
-    "weekly",
-    "monthly",
-    "event",
-    "offer",
-  ]),
+  category: z.string().min(1, "Category is required"),
+  tags: z.array(z.string()).optional(),
 });
 
-interface UseNewsletterOptions {
-  autoSave?: boolean;
-  autoSaveDelay?: number;
-  cacheKey?: string;
-}
-
-export const useNewsletter = (options: UseNewsletterOptions = {}) => {
-  const {
-    autoSave = true,
-    autoSaveDelay = 2000,
-    cacheKey = "newsletters",
-  } = options;
-
-  const { directus } = useDirectus();
-  const toast = useToast();
-
-  // Enhanced state management
+export const useNewsletter = () => {
+  // Reactive state
   const state = reactive({
     newsletters: [] as Newsletter[],
     currentNewsletter: null as Newsletter | null,
     isLoading: false,
-    isSaving: false,
+    isCreating: false,
+    isUpdating: false,
+    isDeleting: false,
     isCompiling: false,
+    isSaving: false,
     error: null as string | null,
-    lastSaved: null as Date | null,
     editorState: {
-      selectedBlock: null as NewsletterBlock | null,
-      draggedBlock: null as NewsletterBlock | null,
+      selectedBlock: null,
+      draggedBlock: null,
       isPreviewMode: false,
       showTemplateLibrary: false,
       showContentLibrary: false,
+      isCompiling: false,
+      isSaving: false,
+      device: "desktop",
       zoom: 100,
-      device: "desktop" as "desktop" | "mobile",
-    },
+    } as EditorState,
   });
 
-  // Enhanced error handling
-  const handleError = (error: any, operation: string) => {
-    console.error(`Newsletter ${operation} error:`, error);
+  // Composables
+  const { $directus } = useNuxtApp();
+  const directus = $directus;
 
-    let message = `Failed to ${operation}`;
-    if (error.statusCode === 404) {
-      message = "Newsletter not found";
-    } else if (error.statusCode === 403) {
-      message = "Permission denied";
-    } else if (error.statusCode === 422) {
-      message = "Invalid data provided";
-    } else if (error.message) {
-      message = error.message;
-    }
-
+  // Helper function for error handling
+  const handleError = (error: any, action: string) => {
+    console.error(`Error ${action}:`, error);
+    const message = error?.message || `Failed to ${action}`;
     state.error = message;
     toast.error(message);
     throw error;
   };
 
-  // Fetch newsletters with caching
-  const fetchNewsletters = async (options: any = {}) => {
-    const cacheKey = `${cacheKey}-list`;
+  // Computed
+  const drafts = computed(() =>
+    state.newsletters.filter((n) => n.status === "draft")
+  );
+  const scheduled = computed(() =>
+    state.newsletters.filter((n) => n.status === "scheduled")
+  );
+  const sent = computed(() =>
+    state.newsletters.filter((n) => n.status === "sent")
+  );
 
+  // Newsletter CRUD operations
+  const fetchNewsletters = async (
+    options: {
+      limit?: number;
+      offset?: number;
+      status?: string;
+      category?: string;
+      search?: string;
+    } = {}
+  ) => {
     try {
       state.isLoading = true;
       state.error = null;
 
-      // Try cache first
-      const cached = await $fetch(`/api/_cache/${cacheKey}`, {
-        method: "GET",
-        ignoreResponseError: true,
-      });
+      const params = new URLSearchParams();
+      if (options.limit) params.append("limit", options.limit.toString());
+      if (options.offset) params.append("offset", options.offset.toString());
+      if (options.status) params.append("status", options.status);
+      if (options.category) params.append("category", options.category);
+      if (options.search) params.append("search", options.search);
 
-      if (cached && !options.force) {
-        state.newsletters = cached;
-        return cached;
-      }
+      const response = await $fetch(`/api/newsletter/list?${params}`);
+      state.newsletters = response.data || [];
 
-      const response = await directus.request(
-        readItems("newsletters", {
-          fields: [
-            "*",
-            "blocks.id",
-            "blocks.sort",
-            "blocks.block_type.name",
-            "blocks.block_type.slug",
-            "blocks.block_type.icon",
-            "template_id.name",
-            "mailing_list_id.name",
-          ],
-          sort: ["-updated_at"],
-          ...options,
-        })
-      );
-
-      state.newsletters = response as Newsletter[];
-
-      // Cache the result
-      await $fetch(`/api/_cache/${cacheKey}`, {
-        method: "POST",
-        body: { data: response, ttl: 300 }, // 5 minute cache
-      });
-
-      return state.newsletters;
+      return response;
     } catch (error: any) {
       handleError(error, "fetch newsletters");
     } finally {
@@ -129,102 +102,204 @@ export const useNewsletter = (options: UseNewsletterOptions = {}) => {
     }
   };
 
-  // Enhanced newsletter creation with validation
-  const createNewsletter = async (data: Partial<Newsletter>) => {
+  const fetchNewsletter = async (id: number) => {
     try {
       state.isLoading = true;
       state.error = null;
 
+      const newsletter = await $fetch(`/api/newsletter/${id}`);
+      state.currentNewsletter = newsletter;
+
+      return newsletter;
+    } catch (error: any) {
+      handleError(error, "fetch newsletter");
+    } finally {
+      state.isLoading = false;
+    }
+  };
+
+  const createNewsletter = async (data: CreateNewsletterData) => {
+    try {
+      state.isCreating = true;
+      state.error = null;
+
       // Validate input
-      const validated = NewsletterSchema.partial().parse(data);
+      const validated = NewsletterSchema.parse(data);
 
-      const response = await directus.request(
-        createItem("newsletters", {
-          status: "draft",
-          priority: "normal",
-          is_ab_test: false,
-          total_opens: 0,
-          approval_status: "pending",
-          slug: generateSlug(validated.title || "untitled"),
-          ...validated,
-        })
-      );
+      const newsletter = await $fetch("/api/newsletter/create", {
+        method: "POST",
+        body: validated,
+      });
 
-      const newsletter = response as Newsletter;
+      // Add to newsletters list
       state.newsletters.unshift(newsletter);
+      state.currentNewsletter = newsletter;
 
-      toast.success("Newsletter created successfully");
-
-      // Clear cache
-      await $fetch(`/api/_cache/${cacheKey}-list`, { method: "DELETE" });
+      toast.success("Newsletter created successfully", {
+        description: `"${newsletter.title}" is ready for editing`,
+        action: {
+          label: "Edit",
+          onClick: () => navigateTo(`/newsletters/${newsletter.id}/edit`),
+        },
+      });
 
       return newsletter;
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         const message = error.errors.map((e) => e.message).join(", ");
         state.error = message;
-        toast.error(message);
+        toast.error("Validation failed", {
+          description: message,
+        });
         throw new Error(message);
       }
       handleError(error, "create newsletter");
+    } finally {
+      state.isCreating = false;
+    }
+  };
+
+  const updateNewsletter = async (id: number, data: UpdateNewsletterData) => {
+    try {
+      state.isUpdating = true;
+      state.error = null;
+
+      const newsletter = await $fetch(`/api/newsletter/${id}`, {
+        method: "PATCH",
+        body: data,
+      });
+
+      // Update in newsletters list
+      const index = state.newsletters.findIndex((n) => n.id === id);
+      if (index !== -1) {
+        state.newsletters[index] = newsletter;
+      }
+
+      // Update current newsletter if it matches
+      if (state.currentNewsletter?.id === id) {
+        state.currentNewsletter = newsletter;
+      }
+
+      return newsletter;
+    } catch (error: any) {
+      handleError(error, "update newsletter");
+    } finally {
+      state.isUpdating = false;
+    }
+  };
+
+  const deleteNewsletter = async (id: number) => {
+    try {
+      state.isDeleting = true;
+      state.error = null;
+
+      const newsletter = state.newsletters.find((n) => n.id === id);
+      const title = newsletter?.title || "Newsletter";
+
+      await $fetch(`/api/newsletter/${id}`, {
+        method: "DELETE",
+      });
+
+      // Remove from newsletters list
+      state.newsletters = state.newsletters.filter((n) => n.id !== id);
+
+      // Clear current newsletter if it was deleted
+      if (state.currentNewsletter?.id === id) {
+        state.currentNewsletter = null;
+      }
+
+      toast.success("Newsletter deleted", {
+        description: `"${title}" has been permanently deleted`,
+      });
+
+      return true;
+    } catch (error: any) {
+      handleError(error, "delete newsletter");
+    } finally {
+      state.isDeleting = false;
+    }
+  };
+
+  const duplicateNewsletter = async (id: number, newTitle?: string) => {
+    try {
+      state.isCreating = true;
+      state.error = null;
+
+      const originalNewsletter = state.newsletters.find((n) => n.id === id);
+      if (!originalNewsletter) {
+        throw new Error("Newsletter not found");
+      }
+
+      const newsletter = await $fetch(`/api/newsletter/${id}/duplicate`, {
+        method: "POST",
+        body: {
+          title: newTitle || `${originalNewsletter.title} (Copy)`,
+        },
+      });
+
+      // Add to newsletters list
+      state.newsletters.unshift(newsletter);
+
+      toast.success("Newsletter duplicated", {
+        description: `"${newsletter.title}" is ready for editing`,
+        action: {
+          label: "Edit",
+          onClick: () => navigateTo(`/newsletters/${newsletter.id}/edit`),
+        },
+      });
+
+      return newsletter;
+    } catch (error: any) {
+      handleError(error, "duplicate newsletter");
+    } finally {
+      state.isCreating = false;
+    }
+  };
+
+  // Auto-save functionality
+  const autoSaveFunction = useDebounceFn(async () => {
+    if (!state.currentNewsletter) return;
+
+    try {
+      state.isSaving = true;
+      await updateNewsletter(state.currentNewsletter.id, {
+        ...state.currentNewsletter,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    } finally {
+      state.isSaving = false;
+    }
+  }, 2000);
+
+  // Send test email
+  const sendTestEmail = async (newsletter: Newsletter, emails: string[]) => {
+    try {
+      state.isLoading = true;
+      state.error = null;
+
+      await $fetch("/api/newsletter/send-test", {
+        method: "POST",
+        body: {
+          newsletter_id: newsletter.id,
+          test_emails: emails,
+        },
+      });
+
+      toast.success("Test email sent", {
+        description: `Sent to ${emails.length} recipient${
+          emails.length > 1 ? "s" : ""
+        }`,
+      });
+    } catch (error: any) {
+      handleError(error, "send test email");
     } finally {
       state.isLoading = false;
     }
   };
 
-  // Enhanced update with optimistic updates
-  const updateNewsletter = async (id: number, data: Partial<Newsletter>) => {
-    try {
-      state.isSaving = true;
-      state.error = null;
-
-      // Optimistic update
-      if (state.currentNewsletter?.id === id) {
-        Object.assign(state.currentNewsletter, data);
-      }
-
-      const index = state.newsletters.findIndex((n) => n.id === id);
-      if (index !== -1) {
-        Object.assign(state.newsletters[index], data);
-      }
-
-      const response = await directus.request(
-        updateItem("newsletters", id, data)
-      );
-
-      state.lastSaved = new Date();
-
-      // Clear relevant caches
-      await $fetch(`/api/_cache/${cacheKey}-list`, { method: "DELETE" });
-      await $fetch(`/api/_cache/${cacheKey}-${id}`, { method: "DELETE" });
-
-      return response as Newsletter;
-    } catch (error: any) {
-      // Revert optimistic update on error
-      if (state.currentNewsletter?.id === id) {
-        await fetchNewsletter(id); // Refresh from server
-      }
-      handleError(error, "update newsletter");
-    } finally {
-      state.isSaving = false;
-    }
-  };
-
-  // Auto-save with debouncing
-  const autoSaveFunction = useDebounceFn(
-    async (id: number, data: Partial<Newsletter>) => {
-      if (!autoSave) return;
-
-      try {
-        await updateNewsletter(id, data);
-      } catch (error) {
-        console.warn("Auto-save failed:", error);
-      }
-    },
-    autoSaveDelay
-  );
-
-  // Enhanced compilation with progress tracking
+  // MJML compilation
   const compileMJML = async (newsletterId: number) => {
     try {
       state.isCompiling = true;
@@ -236,7 +311,9 @@ export const useNewsletter = (options: UseNewsletterOptions = {}) => {
       });
 
       if (response.warnings?.length) {
-        toast.warning(`Compiled with ${response.warnings.length} warnings`);
+        toast.warning("Compiled with warnings", {
+          description: `${response.warnings.length} warnings found`,
+        });
       } else {
         toast.success("Newsletter compiled successfully");
       }

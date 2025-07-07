@@ -7,8 +7,6 @@ import {
   addImports,
   addComponentsDir,
   createResolver,
-  installModule,
-  addImportsDir,
 } from "@nuxt/kit";
 
 export interface ModuleOptions {
@@ -19,8 +17,6 @@ export interface ModuleOptions {
   webhookSecret?: string;
   enableAnalytics?: boolean;
   enableWebhooks?: boolean;
-  enableTemplates?: boolean;
-  enableABTesting?: boolean;
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -35,10 +31,8 @@ export default defineNuxtModule<ModuleOptions>({
     directusUrl: "",
     enableAnalytics: true,
     enableWebhooks: true,
-    enableTemplates: true,
-    enableABTesting: false,
   },
-  async setup(options, nuxt) {
+  setup(options, nuxt) {
     const resolver = createResolver(import.meta.url);
 
     // Validate required options
@@ -46,37 +40,55 @@ export default defineNuxtModule<ModuleOptions>({
       throw new Error("Newsletter module requires directusUrl option");
     }
 
-    // Install modern Nuxt modules first
-    await installModule("@nuxt/icon", {
-      provider: "iconify",
-      class: "",
-      aliases: {},
-      iconifyApiOptions: {
-        url: "https://api.iconify.design",
-        publicApiFallback: true,
-      },
+    // Check for required dependencies
+    const requiredModules = [
+      "@nuxtjs/tailwindcss",
+      "shadcn-nuxt",
+      "@nuxtjs/color-mode",
+    ];
+
+    const missingModules = requiredModules.filter((module) => {
+      return (
+        !nuxt.options.modules?.includes(module) &&
+        !nuxt.options._modules?.find((m) =>
+          typeof m === "string" ? m === module : m[0] === module
+        )
+      );
     });
 
-    await installModule("shadcn-nuxt", {
-      prefix: "Ui",
-      componentDir: "./components/ui",
-    });
+    if (missingModules.length > 0) {
+      throw new Error(`
+Newsletter module requires the following dependencies to be installed and configured:
 
-    await installModule("nuxt-echarts", {
-      charts: ["LineChart", "BarChart", "PieChart"],
-      components: [
-        "GridComponent",
-        "TooltipComponent",
-        "LegendComponent",
-        "ToolboxComponent",
-      ],
-      features: ["LabelLayout", "UniversalTransition"],
-      ssr: true,
-    });
+Missing modules: ${missingModules.join(", ")}
 
-    await installModule("@vueuse/nuxt");
+Please install them with:
+npm install @nuxtjs/tailwindcss shadcn-nuxt @nuxtjs/color-mode
 
-    // Add runtime config (keeping your existing structure)
+And add them to your nuxt.config.ts modules array:
+modules: [
+  '@nuxtjs/tailwindcss',
+  'shadcn-nuxt',
+  '@nuxtjs/color-mode',
+  '@your-org/nuxt-newsletter'
+]
+
+For detailed setup instructions, see: https://github.com/your-org/nuxt-newsletter#setup
+      `);
+    }
+
+    // Check if Shadcn components are properly configured
+    if (!nuxt.options.shadcn || Object.keys(nuxt.options.shadcn).length === 0) {
+      console.warn(`
+⚠️  Warning: Shadcn-nuxt appears to be installed but not configured.
+Please run: npx shadcn-vue@latest init
+Or configure it manually in your nuxt.config.ts
+
+For setup instructions, see: https://github.com/your-org/nuxt-newsletter#shadcn-setup
+      `);
+    }
+
+    // Add runtime config
     nuxt.options.runtimeConfig = nuxt.options.runtimeConfig || {};
     nuxt.options.runtimeConfig.newsletter = {
       sendgridApiKey: options.sendgridApiKey,
@@ -90,8 +102,6 @@ export default defineNuxtModule<ModuleOptions>({
       directusUrl: options.directusUrl,
       enableAnalytics: options.enableAnalytics,
       enableWebhooks: options.enableWebhooks,
-      enableTemplates: options.enableTemplates,
-      enableABTesting: options.enableABTesting,
     };
 
     // Add required dependencies for transpilation
@@ -102,11 +112,10 @@ export default defineNuxtModule<ModuleOptions>({
       "mjml",
       "handlebars",
       "@sendgrid/mail",
-      "gsap",
-      "vue-sonner"
+      "gsap"
     );
 
-    // Add components (keeping your existing setup)
+    // Add components
     addComponentsDir({
       path: resolver.resolve("./runtime/components"),
       pathPrefix: false,
@@ -114,10 +123,7 @@ export default defineNuxtModule<ModuleOptions>({
       global: true,
     });
 
-    // Add composables (enhanced with directory auto-import)
-    addImportsDir(resolver.resolve("./runtime/composables"));
-
-    // Keep your existing specific imports for better intellisense
+    // Add composables
     addImports([
       {
         name: "useNewsletter",
@@ -135,14 +141,14 @@ export default defineNuxtModule<ModuleOptions>({
         name: "useDirectus",
         from: resolver.resolve("./runtime/composables/useDirectus"),
       },
-      // Add new toast composable
-      {
-        name: "useToast",
-        from: resolver.resolve("./runtime/composables/utils/useToast"),
-      },
     ]);
 
-    // Add server handlers (keeping all your existing ones)
+    // Add plugins
+    addPlugin(resolver.resolve("./runtime/plugins/newsletter.client"));
+    addPlugin(resolver.resolve("./runtime/plugins/directus"));
+    addPlugin(resolver.resolve("./runtime/plugins/gsap.client"));
+
+    // Add server handlers
     addServerHandler({
       route: "/api/newsletter/compile-mjml",
       handler: resolver.resolve(
@@ -170,7 +176,7 @@ export default defineNuxtModule<ModuleOptions>({
     });
 
     addServerHandler({
-      route: "/api/newsletter/analytics/**",
+      route: "/api/newsletter/analytics/[id]",
       handler: resolver.resolve(
         "./runtime/server/api/newsletter/analytics/[id].get"
       ),
@@ -185,44 +191,35 @@ export default defineNuxtModule<ModuleOptions>({
       });
     }
 
-    // Add plugins (keeping your existing one + new toast plugin)
-    addPlugin(resolver.resolve("./runtime/plugins/newsletter.client"));
-    addPlugin(resolver.resolve("./runtime/plugins/vue-sonner.client"));
-
-    // Add types (keeping your existing setup)
-    nuxt.hook("prepare:types", (options) => {
-      options.references.push({
-        path: resolver.resolve("./runtime/types/newsletter.d.ts"),
-      });
+    // Add pages
+    nuxt.hook("pages:extend", (pages) => {
+      pages.push(
+        {
+          name: "newsletters",
+          path: "/newsletters",
+          file: resolver.resolve("./runtime/pages/newsletters/index.vue"),
+        },
+        {
+          name: "newsletters-id-edit",
+          path: "/newsletters/:id/edit",
+          file: resolver.resolve("./runtime/pages/newsletters/[id]/edit.vue"),
+        },
+        {
+          name: "newsletters-id-analytics",
+          path: "/newsletters/:id/analytics",
+          file: resolver.resolve(
+            "./runtime/pages/newsletters/[id]/analytics.vue"
+          ),
+        }
+      );
     });
 
-    // Add CSS (keeping your existing setup)
+    // Add CSS
     nuxt.options.css = nuxt.options.css || [];
-    nuxt.options.css.push(resolver.resolve("./runtime/assets/newsletter.css"));
+    nuxt.options.css.push(
+      resolver.resolve("./runtime/assets/css/newsletter.css")
+    );
 
-    // Configure Tailwind CSS if not already configured
-    if (!nuxt.options.css.some((css) => css.includes("tailwindcss"))) {
-      nuxt.options.css.push("tailwindcss/base");
-      nuxt.options.css.push("tailwindcss/components");
-      nuxt.options.css.push("tailwindcss/utilities");
-    }
-
-    // Ensure Icon module has the required collections
-    nuxt.options.icon = nuxt.options.icon || {};
-    nuxt.options.icon.collections = nuxt.options.icon.collections || [];
-    if (!nuxt.options.icon.collections.includes("lucide")) {
-      nuxt.options.icon.collections.push("lucide");
-    }
-
-    // Log successful setup with modern libraries
-    console.log("📧 Newsletter module loaded with modern libraries");
-    console.log("   ✅ shadcn-nuxt (UI components)");
-    console.log("   ✅ nuxt-echarts (Charts)");
-    console.log("   ✅ @nuxt/icon (Icons)");
-    console.log("   ✅ vue-sonner (Toasts)");
-    if (options.enableAnalytics) console.log("   ✅ Analytics enabled");
-    if (options.enableWebhooks) console.log("   ✅ Webhooks enabled");
-    if (options.enableTemplates) console.log("   ✅ Templates enabled");
-    if (options.enableABTesting) console.log("   ✅ A/B Testing enabled");
+    console.log("✅ Newsletter module loaded successfully");
   },
 });

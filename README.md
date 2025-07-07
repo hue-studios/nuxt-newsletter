@@ -40,39 +40,64 @@ A comprehensive newsletter management system for Nuxt 3 with Directus 11 backend
 - **Accessibility** - WCAG compliant email creation
 - **TypeScript** - Full type safety and IntelliSense
 
+## 📋 Prerequisites
+
+This module requires the following dependencies to be installed and configured in your Nuxt 3 project:
+
+- **Nuxt 3.8+**
+- **@nuxtjs/tailwindcss** - For styling
+- **shadcn-nuxt** - For UI components
+- **@nuxtjs/color-mode** - For theme support
+
 ## 🚀 Quick Start
 
-### Installation
+### 1. Install Dependencies
+
+First, install the required dependencies:
 
 ```bash
+# Install the newsletter module
 npm install @your-org/nuxt-newsletter
-```
 
-### 1. Setup Directus Collections
+# Install required UI dependencies
+npm install @nuxtjs/tailwindcss shadcn-nuxt @nuxtjs/color-mode
 
-First, install the required collections in your Directus instance:
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/nuxt-newsletter.git
-cd nuxt-newsletter
-
-# Install dependencies
-npm install
-
-# Run the Directus setup script
-node scripts/install-directus-collections.js https://your-directus.com admin@example.com your-password
+# Install Shadcn components
+npx shadcn-vue@latest init
 ```
 
 ### 2. Configure Nuxt
 
-Add the module to your `nuxt.config.ts`:
+Add the required modules to your `nuxt.config.ts`:
 
 ```typescript
 export default defineNuxtConfig({
   modules: [
+    '@nuxtjs/tailwindcss',
+    'shadcn-nuxt',
+    '@nuxtjs/color-mode',
     '@your-org/nuxt-newsletter'
   ],
+  
+  // Shadcn configuration
+  shadcn: {
+    /**
+     * Prefix for all the imported component
+     */
+    prefix: '',
+    /**
+     * Directory that the component lives in.
+     * @default "./components/ui"
+     */
+    componentDir: './components/ui'
+  },
+  
+  // Color mode configuration
+  colorMode: {
+    classSuffix: ''
+  },
+  
+  // Newsletter module configuration
   newsletter: {
     directusUrl: 'https://your-directus.com',
     sendgridApiKey: process.env.SENDGRID_API_KEY,
@@ -84,14 +109,80 @@ export default defineNuxtConfig({
 })
 ```
 
-### 3. Environment Variables
+### 3. Install Required Shadcn Components
 
-Create a `.env` file:
+The newsletter module uses several Shadcn components. Install them with:
+
+```bash
+# Core components required by the module
+npx shadcn-vue@latest add button
+npx shadcn-vue@latest add input
+npx shadcn-vue@latest add label
+npx shadcn-vue@latest add textarea
+npx shadcn-vue@latest add dialog
+npx shadcn-vue@latest add badge
+npx shadcn-vue@latest add card
+npx shadcn-vue@latest add tabs
+npx shadcn-vue@latest add dropdown-menu
+npx shadcn-vue@latest add select
+npx shadcn-vue@latest add switch
+npx shadcn-vue@latest add slider
+npx shadcn-vue@latest add toast
+npx shadcn-vue@latest add alert
+npx shadcn-vue@latest add separator
+npx shadcn-vue@latest add progress
+npx shadcn-vue@latest add sonner
+```
+
+Or install all at once:
+
+```bash
+npx shadcn-vue@latest add button input label textarea dialog badge card tabs dropdown-menu select switch slider toast alert separator progress sonner
+```
+
+### 4. Setup Sonner Toaster
+
+Add the Toaster component to your `app.vue` or main layout:
+
+```vue
+<!-- app.vue -->
+<template>
+  <div>
+    <NuxtPage />
+    <!-- Add Toaster for notifications -->
+    <Toaster />
+  </div>
+</template>
+
+<script setup>
+import { Toaster } from '@/components/ui/sonner'
+</script>
+```
+
+### 5. Setup Directus Collections
+
+Install the required collections in your Directus instance:
+
+```bash
+# Clone the repository (if needed)
+git clone https://github.com/your-org/nuxt-newsletter.git
+cd nuxt-newsletter
+
+# Install dependencies
+npm install
+
+# Run the Directus setup script
+node scripts/install-directus-collections.js https://your-directus.com admin@example.com your-password
+```
+
+### 5. Environment Variables
+
+Create a `.env` file in your project root:
 
 ```env
 # Required
 DIRECTUS_URL=https://your-directus.com
-SENDGRID_API_KEY=SG.your-sendgrid-api-key
+SENDGRID_API_KEY=your-sendgrid-key
 
 # Optional
 NEWSLETTER_WEBHOOK_SECRET=your-webhook-secret
@@ -99,46 +190,83 @@ NEWSLETTER_DEFAULT_FROM_EMAIL=newsletter@yoursite.com
 NEWSLETTER_DEFAULT_FROM_NAME=Your Newsletter
 ```
 
-### 4. Add Newsletter Pages
+### 7. Start Development
 
-Create newsletter pages in your Nuxt app:
+```bash
+npm run dev
+```
+
+Visit `/newsletters` to access the newsletter dashboard.
+
+## 📦 What's Included
+
+### Components
+- `NewsletterDashboard` - Main dashboard with stats
+- `NewsletterEditor` - Drag-and-drop newsletter editor
+- `NewsletterBlock` - Individual newsletter blocks
+- `BlockEditor` - Block property editor
+- `TemplateBrowser` - Template selection interface
+- `NewsletterAnalytics` - Performance analytics
+- `NewsletterPreview` - Live preview component
+
+### Composables
+- `useNewsletter()` - Newsletter management
+- `useNewsletterBlocks()` - Block operations
+- `useNewsletterTemplates()` - Template management
+- `useDirectus()` - Directus integration
+
+### Pages
+- `/newsletters` - Newsletter dashboard
+- `/newsletters/[id]/edit` - Newsletter editor
+- `/newsletters/[id]/analytics` - Analytics view
+
+### API Endpoints
+- `POST /api/newsletter/compile-mjml` - MJML compilation
+- `POST /api/newsletter/send-test` - Send test emails
+- `POST /api/newsletter/send` - Send newsletters
+- `POST /api/newsletter/upload-image` - Image upload
+- `GET /api/newsletter/analytics/[id]` - Analytics data
+- `POST /api/newsletter/webhook/sendgrid` - SendGrid webhooks
+
+## 🎯 Usage Examples
+
+### Create a Newsletter
 
 ```vue
-<!-- pages/newsletters/index.vue -->
 <template>
-  <NewsletterDashboard />
-</template>
-
-<!-- pages/newsletters/[id]/edit.vue -->
-<template>
-  <NewsletterEditor
-    v-if="newsletter"
-    :newsletter="newsletter"
-    @back="navigateTo('/newsletters')"
-  />
+  <div>
+    <NewsletterEditor 
+      :newsletter="newsletter" 
+      @update="handleUpdate"
+      @back="navigateTo('/newsletters')"
+    />
+  </div>
 </template>
 
 <script setup>
-const route = useRoute()
-const { fetchNewsletter } = useNewsletter()
+const { currentNewsletter, createNewsletter } = useNewsletter()
 
-const { data: newsletter } = await useLazyAsyncData(
-  `newsletter-${route.params.id}`,
-  () => fetchNewsletter(parseInt(route.params.id))
-)
+// Create a new newsletter
+const newsletter = await createNewsletter({
+  title: 'My First Newsletter',
+  subject_line: 'Welcome to our newsletter!',
+  status: 'draft'
+})
+
+const handleUpdate = (updatedNewsletter) => {
+  console.log('Newsletter updated:', updatedNewsletter)
+}
 </script>
 ```
 
-## 📖 Usage Guide
+### Newsletter Creation Workflow
 
-### Creating Your First Newsletter
-
-1. **Navigate to the dashboard**: `/newsletters`
-2. **Click "New Newsletter"** or choose a template
-3. **Add content blocks** by dragging from the sidebar
-4. **Customize** each block with the property editor
-5. **Preview** your newsletter in different devices
-6. **Compile** the MJML to generate HTML
+1. **Create a new newsletter** from the dashboard
+2. **Choose a template** or start from scratch
+3. **Add content blocks** using the drag-and-drop editor
+4. **Customize styling** with the block editor
+5. **Preview** across different devices
+6. **Select your audience** from mailing lists
 7. **Send test emails** to verify appearance
 8. **Schedule or send** to your audience
 
@@ -188,23 +316,6 @@ const createSegment = (rules) => {
   // Create targeted audience based on rules
   console.log('Segment rules:', rules)
 }
-</script>
-```
-
-### Analytics Integration
-
-```vue
-<template>
-  <div>
-    <NewsletterAnalytics :newsletters="newsletters" />
-  </div>
-</template>
-
-<script setup>
-const { newsletters } = useNewsletter()
-
-// Fetch analytics data
-const analytics = await $fetch(`/api/newsletter/analytics/${newsletterId}`)
 </script>
 ```
 
@@ -320,303 +431,123 @@ interface ModuleOptions {
   defaultFromName?: string
 
   // Features
-  enableAnalytics?: boolean      // default: true
-  enableWebhooks?: boolean       // default: true
-  enableTemplates?: boolean      // default: true
-  enableSegmentation?: boolean   // default: true
-
-  // Security
+  enableAnalytics?: boolean
+  enableWebhooks?: boolean
   webhookSecret?: string
-
-  // UI Customization
-  primaryColor?: string
-  brandName?: string
 }
 ```
 
-### Runtime Configuration
+### Tailwind Configuration
 
-```typescript
-// Access configuration in components
-const config = useRuntimeConfig()
+The module works with your existing Tailwind setup. Make sure your `tailwind.config.js` includes:
 
-// Public config (client + server)
-console.log(config.public.newsletter.directusUrl)
-
-// Private config (server only)
-console.log(config.newsletter.sendgridApiKey)
-```
-
-## 📡 API Endpoints
-
-All API endpoints are automatically added by the module:
-
-### Newsletter Operations
-- `POST /api/newsletter/compile-mjml` - Compile newsletter to HTML
-- `POST /api/newsletter/send-test` - Send test emails
-- `POST /api/newsletter/send` - Send newsletter to list
-- `POST /api/newsletter/upload-image` - Upload images
-
-### Analytics
-- `GET /api/newsletter/analytics/[id]` - Get newsletter analytics
-- `POST /api/newsletter/webhook/sendgrid` - SendGrid webhook handler
-
-### Example API Usage
-
-```typescript
-// Compile MJML
-const result = await $fetch('/api/newsletter/compile-mjml', {
-  method: 'POST',
-  body: { newsletter_id: 1 }
-})
-
-// Send test email
-const testResult = await $fetch('/api/newsletter/send-test', {
-  method: 'POST',
-  body: {
-    newsletter_id: 1,
-    test_emails: ['test@example.com']
-  }
-})
-
-// Get analytics
-const analytics = await $fetch('/api/newsletter/analytics/1')
-```
-
-## 🎨 Block Types
-
-### Built-in Block Types
-
-| Block Type | Description | Use Case |
-|------------|-------------|----------|
-| **Hero** | Large header with title, subtitle, CTA | Newsletter headers |
-| **Text** | Rich text content | Articles, descriptions |
-| **Image** | Images with captions and links | Photos, graphics |
-| **Button** | Call-to-action buttons | Links, CTAs |
-| **Two Column** | Side-by-side content | Comparisons, features |
-| **Divider** | Horizontal separators | Section breaks |
-
-### Advanced Block Types
-
-| Block Type | Description | Use Case |
-|------------|-------------|----------|
-| **Product Showcase** | Product with image, price, CTA | E-commerce |
-| **Team Member** | Profile with photo and bio | Team introductions |
-| **Statistics** | Number displays with labels | Metrics, achievements |
-| **Social Links** | Social media icon links | Footer, contact |
-| **Event Card** | Event with date, time, location | Event promotion |
-
-### Creating Custom Block Types
-
-Add custom blocks in your Directus admin:
-
-```json
-{
-  "name": "Custom CTA",
-  "slug": "custom-cta",
-  "description": "Custom call-to-action block",
-  "category": "interactive",
-  "icon": "call_to_action",
-  "mjml_template": "<mj-section background-color=\"{{background_color}}\"><mj-column><mj-text>{{title}}</mj-text><mj-button href=\"{{button_url}}\">{{button_text}}</mj-button></mj-column></mj-section>",
-  "field_visibility_config": ["title", "button_text", "button_url", "background_color"],
-  "status": "published"
+```javascript
+module.exports = {
+  content: [
+    './components/**/*.{js,vue,ts}',
+    './layouts/**/*.vue',
+    './pages/**/*.vue',
+    './plugins/**/*.{js,ts}',
+    './nuxt.config.{js,ts}',
+    './app.vue',
+    // Include the module's components
+    './node_modules/@your-org/nuxt-newsletter/dist/**/*.{js,vue,ts}'
+  ],
+  // ... your existing config
 }
 ```
 
-## 📊 Analytics & Tracking
+## 🛠️ Development
 
-### SendGrid Webhook Setup
-
-Configure SendGrid to send events to your webhook:
-
-1. **Webhook URL**: `https://yoursite.com/api/newsletter/webhook/sendgrid`
-2. **Events**: `delivered`, `open`, `click`, `bounce`, `unsubscribe`
-3. **HTTP Method**: `POST`
-4. **Signature Verification**: Enabled (recommended)
-
-### Custom Analytics
-
-```typescript
-// Track custom events
-await $fetch('/api/newsletter/track-event', {
-  method: 'POST',
-  body: {
-    newsletter_id: 1,
-    event_type: 'custom_click',
-    subscriber_id: 123,
-    metadata: { section: 'header' }
-  }
-})
-
-// Get detailed analytics
-const analytics = await $fetch('/api/newsletter/analytics/1')
-console.log(analytics.statistics.open_rate) // 24.5
-```
-
-## 🔒 Security Features
-
-### Input Validation
-- XSS protection with HTML sanitization
-- CSRF token validation
-- File upload restrictions
-- Email address validation
-
-### Webhook Security
-- Signature verification for SendGrid webhooks
-- Rate limiting on all endpoints
-- Secure token authentication
-
-### Data Protection
-- Subscriber data encryption
-- Secure unsubscribe tokens
-- GDPR compliance features
-
-## 🎨 Customization
-
-### Styling
-
-Override default styles:
-
-```css
-/* Custom newsletter styles */
-:root {
-  --newsletter-primary: #your-brand-color;
-  --newsletter-secondary: #your-secondary-color;
-}
-
-.newsletter-editor {
-  font-family: 'Your Font', sans-serif;
-}
-
-.newsletter-block {
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-```
-
-### Custom Validation
-
-```typescript
-// utils/custom-validation.ts
-export function customNewsletterValidation(newsletter: Newsletter): ValidationError[] {
-  const errors: ValidationError[] = []
-  
-  // Custom business rules
-  if (newsletter.subject_line && newsletter.subject_line.length < 10) {
-    errors.push({
-      field: 'subject_line',
-      message: 'Subject line should be at least 10 characters',
-      severity: 'warning'
-    })
-  }
-  
-  return errors
-}
-```
-
-### Theme Customization
-
-```typescript
-// nuxt.config.ts
-export default defineNuxtConfig({
-  newsletter: {
-    theme: {
-      primaryColor: '#your-brand-color',
-      fontFamily: 'Your Font Family',
-      borderRadius: '8px',
-      shadows: true
-    }
-  }
-})
-```
-
-## 🧪 Testing
-
-### Running Tests
+### Local Development
 
 ```bash
-# Install test dependencies
-npm install --dev
+# Clone repository
+git clone https://github.com/your-org/nuxt-newsletter.git
+cd nuxt-newsletter
 
+# Install dependencies
+npm install
+
+# Set up development environment
+cp .env.example .env
+npm run dev:prepare
+
+# Start development server
+npm run dev
+```
+
+### Testing
+
+```bash
 # Run unit tests
 npm run test
 
-# Run component tests
-npm run test:components
+# Run with coverage
+npm run test:coverage
 
 # Run E2E tests
 npm run test:e2e
 
-# Generate coverage report
-npm run test:coverage
+# Watch mode
+npm run test:watch
 ```
 
-### Example Tests
+### Build
 
-```typescript
-// tests/components/NewsletterEditor.test.ts
-import { mount } from '@vue/test-utils'
-import NewsletterEditor from '~/components/NewsletterEditor.vue'
+```bash
+# Build the module
+npm run build
 
-describe('NewsletterEditor', () => {
-  it('renders newsletter editor', () => {
-    const wrapper = mount(NewsletterEditor, {
-      props: {
-        newsletter: mockNewsletter
-      }
-    })
-    
-    expect(wrapper.find('.newsletter-editor').exists()).toBe(true)
-  })
-})
+# Type checking
+npm run typecheck
 ```
 
-## 📦 Deployment
-
-### Production Checklist
-
-- [ ] Configure environment variables
-- [ ] Set up SendGrid account and API key
-- [ ] Configure Directus instance
-- [ ] Set up webhook endpoints
-- [ ] Configure image optimization
-- [ ] Enable SSL/HTTPS
-- [ ] Set up monitoring and logging
-
-### Environment Variables
-
-```env
-# Production Environment
-NODE_ENV=production
-DIRECTUS_URL=https://your-directus.com
-SENDGRID_API_KEY=SG.your-production-key
-NEWSLETTER_WEBHOOK_SECRET=secure-webhook-secret
-
-# Optional Production Settings
-NEWSLETTER_RATE_LIMIT=100
-NEWSLETTER_MAX_FILE_SIZE=10MB
-NEWSLETTER_CACHE_TTL=3600
-```
-
-## 🔧 Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-**1. MJML Compilation Fails**
+**1. Shadcn Components Not Found**
+```bash
+Error: [Vue warn]: Failed to resolve component: Button
+
+# Solution: Install missing Shadcn components
+npx shadcn-vue@latest add button input label textarea dialog
+```
+
+**2. Tailwind Classes Not Applied**
+```bash
+# Solution: Update your tailwind.config.js to include module paths
+content: [
+  // ... your existing paths
+  './node_modules/@your-org/nuxt-newsletter/dist/**/*.{js,vue,ts}'
+]
+```
+
+**3. Module Dependencies Error**
+```bash
+Error: Newsletter module requires the following dependencies...
+
+# Solution: Install and configure required modules
+npm install @nuxtjs/tailwindcss shadcn-nuxt @nuxtjs/color-mode
+
+# Add to nuxt.config.ts modules array
+modules: [
+  '@nuxtjs/tailwindcss',
+  'shadcn-nuxt', 
+  '@nuxtjs/color-mode',
+  '@your-org/nuxt-newsletter'
+]
+```
+
+**4. MJML Compilation Fails**
 ```bash
 # Check MJML template syntax
 # Verify Handlebars variables
 # Ensure all required fields are present
 ```
 
-**2. SendGrid Integration Issues**
-```bash
-# Verify API key permissions
-# Check webhook URL accessibility
-# Validate sender authentication
-```
-
-**3. Directus Connection Problems**
+**5. Directus Connection Problems**
 ```bash
 # Verify Directus URL and credentials
 # Check network connectivity
@@ -680,38 +611,3 @@ npm run dev
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Nuxt.js](https://nuxt.com) - The Intuitive Web Framework
-- [Directus](https://directus.io) - Open Data Platform
-- [MJML](https://mjml.io) - Responsive Email Framework
-- [SendGrid](https://sendgrid.com) - Email Delivery Platform
-- [Tiptap](https://tiptap.dev) - Rich Text Editor
-- [GSAP](https://greensock.com/gsap/) - Animation Library
-- [Tailwind CSS](https://tailwindcss.com) - Utility-First CSS
-
-## 📈 Roadmap
-
-### Upcoming Features
-
-- [ ] **Visual Template Designer** - Drag-and-drop template creation
-- [ ] **Advanced A/B Testing** - Multi-variant testing
-- [ ] **AI Content Suggestions** - Smart content recommendations
-- [ ] **Advanced Automation** - Drip campaigns and triggers
-- [ ] **Multi-language Support** - Internationalization
-- [ ] **Custom Integrations** - Webhooks and API extensions
-- [ ] **Mobile App** - iOS and Android companion apps
-
-### Version History
-
-- **v1.0.0** - Initial release with core features
-- **v1.1.0** - Added A/B testing and advanced analytics
-- **v1.2.0** - Introduced template system and content library
-- **v1.3.0** - Enhanced editor with drag-and-drop improvements
-
----
-
-**Built with ❤️ for the Nuxt community**
-
-[⭐ Star us on GitHub](https://github.com/your-org/nuxt-newsletter) | [📚 View Documentation](https://newsletter-docs.yoursite.com) | [💬 Join Discord](https://discord.gg/your-invite)
