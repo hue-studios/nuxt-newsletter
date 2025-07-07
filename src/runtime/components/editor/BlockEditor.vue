@@ -1,3 +1,4 @@
+<!-- components/BlockEditor.vue -->
 <template>
   <div class="block-editor space-y-6">
     <!-- Block Type Info -->
@@ -7,16 +8,12 @@
         class="w-5 h-5 text-gray-600"
       />
       <div>
-        <h4 class="font-medium text-gray-900">
-          {{ block.block_type.name }}
-        </h4>
-        <p class="text-sm text-gray-600">
-          {{ block.block_type.description }}
-        </p>
+        <h4 class="font-medium text-gray-900">{{ block.block_type.name }}</h4>
+        <p class="text-sm text-gray-600">{{ block.block_type.description }}</p>
       </div>
     </div>
 
-    <!-- Dynamic Fields Based on Block Type -->
+    <!-- Dynamic Fields -->
     <div class="space-y-4">
       <div
         v-for="fieldConfig in fieldConfigs"
@@ -33,9 +30,9 @@
           v-if="fieldConfig.type === 'text'"
           :id="fieldConfig.field"
           :model-value="getFieldValue(fieldConfig.field)"
+          @update:model-value="updateField(fieldConfig.field, $event)"
           :placeholder="fieldConfig.placeholder"
           :required="fieldConfig.required"
-          @update:model-value="updateField(fieldConfig.field, $event)"
         />
 
         <!-- Textarea -->
@@ -43,18 +40,18 @@
           v-else-if="fieldConfig.type === 'textarea'"
           :id="fieldConfig.field"
           :model-value="getFieldValue(fieldConfig.field)"
+          @update:model-value="updateField(fieldConfig.field, $event)"
           :placeholder="fieldConfig.placeholder"
           :required="fieldConfig.required"
           rows="3"
-          @update:model-value="updateField(fieldConfig.field, $event)"
         />
 
         <!-- Rich Text Editor -->
         <div v-else-if="fieldConfig.type === 'rich-text'" class="space-y-2">
           <TiptapEditor
             :model-value="getFieldValue(fieldConfig.field)"
-            :placeholder="fieldConfig.placeholder"
             @update:model-value="updateField(fieldConfig.field, $event)"
+            :placeholder="fieldConfig.placeholder"
           />
         </div>
 
@@ -67,19 +64,19 @@
             :id="fieldConfig.field"
             type="color"
             :value="getFieldValue(fieldConfig.field)"
-            class="w-12 h-8 rounded border border-gray-300 cursor-pointer"
             @input="
               updateField(
                 fieldConfig.field,
                 ($event.target as HTMLInputElement).value
               )
             "
+            class="w-12 h-8 rounded border border-gray-300 cursor-pointer"
           />
           <Input
             :model-value="getFieldValue(fieldConfig.field)"
+            @update:model-value="updateField(fieldConfig.field, $event)"
             placeholder="#000000"
             class="flex-1"
-            @update:model-value="updateField(fieldConfig.field, $event)"
           />
         </div>
 
@@ -109,9 +106,9 @@
           :id="fieldConfig.field"
           type="url"
           :model-value="getFieldValue(fieldConfig.field)"
+          @update:model-value="updateField(fieldConfig.field, $event)"
           :placeholder="fieldConfig.placeholder"
           :required="fieldConfig.required"
-          @update:model-value="updateField(fieldConfig.field, $event)"
         />
 
         <!-- File Upload -->
@@ -119,9 +116,9 @@
           <div class="flex items-center space-x-2">
             <Input
               :model-value="getFieldValue(fieldConfig.field)"
+              @update:model-value="updateField(fieldConfig.field, $event)"
               placeholder="Enter URL or upload file..."
               class="flex-1"
-              @update:model-value="updateField(fieldConfig.field, $event)"
             />
             <Button variant="outline" size="sm" @click="triggerFileUpload">
               <Icon name="lucide:upload" class="w-4 h-4 mr-1" />
@@ -153,28 +150,12 @@
             />
           </div>
         </div>
-
-        <!-- Number Input -->
-        <Input
-          v-else-if="fieldConfig.type === 'number'"
-          :id="fieldConfig.field"
-          type="number"
-          :model-value="getFieldValue(fieldConfig.field)"
-          :placeholder="fieldConfig.placeholder"
-          :required="fieldConfig.required"
-          @update:model-value="updateField(fieldConfig.field, $event)"
-        />
-
-        <!-- Field Help Text -->
-        <p v-if="fieldConfig.help" class="text-xs text-gray-500">
-          {{ fieldConfig.help }}
-        </p>
       </div>
     </div>
 
     <!-- Styling Section -->
     <div class="border-t border-gray-200 pt-6">
-      <h5 class="font-medium text-gray-900 mb-4">Styling Options</h5>
+      <h5 class="font-medium text-gray-900 mb-4">Styling</h5>
 
       <div class="grid grid-cols-2 gap-4">
         <!-- Background Color -->
@@ -185,19 +166,19 @@
               id="background_color"
               type="color"
               :value="block.background_color"
-              class="w-8 h-8 rounded border border-gray-300"
               @input="
                 updateField(
                   'background_color',
                   ($event.target as HTMLInputElement).value
                 )
               "
+              class="w-8 h-8 rounded border border-gray-300"
             />
             <Input
               :model-value="block.background_color"
+              @update:model-value="updateField('background_color', $event)"
               placeholder="#ffffff"
               class="flex-1 text-sm"
-              @update:model-value="updateField('background_color', $event)"
             />
           </div>
         </div>
@@ -210,19 +191,19 @@
               id="text_color"
               type="color"
               :value="block.text_color"
-              class="w-8 h-8 rounded border border-gray-300"
               @input="
                 updateField(
                   'text_color',
                   ($event.target as HTMLInputElement).value
                 )
               "
+              class="w-8 h-8 rounded border border-gray-300"
             />
             <Input
               :model-value="block.text_color"
+              @update:model-value="updateField('text_color', $event)"
               placeholder="#333333"
               class="flex-1 text-sm"
-              @update:model-value="updateField('text_color', $event)"
             />
           </div>
         </div>
@@ -238,9 +219,9 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="left"> Left </SelectItem>
-              <SelectItem value="center"> Center </SelectItem>
-              <SelectItem value="right"> Right </SelectItem>
+              <SelectItem value="left">Left</SelectItem>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="right">Right</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -256,11 +237,10 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="12px"> Small (12px) </SelectItem>
-              <SelectItem value="14px"> Normal (14px) </SelectItem>
-              <SelectItem value="16px"> Large (16px) </SelectItem>
-              <SelectItem value="18px"> Extra Large (18px) </SelectItem>
-              <SelectItem value="20px"> Huge (20px) </SelectItem>
+              <SelectItem value="12px">Small (12px)</SelectItem>
+              <SelectItem value="14px">Normal (14px)</SelectItem>
+              <SelectItem value="16px">Large (16px)</SelectItem>
+              <SelectItem value="18px">Extra Large (18px)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -272,9 +252,9 @@
         <Input
           id="padding"
           :model-value="block.padding"
+          @update:model-value="updateField('padding', $event)"
           placeholder="20px 0"
           class="mt-1"
-          @update:model-value="updateField('padding', $event)"
         />
         <p class="text-xs text-gray-600 mt-1">
           CSS padding format (e.g., "20px 0" for top/bottom padding)
@@ -282,66 +262,24 @@
       </div>
     </div>
 
-    <!-- Block Actions -->
+    <!-- Actions -->
     <div class="border-t border-gray-200 pt-6">
       <div class="flex items-center space-x-2">
         <Button variant="outline" size="sm" @click="$emit('duplicate')">
           <Icon name="lucide:copy" class="w-4 h-4 mr-1" />
-          Duplicate Block
+          Duplicate
         </Button>
 
         <Button
           variant="outline"
           size="sm"
-          class="text-red-600 hover:text-red-700"
           @click="$emit('delete')"
+          class="text-red-600 hover:text-red-700"
         >
           <Icon name="lucide:trash-2" class="w-4 h-4 mr-1" />
-          Delete Block
+          Delete
         </Button>
       </div>
-    </div>
-
-    <!-- Advanced Settings -->
-    <div class="border-t border-gray-200 pt-6">
-      <details class="group">
-        <summary
-          class="flex items-center cursor-pointer text-sm font-medium text-gray-900"
-        >
-          <Icon
-            name="lucide:chevron-right"
-            class="w-4 h-4 mr-1 transition-transform group-open:rotate-90"
-          />
-          Advanced Settings
-        </summary>
-
-        <div class="mt-4 pl-5 space-y-4">
-          <!-- Custom CSS Classes -->
-          <div>
-            <Label class="text-sm">Custom CSS Classes</Label>
-            <Input
-              :model-value="block.content?.css_classes || ''"
-              placeholder="custom-class another-class"
-              class="mt-1"
-              @update:model-value="updateField('content.css_classes', $event)"
-            />
-          </div>
-
-          <!-- Custom Attributes -->
-          <div>
-            <Label class="text-sm">Custom Attributes (JSON)</Label>
-            <Textarea
-              :model-value="
-                JSON.stringify(block.content?.attributes || {}, null, 2)
-              "
-              placeholder='{"data-track": "button-click", "id": "hero-button"}'
-              class="mt-1 font-mono text-sm"
-              rows="3"
-              @update:model-value="updateCustomAttributes"
-            />
-          </div>
-        </div>
-      </details>
     </div>
   </div>
 </template>
@@ -376,28 +314,11 @@ const fieldConfigs = computed(() => {
 
 // Methods
 const getFieldValue = (field: string) => {
-  // Handle nested field paths like 'content.css_classes'
-  if (field.includes(".")) {
-    const [parent, child] = field.split(".");
-    return (props.block as any)[parent]?.[child] || "";
-  }
   return (props.block as any)[field] || "";
 };
 
 const updateField = (field: string, value: any) => {
-  // Handle nested field paths
-  if (field.includes(".")) {
-    const [parent, child] = field.split(".");
-    const parentData = (props.block as any)[parent] || {};
-    emit("update", {
-      [parent]: {
-        ...parentData,
-        [child]: value,
-      },
-    });
-  } else {
-    emit("update", { [field]: value });
-  }
+  emit("update", { [field]: value });
 };
 
 const triggerFileUpload = () => {
@@ -412,14 +333,8 @@ const handleFileUpload = async (event: Event) => {
     const uploadedFile = await uploadFile(file);
     const fileUrl = getFileUrl(uploadedFile.id);
     updateField("image_url", fileUrl);
-
-    // Auto-fill alt text with filename if empty
-    if (!getFieldValue("image_alt_text")) {
-      updateField("image_alt_text", file.name.replace(/\.[^/.]+$/, ""));
-    }
   } catch (error) {
     console.error("File upload failed:", error);
-    // TODO: Show user-friendly error message
   }
 };
 
@@ -428,15 +343,5 @@ const getImageUrl = (url: string) => {
     return getFileUrl(url);
   }
   return url;
-};
-
-const updateCustomAttributes = (jsonString: string) => {
-  try {
-    const attributes = JSON.parse(jsonString);
-    updateField("content.attributes", attributes);
-  } catch (error) {
-    // Invalid JSON, ignore for now
-    console.warn("Invalid JSON for custom attributes:", error);
-  }
 };
 </script>

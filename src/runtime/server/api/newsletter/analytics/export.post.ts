@@ -1,7 +1,8 @@
-// src/runtime/server/api/newsletter/analytics/export.post.ts
-import { createDirectus, rest, readItems, readItem } from "@directus/sdk";
+import { defineEventHandler, createError, readBody, setHeader } from "h3";
+import { useRuntimeConfig } from "#imports";
+import { readItems, readItem } from "@directus/sdk";
 import { z } from "zod";
-import { getDirectusClient } from "~/server/middleware/directus-auth";
+import { getDirectusClient } from "../../../middleware/directus-auth";
 
 const ExportSchema = z.object({
   newsletter_ids: z
@@ -40,8 +41,8 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
 
     // Validate input
-    const { newsletter_ids, format, date_range, include, filters }
-      = ExportSchema.parse(body);
+    const { newsletter_ids, format, date_range, include, filters } =
+      ExportSchema.parse(body);
 
     // Check permissions (if user context exists)
     if (event.context.user) {
@@ -84,13 +85,13 @@ export default defineEventHandler(async (event) => {
           newsletterId,
           timeFilter,
           include,
-          filters,
+          filters
         );
         exportData.newsletters.push(newsletterData);
       } catch (error: any) {
         console.error(
           `Error fetching data for newsletter ${newsletterId}:`,
-          error,
+          error
         );
         exportData.newsletters.push({
           id: newsletterId,
@@ -119,8 +120,8 @@ export default defineEventHandler(async (event) => {
 
       case "xlsx":
         responseData = await generateExcel(exportData);
-        contentType
-          = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        contentType =
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         filename = `newsletter-analytics-${Date.now()}.xlsx`;
         break;
 
@@ -133,7 +134,7 @@ export default defineEventHandler(async (event) => {
     setHeader(
       event,
       "Content-Disposition",
-      `attachment; filename="${filename}"`,
+      `attachment; filename="${filename}"`
     );
     setHeader(event, "Cache-Control", "no-cache");
 
@@ -167,11 +168,11 @@ async function fetchNewsletterAnalytics(
   newsletterId: number,
   timeFilter: any,
   include: any,
-  filters: any,
+  filters: any
 ) {
   // Fetch newsletter basic info
   const newsletter = await directus.request(
-    readItem("newsletters", newsletterId, {
+    (readItem as any)("newsletters", newsletterId, {
       fields: [
         "id",
         "title",
@@ -185,7 +186,7 @@ async function fetchNewsletterAnalytics(
         "total_bounces",
         "total_unsubscribes",
       ],
-    }),
+    })
   );
 
   if (!newsletter) {
@@ -211,7 +212,7 @@ async function fetchNewsletterAnalytics(
     result.summary = await fetchSummaryStats(
       directus,
       newsletterId,
-      eventFilter,
+      eventFilter
     );
   }
 
@@ -225,7 +226,7 @@ async function fetchNewsletterAnalytics(
     result.subscribers = await fetchSubscriberStats(
       directus,
       newsletterId,
-      timeFilter,
+      timeFilter
     );
   }
 
@@ -251,16 +252,16 @@ async function fetchNewsletterAnalytics(
 async function fetchSummaryStats(
   directus: any,
   newsletterId: number,
-  eventFilter: any,
+  eventFilter: any
 ) {
   const eventStats = await directus.request(
-    readItems("newsletter_events", {
+    (readItems as any)("newsletter_events", {
       aggregate: {
         count: "*",
       },
       groupBy: ["event_type"],
       filter: eventFilter,
-    }),
+    })
   );
 
   const stats: any = {
@@ -285,7 +286,7 @@ async function fetchSummaryStats(
 // Fetch detailed events
 async function fetchDetailedEvents(directus: any, eventFilter: any) {
   return await directus.request(
-    readItems("newsletter_events", {
+    (readItems as any)("newsletter_events", {
       fields: [
         "id",
         "event_type",
@@ -300,7 +301,7 @@ async function fetchDetailedEvents(directus: any, eventFilter: any) {
       filter: eventFilter,
       sort: ["-created_at"],
       limit: 10000, // Limit for performance
-    }),
+    })
   );
 }
 
@@ -308,7 +309,7 @@ async function fetchDetailedEvents(directus: any, eventFilter: any) {
 async function fetchSubscriberStats(
   directus: any,
   newsletterId: number,
-  timeFilter: any,
+  timeFilter: any
 ) {
   // This would depend on your specific subscriber tracking implementation
   return {
@@ -322,7 +323,7 @@ async function fetchSubscriberStats(
 // Fetch top clicked links
 async function fetchTopLinks(directus: any, eventFilter: any) {
   return await directus.request(
-    readItems("newsletter_events", {
+    (readItems as any)("newsletter_events", {
       fields: ["url", "count(*)"],
       filter: {
         ...eventFilter,
@@ -332,14 +333,14 @@ async function fetchTopLinks(directus: any, eventFilter: any) {
       groupBy: ["url"],
       sort: ["-count"],
       limit: 50,
-    }),
+    })
   );
 }
 
 // Fetch device statistics
 async function fetchDeviceStats(directus: any, eventFilter: any) {
   return await directus.request(
-    readItems("newsletter_events", {
+    (readItems as any)("newsletter_events", {
       fields: ["user_agent", "count(*)"],
       filter: {
         ...eventFilter,
@@ -349,14 +350,14 @@ async function fetchDeviceStats(directus: any, eventFilter: any) {
       groupBy: ["user_agent"],
       sort: ["-count"],
       limit: 20,
-    }),
+    })
   );
 }
 
 // Fetch location statistics
 async function fetchLocationStats(directus: any, eventFilter: any) {
   return await directus.request(
-    readItems("newsletter_events", {
+    (readItems as any)("newsletter_events", {
       fields: ["ip_location", "count(*)"],
       filter: {
         ...eventFilter,
@@ -366,7 +367,7 @@ async function fetchLocationStats(directus: any, eventFilter: any) {
       groupBy: ["ip_location"],
       sort: ["-count"],
       limit: 20,
-    }),
+    })
   );
 }
 
@@ -382,7 +383,7 @@ function generateCSV(exportData: any): string {
 
   // Newsletter summary
   lines.push(
-    "Newsletter,Title,Subject Line,Status,Total Sent,Opens,Clicks,Bounces,Unsubscribes",
+    "Newsletter,Title,Subject Line,Status,Total Sent,Opens,Clicks,Bounces,Unsubscribes"
   );
 
   exportData.newsletters.forEach((newsletter: any) => {
@@ -405,19 +406,19 @@ function generateCSV(exportData: any): string {
         s.clicks || 0,
         s.bounces || 0,
         s.unsubscribes || 0,
-      ].join(","),
+      ].join(",")
     );
   });
 
   // Add detailed events if included
   const hasEvents = exportData.newsletters.some(
-    (n: any) => n.events?.length > 0,
+    (n: any) => n.events?.length > 0
   );
   if (hasEvents) {
     lines.push("");
     lines.push("Detailed Events");
     lines.push(
-      "Newsletter ID,Event Type,Email,Timestamp,URL,User Agent,IP Location",
+      "Newsletter ID,Event Type,Email,Timestamp,URL,User Agent,IP Location"
     );
 
     exportData.newsletters.forEach((newsletter: any) => {
@@ -432,7 +433,7 @@ function generateCSV(exportData: any): string {
               `"${event.url || ""}"`,
               `"${event.user_agent || ""}"`,
               `"${event.ip_location || ""}"`,
-            ].join(","),
+            ].join(",")
           );
         });
       }

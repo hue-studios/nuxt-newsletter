@@ -1,4 +1,5 @@
-// src/runtime/server/api/newsletter/core/send.post.ts
+import { defineEventHandler, createError } from "h3";
+import { useRuntimeConfig } from "#imports";
 import {
   createDirectus,
   rest,
@@ -7,9 +8,9 @@ import {
   createItem,
   updateItem,
 } from "@directus/sdk";
-import { EmailService } from "~/server/utils/email";
-import { validators, getValidatedData } from "~/server/middleware/validation";
-import { getDirectusClient } from "~/server/middleware/directus-auth";
+import { EmailService } from "../../../utils/email";
+import { validators, getValidatedData } from "../../../middleware/validation";
+import { getDirectusClient } from "../../../middleware/directus-auth";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -36,9 +37,9 @@ export default defineEventHandler(async (event) => {
 
     // Fetch newsletter with validation
     const newsletter = await directus.request(
-      readItem("newsletters", newsletter_id, {
+      (readItem as any)("newsletters", newsletter_id, {
         fields: ["*"],
-      }),
+      })
     );
 
     if (!newsletter) {
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event) => {
 
     // Create send record
     const sendRecord = await directus.request(
-      createItem("newsletter_sends", {
+      (createItem as any)("newsletter_sends", {
         newsletter_id,
         mailing_list_ids: mailing_list_ids.join(","),
         total_recipients: subscribers.length,
@@ -96,7 +97,7 @@ export default defineEventHandler(async (event) => {
         ab_test_enabled: ab_test_config?.enabled || false,
         ab_test_percentage: ab_test_config?.percentage || 0,
         ab_test_variant_subject: ab_test_config?.variant_subject || null,
-      }),
+      })
     );
 
     // Handle immediate sending
@@ -107,7 +108,7 @@ export default defineEventHandler(async (event) => {
         newsletter,
         subscribers,
         sendRecord,
-        ab_test_config,
+        ab_test_config
       );
 
       return {
@@ -123,7 +124,7 @@ export default defineEventHandler(async (event) => {
       sendRecord.id,
       sendTime,
       subscribers,
-      ab_test_config,
+      ab_test_config
     );
 
     return {
@@ -159,7 +160,7 @@ export default defineEventHandler(async (event) => {
 // Fetch active subscribers from mailing lists
 async function fetchSubscribers(directus: any, mailingListIds: number[]) {
   const subscribers = await directus.request(
-    readItems("mailing_lists_subscribers", {
+    (readItems as any)("mailing_lists_subscribers", {
       fields: [
         "subscriber_id.id",
         "subscriber_id.email",
@@ -175,7 +176,7 @@ async function fetchSubscribers(directus: any, mailingListIds: number[]) {
           email: { _nnull: true },
         },
       },
-    }),
+    })
   );
 
   // Deduplicate subscribers and flatten structure
@@ -198,7 +199,7 @@ async function processSend(
   newsletter: any,
   subscribers: any[],
   sendRecord: any,
-  abTestConfig?: any,
+  abTestConfig?: any
 ) {
   const startTime = new Date();
 
@@ -218,7 +219,7 @@ async function processSend(
         newsletter,
         subscribers,
         sendRecord,
-        abTestConfig,
+        abTestConfig
       );
     } else {
       // Regular send
@@ -227,30 +228,30 @@ async function processSend(
         directus,
         newsletter,
         subscribers,
-        sendRecord,
+        sendRecord
       );
     }
 
     // Update send record
     await directus.request(
-      updateItem("newsletter_sends", sendRecord.id, {
+      (updateItem as any)("newsletter_sends", sendRecord.id, {
         status: results.failed > 0 ? "completed_with_errors" : "completed",
         sent_count: results.sent,
         failed_count: results.failed,
         completed_at: new Date().toISOString(),
         processing_time: Date.now() - startTime.getTime(),
         errors: results.errors.length > 0 ? results.errors.join("; ") : null,
-      }),
+      })
     );
 
     // Update newsletter stats
     await directus.request(
-      updateItem("newsletters", newsletter.id, {
+      (updateItem as any)("newsletters", newsletter.id, {
         status: "sent",
         total_sent: (newsletter.total_sent || 0) + results.sent,
         last_sent_at: new Date().toISOString(),
         send_count: (newsletter.send_count || 0) + 1,
-      }),
+      })
     );
 
     return {
@@ -264,11 +265,11 @@ async function processSend(
   } catch (error: any) {
     // Update send record with error
     await directus.request(
-      updateItem("newsletter_sends", sendRecord.id, {
+      (updateItem as any)("newsletter_sends", sendRecord.id, {
         status: "failed",
         completed_at: new Date().toISOString(),
         errors: error.message,
-      }),
+      })
     );
 
     throw error;
@@ -281,7 +282,7 @@ async function processRegularSend(
   directus: any,
   newsletter: any,
   subscribers: any[],
-  sendRecord: any,
+  sendRecord: any
 ) {
   const batchSize = 100; // Send in batches
   let sent = 0;
@@ -297,13 +298,13 @@ async function processRegularSend(
 
       // Log batch success
       await directus.request(
-        createItem("newsletter_send_logs", {
+        (createItem as any)("newsletter_send_logs", {
           send_record_id: sendRecord.id,
           batch_number: Math.floor(i / batchSize) + 1,
           recipients_count: batch.length,
           status: "sent",
           sent_at: new Date().toISOString(),
-        }),
+        })
       );
     } catch (error: any) {
       failed += batch.length;
@@ -314,27 +315,27 @@ async function processRegularSend(
 
       // Log batch failure
       await directus.request(
-        createItem("newsletter_send_logs", {
+        (createItem as any)("newsletter_send_logs", {
           send_record_id: sendRecord.id,
           batch_number: Math.floor(i / batchSize) + 1,
           recipients_count: batch.length,
           status: "failed",
           error_message: error.message,
           sent_at: new Date().toISOString(),
-        }),
+        })
       );
     }
 
     // Update progress
     const progress = Math.round(
-      ((i + batch.length) / subscribers.length) * 100,
+      ((i + batch.length) / subscribers.length) * 100
     );
     await directus.request(
-      updateItem("newsletter_sends", sendRecord.id, {
+      (updateItem as any)("newsletter_sends", sendRecord.id, {
         progress_percentage: progress,
         sent_count: sent,
         failed_count: failed,
-      }),
+      })
     );
 
     // Small delay between batches to avoid rate limiting
@@ -351,7 +352,7 @@ async function processABTestSend(
   newsletter: any,
   subscribers: any[],
   sendRecord: any,
-  abTestConfig: any,
+  abTestConfig: any
 ) {
   const testPercentage = abTestConfig.percentage / 100;
   const testGroupSize = Math.floor(subscribers.length * testPercentage);
@@ -368,7 +369,7 @@ async function processABTestSend(
     directus,
     newsletter,
     groupA,
-    sendRecord,
+    sendRecord
   );
 
   // Send variant B (with different subject)
@@ -382,18 +383,18 @@ async function processABTestSend(
     directus,
     newsletterB,
     groupB,
-    sendRecord,
+    sendRecord
   );
 
   // For now, send remaining to variant A (you can implement winner selection later)
-  const resultRemaining
-    = remaining.length > 0
+  const resultRemaining =
+    remaining.length > 0
       ? await processRegularSend(
           emailService,
           directus,
           newsletter,
           remaining,
-          sendRecord,
+          sendRecord
         )
       : { sent: 0, failed: 0, errors: [] };
 
@@ -429,7 +430,7 @@ async function scheduleNewsletter(
   sendRecordId: number,
   sendTime: Date,
   subscribers: any[],
-  abTestConfig?: any,
+  abTestConfig?: any
 ) {
   // This is a placeholder - you would implement this with:
   // - Redis Queue (Bull, BullMQ)
@@ -438,10 +439,10 @@ async function scheduleNewsletter(
   // - External service like Agenda.js
 
   console.log(
-    `Newsletter ${newsletterId} scheduled for ${sendTime.toISOString()}`,
+    `Newsletter ${newsletterId} scheduled for ${sendTime.toISOString()}`
   );
   console.log(
-    `Send record: ${sendRecordId}, Recipients: ${subscribers.length}`,
+    `Send record: ${sendRecordId}, Recipients: ${subscribers.length}`
   );
 
   // For now, we'll just log the schedule

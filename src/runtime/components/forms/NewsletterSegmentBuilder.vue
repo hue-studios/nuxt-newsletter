@@ -211,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, emit } from "vue";
+import { ref } from "vue";
 interface SegmentRule {
   connector: "AND" | "OR";
   field: string;
@@ -374,4 +374,16 @@ const calculateSegment = async () => {
 const saveSegment = () => {
   emit("save", segmentRules.value);
 };
+
+function emit(
+  arg0: string,
+  value: {
+    connector: "AND" | "OR";
+    field: string;
+    operator: string;
+    value: string;
+  }[]
+) {
+  throw new Error("Function not implemented.");
+}
 </script>

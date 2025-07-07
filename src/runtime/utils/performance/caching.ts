@@ -154,7 +154,7 @@ export class NewsletterCache {
     try {
       // Pre-load popular templates
       const templates = await directus.request(
-        readItems("newsletter_templates", {
+        (readItems as any)("newsletter_templates", {
           filter: { status: { _eq: "published" } },
           sort: ["-usage_count"],
           limit: 10,

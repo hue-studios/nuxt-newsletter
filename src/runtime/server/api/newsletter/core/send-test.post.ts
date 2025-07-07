@@ -1,8 +1,15 @@
-// src/runtime/server/api/newsletter/core/send-test.post.ts
-import { createDirectus, rest, readItem } from "@directus/sdk";
-import { EmailService } from "~/server/utils/email";
-import { validators, getValidatedData } from "~/server/middleware/validation";
-import { getDirectusClient } from "~/server/middleware/directus-auth";
+import { defineEventHandler, createError, readBody } from "h3";
+import { useRuntimeConfig } from "#imports";
+import {
+  createDirectus,
+  rest,
+  readItem,
+  createItem,
+  updateItem,
+} from "@directus/sdk";
+import { EmailService } from "../../../utils/email";
+import { validators, getValidatedData } from "../../../middleware/validation";
+import { getDirectusClient } from "../../../middleware/directus-auth";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -10,7 +17,7 @@ export default defineEventHandler(async (event) => {
     await validators.sendTest(event);
     const { newsletter_id, test_emails, include_analytics } = getValidatedData(
       event,
-      "body",
+      "body"
     );
 
     const config = useRuntimeConfig();
@@ -27,9 +34,9 @@ export default defineEventHandler(async (event) => {
 
     // Fetch newsletter
     const newsletter = await directus.request(
-      readItem("newsletters", newsletter_id, {
+      (readItem as any)("newsletters", newsletter_id, {
         fields: ["*"],
-      }),
+      })
     );
 
     if (!newsletter) {
@@ -71,28 +78,28 @@ export default defineEventHandler(async (event) => {
     // Send test emails
     const sendResult = await emailService.sendTestEmail(
       newsletter,
-      test_emails,
+      test_emails
     );
 
     // Log test send
     await directus.request(
-      createItem("newsletter_test_sends", {
+      (createItem as any)("newsletter_test_sends", {
         newsletter_id,
         test_emails: test_emails.join(", "),
         sent_at: new Date().toISOString(),
         sent_by: event.context.user?.id || null,
         sendgrid_message_id: sendResult[0]?.headers?.["x-message-id"] || null,
         status: "sent",
-      }),
+      })
     );
 
     // Update newsletter stats
     await directus.request(
-      updateItem("newsletters", newsletter_id, {
+      (updateItem as any)("newsletters", newsletter_id, {
         test_sends_count:
           (newsletter.test_sends_count || 0) + test_emails.length,
         last_test_sent_at: new Date().toISOString(),
-      }),
+      })
     );
 
     return {
@@ -114,18 +121,18 @@ export default defineEventHandler(async (event) => {
     try {
       const body = await readBody(event);
       const directus = createDirectus(
-        config.public.newsletter.directusUrl,
+        config.public.newsletter.directusUrl
       ).with(rest());
 
       await directus.request(
-        createItem("newsletter_test_sends", {
+        (createItem as any)("newsletter_test_sends", {
           newsletter_id: body.newsletter_id,
           test_emails: body.test_emails?.join(", ") || "",
           sent_at: new Date().toISOString(),
           sent_by: event.context.user?.id || null,
           status: "failed",
           error_message: error.message,
-        }),
+        })
       );
     } catch (logError) {
       console.error("Failed to log test send error:", logError);
@@ -151,7 +158,7 @@ export default defineEventHandler(async (event) => {
 // Process HTML for test emails
 function processTestHtml(
   html: string,
-  includeAnalytics: boolean = false,
+  includeAnalytics: boolean = false
 ): string {
   let processedHtml = html;
 
@@ -160,7 +167,7 @@ function processTestHtml(
     // Remove tracking pixels
     processedHtml = processedHtml.replace(
       /<img[^>]*src=[^>]*track[^>]*>/gi,
-      "",
+      ""
     );
 
     // Remove UTM parameters from links

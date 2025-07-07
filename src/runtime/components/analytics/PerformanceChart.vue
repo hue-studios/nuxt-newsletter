@@ -17,15 +17,9 @@
               <UiSelectValue placeholder="Select metric" />
             </UiSelectTrigger>
             <UiSelectContent>
-              <UiSelectItem value="opens">
-                Open Rate
-              </UiSelectItem>
-              <UiSelectItem value="clicks">
-                Click Rate
-              </UiSelectItem>
-              <UiSelectItem value="both">
-                Both Metrics
-              </UiSelectItem>
+              <UiSelectItem value="opens"> Open Rate </UiSelectItem>
+              <UiSelectItem value="clicks"> Click Rate </UiSelectItem>
+              <UiSelectItem value="both"> Both Metrics </UiSelectItem>
             </UiSelectContent>
           </UiSelect>
 
@@ -34,18 +28,10 @@
               <UiSelectValue placeholder="Time range" />
             </UiSelectTrigger>
             <UiSelectContent>
-              <UiSelectItem value="7">
-                7 Days
-              </UiSelectItem>
-              <UiSelectItem value="30">
-                30 Days
-              </UiSelectItem>
-              <UiSelectItem value="90">
-                90 Days
-              </UiSelectItem>
-              <UiSelectItem value="365">
-                1 Year
-              </UiSelectItem>
+              <UiSelectItem value="7"> 7 Days </UiSelectItem>
+              <UiSelectItem value="30"> 30 Days </UiSelectItem>
+              <UiSelectItem value="90"> 90 Days </UiSelectItem>
+              <UiSelectItem value="365"> 1 Year </UiSelectItem>
             </UiSelectContent>
           </UiSelect>
         </div>
@@ -90,43 +76,30 @@
       >
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div class="text-center">
-            <p class="text-sm text-gray-600">
-              Average Open Rate
-            </p>
+            <p class="text-sm text-gray-600">Average Open Rate</p>
             <p class="text-lg font-bold text-green-600">
               {{ averageOpenRate }}%
             </p>
           </div>
           <div class="text-center">
-            <p class="text-sm text-gray-600">
-              Average Click Rate
-            </p>
+            <p class="text-sm text-gray-600">Average Click Rate</p>
             <p class="text-lg font-bold text-blue-600">
               {{ averageClickRate }}%
             </p>
           </div>
           <div class="text-center">
-            <p class="text-sm text-gray-600">
-              Best Open Rate
-            </p>
-            <p class="text-lg font-bold text-green-700">
-              {{ bestOpenRate }}%
-            </p>
+            <p class="text-sm text-gray-600">Best Open Rate</p>
+            <p class="text-lg font-bold text-green-700">{{ bestOpenRate }}%</p>
           </div>
           <div class="text-center">
-            <p class="text-sm text-gray-600">
-              Trend
-            </p>
+            <p class="text-sm text-gray-600">Trend</p>
             <div class="flex items-center justify-center">
               <Icon
                 :name="trendIcon"
                 :class="trendColor"
                 class="w-4 h-4 mr-1"
               />
-              <span
-                :class="trendColor"
-                class="text-lg font-bold"
-              >
+              <span :class="trendColor" class="text-lg font-bold">
                 {{ trendPercentage }}%
               </span>
             </div>
@@ -138,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
 interface ChartDataPoint {
   date: string;
   opens: number;
@@ -283,17 +257,17 @@ const chartOption = computed(() => {
 
 const averageOpenRate = computed(() => {
   if (filteredData.value.length === 0) return "0.0";
-  const avg
-    = filteredData.value.reduce((sum, point) => sum + point.opens, 0)
-      / filteredData.value.length;
+  const avg =
+    filteredData.value.reduce((sum, point) => sum + point.opens, 0) /
+    filteredData.value.length;
   return avg.toFixed(1);
 });
 
 const averageClickRate = computed(() => {
   if (filteredData.value.length === 0) return "0.0";
-  const avg
-    = filteredData.value.reduce((sum, point) => sum + point.clicks, 0)
-      / filteredData.value.length;
+  const avg =
+    filteredData.value.reduce((sum, point) => sum + point.clicks, 0) /
+    filteredData.value.length;
   return avg.toFixed(1);
 });
 
@@ -311,10 +285,10 @@ const trendPercentage = computed(() => {
 
   if (older.length === 0) return "0.0";
 
-  const recentAvg
-    = recent.reduce((sum, point) => sum + point.opens, 0) / recent.length;
-  const olderAvg
-    = older.reduce((sum, point) => sum + point.opens, 0) / older.length;
+  const recentAvg =
+    recent.reduce((sum, point) => sum + point.opens, 0) / recent.length;
+  const olderAvg =
+    older.reduce((sum, point) => sum + point.opens, 0) / older.length;
 
   const change = ((recentAvg - olderAvg) / olderAvg) * 100;
   return Math.abs(change).toFixed(1);

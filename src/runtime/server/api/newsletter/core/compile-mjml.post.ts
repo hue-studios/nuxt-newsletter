@@ -1,8 +1,9 @@
-// src/runtime/server/api/newsletter/core/compile-mjml.post.ts
-import { createDirectus, rest, readItem, readItems } from "@directus/sdk";
+import { defineEventHandler, createError, readBody } from "h3";
+import { useRuntimeConfig } from "#imports";
+import { readItem, updateItem } from "@directus/sdk";
 import mjml from "mjml";
 import Handlebars from "handlebars";
-import { getDirectusClient } from "~/server/middleware/directus-auth";
+import { getDirectusClient } from "../../../middleware/directus-auth";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
     // Fetch newsletter with blocks
     const newsletter = await directus.request(
-      readItem("newsletters", body.newsletter_id, {
+      (readItem as any)("newsletters", body.newsletter_id, {
         fields: [
           "*",
           "blocks.id",
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
           "template_id.mjml_template",
           "template_id.default_values",
         ],
-      }),
+      })
     );
 
     if (!newsletter) {
@@ -48,7 +49,7 @@ export default defineEventHandler(async (event) => {
 
     // Sort blocks by sort order
     const sortedBlocks = (newsletter.blocks || []).sort(
-      (a: any, b: any) => (a.sort || 0) - (b.sort || 0),
+      (a: any, b: any) => (a.sort || 0) - (b.sort || 0)
     );
 
     // Register Handlebars helpers
@@ -59,10 +60,10 @@ export default defineEventHandler(async (event) => {
       <mjml>
         <mj-head>
           <mj-title>${escapeHtml(
-            newsletter.subject_line || newsletter.title,
+            newsletter.subject_line || newsletter.title
           )}</mj-title>
           <mj-preview>${escapeHtml(
-            newsletter.preview_text || newsletter.title,
+            newsletter.preview_text || newsletter.title
           )}</mj-preview>
           <mj-attributes>
             <mj-all font-family="Arial, sans-serif" />
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event) => {
       } catch (error: any) {
         console.error(`Error processing block ${block.id}:`, error);
         warnings.push(
-          `Block ${block.id} (${block.block_type?.name}): ${error.message}`,
+          `Block ${block.id} (${block.block_type?.name}): ${error.message}`
         );
       }
     }
@@ -130,11 +131,11 @@ export default defineEventHandler(async (event) => {
 
     // Update newsletter with compiled HTML
     await directus.request(
-      updateItem("newsletters", body.newsletter_id, {
+      (updateItem as any)("newsletters", body.newsletter_id, {
         compiled_html: mjmlResult.html,
         compiled_at: new Date().toISOString(),
         compilation_warnings: warnings.length > 0 ? warnings : null,
-      }),
+      })
     );
 
     return {
@@ -165,7 +166,7 @@ export default defineEventHandler(async (event) => {
 async function processBlock(
   block: any,
   newsletter: any,
-  warnings: string[],
+  warnings: string[]
 ): Promise<string> {
   const blockType = block.block_type;
 
@@ -243,7 +244,7 @@ function registerHandlebarsHelpers() {
       }
 
       return url;
-    },
+    }
   );
 
   // Date formatting helper
@@ -271,13 +272,18 @@ function registerHandlebarsHelpers() {
         default:
           return d.toISOString().split("T")[0];
       }
-    },
+    }
   );
-
   // Conditional helper
-  Handlebars.registerHelper("if_eq", function (a: any, b: any, options: any) {
-    return a === b ? options.fn(this) : options.inverse(this);
+  Handlebars.registerHelper("if_eq", (a: any, b: any, options: any) => {
+    // The context is available in options.data.root or as the last parameter
+    const context = options.data?.root || {};
+    return a === b ? options.fn(context) : options.inverse(context);
   });
+
+  //   Handlebars.registerHelper("if_eq", function(a: any, b: any, options: any) {
+  //   return a === b ? options.fn(this) : options.inverse(this);
+  // });
 
   // Loop helper with index
   Handlebars.registerHelper(
@@ -295,7 +301,7 @@ function registerHandlebarsHelpers() {
       }
 
       return result;
-    },
+    }
   );
 }
 

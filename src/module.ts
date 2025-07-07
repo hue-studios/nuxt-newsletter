@@ -197,7 +197,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     // Add plugins
     addPlugin(resolver.resolve("./runtime/plugins/gsap.client"));
-    addPlugin(resolver.resolve("./runtime/plugins/directus.client"));
+    addPlugin(resolver.resolve("./runtime/plugins/newsletter.client"));
 
     // Only validate required options in production builds
     if (!isDev && !isStub && !isPrepare && !options.directusUrl) {

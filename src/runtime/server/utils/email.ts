@@ -1,11 +1,11 @@
-// src/runtime/server/utils/email.ts
+import { useRuntimeConfig } from "#imports";
 import sgMail from "@sendgrid/mail";
 import crypto from "node:crypto";
 import type {
   Newsletter,
   NewsletterSend,
   Subscriber,
-} from "~/types/newsletter";
+} from "../../types/newsletter";
 
 export interface EmailConfig {
   apiKey: string;
@@ -59,7 +59,7 @@ export class EmailService {
     newsletter: Newsletter,
     recipients: Subscriber[],
     sendRecord: NewsletterSend,
-    options: NewsletterSendOptions = {},
+    options: NewsletterSendOptions = {}
   ): Promise<SendResult> {
     const {
       batchSize = 100,
@@ -103,7 +103,7 @@ export class EmailService {
   async sendTestEmail(
     newsletter: Newsletter,
     testEmails: string[],
-    options: TestEmailOptions = {},
+    options: TestEmailOptions = {}
   ): Promise<SendResult> {
     const {
       includeAnalytics = false,
@@ -121,7 +121,7 @@ export class EmailService {
       html: this.processTestHtml(
         newsletter.compiled_html,
         includeAnalytics,
-        testIndicators,
+        testIndicators
       ),
       to: testEmails.map((email) => ({ email: email.trim().toLowerCase() })),
       categories: ["newsletter-test"],
@@ -155,7 +155,7 @@ export class EmailService {
     newsletter: Newsletter,
     recipients: Subscriber[],
     sendRecord: NewsletterSend,
-    customArgs: Record<string, string>,
+    customArgs: Record<string, string>
   ): Promise<void> {
     // Check rate limiting
     this.checkRateLimit("newsletter_send");
@@ -213,7 +213,7 @@ export class EmailService {
   private getSubstitutions(
     newsletter: Newsletter,
     recipient: Subscriber,
-    sendRecord: NewsletterSend,
+    sendRecord: NewsletterSend
   ): Record<string, string> {
     const config = useRuntimeConfig();
     const baseUrl = config.public.siteUrl || "https://example.com";
@@ -221,7 +221,7 @@ export class EmailService {
     // Generate unsubscribe token
     const unsubscribeToken = this.generateUnsubscribeToken(
       recipient.email,
-      newsletter.id.toString(),
+      newsletter.id.toString()
     );
 
     return {
@@ -237,15 +237,15 @@ export class EmailService {
 
       // Unsubscribe links
       unsubscribe_url: `${baseUrl}/unsubscribe?email=${encodeURIComponent(
-        recipient.email,
+        recipient.email
       )}&token=${unsubscribeToken}&newsletter=${newsletter.id}`,
       preferences_url: `${baseUrl}/preferences?email=${encodeURIComponent(
-        recipient.email,
+        recipient.email
       )}&token=${unsubscribeToken}`,
 
       // Tracking
       open_tracking: `<img src="${baseUrl}/api/newsletter/track/open?email=${encodeURIComponent(
-        recipient.email,
+        recipient.email
       )}&newsletter=${
         newsletter.id
       }&token=${unsubscribeToken}" width="1" height="1" style="display:none;" />`,
@@ -264,7 +264,7 @@ export class EmailService {
   private processTestHtml(
     html: string,
     includeAnalytics: boolean,
-    testIndicators: boolean,
+    testIndicators: boolean
   ): string {
     let processedHtml = html;
 
@@ -273,7 +273,7 @@ export class EmailService {
       // Remove tracking pixels
       processedHtml = processedHtml.replace(
         /<img[^>]*src=[^>]*track[^>]*>/gi,
-        "",
+        ""
       );
 
       // Remove UTM parameters from links
@@ -299,7 +299,7 @@ export class EmailService {
     Object.entries(testSubstitutions).forEach(([tag, value]) => {
       processedHtml = processedHtml.replace(
         new RegExp(tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
-        value,
+        value
       );
     });
 
@@ -330,7 +330,7 @@ export class EmailService {
   // Generate secure unsubscribe token
   private generateUnsubscribeToken(
     email: string,
-    newsletterId: string,
+    newsletterId: string
   ): string {
     const secret = this.config.webhookSecret || "default-secret";
     const data = `${email}:${newsletterId}:${Date.now()}`;
@@ -342,7 +342,7 @@ export class EmailService {
   verifyUnsubscribeToken(
     token: string,
     email: string,
-    newsletterId: string,
+    newsletterId: string
   ): boolean {
     try {
       const secret = this.config.webhookSecret || "default-secret";
@@ -355,7 +355,7 @@ export class EmailService {
 
       return crypto.timingSafeEqual(
         Buffer.from(token, "base64url"),
-        Buffer.from(expectedToken, "base64url"),
+        Buffer.from(expectedToken, "base64url")
       );
     } catch (error) {
       return false;
@@ -430,7 +430,7 @@ export class EmailService {
       templateId?: string;
       templateData?: Record<string, any>;
       categories?: string[];
-    } = {},
+    } = {}
   ): Promise<SendResult> {
     const emailData = {
       from: options.from || {
@@ -500,7 +500,7 @@ export function createEmailTemplate(
     backgroundColor?: string;
     textColor?: string;
     linkColor?: string;
-  } = {},
+  } = {}
 ): string {
   const {
     preheader = "",

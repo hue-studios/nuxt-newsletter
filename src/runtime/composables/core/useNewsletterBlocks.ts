@@ -97,7 +97,7 @@ export const useNewsletterBlocks = (
       }
 
       const response = await directus.request(
-        readItems("newsletter_block_types", {
+        (readItems as any)("newsletter_block_types", {
           fields: ["*"],
           filter: { status: { _eq: "published" } },
           sort: ["category", "sort"],
@@ -130,7 +130,7 @@ export const useNewsletterBlocks = (
       state.error = null;
 
       const response = await directus.request(
-        readItems("newsletter_blocks", {
+        (readItems as any)("newsletter_blocks", {
           fields: [
             "*",
             "block_type.id",
@@ -170,7 +170,7 @@ export const useNewsletterBlocks = (
       const maxSort = Math.max(0, ...state.blocks.map((b) => b.sort || 0));
 
       const response = await directus.request(
-        createItem("newsletter_blocks", {
+        (createItem as any)("newsletter_blocks", {
           status: "published",
           sort: maxSort + 1,
           field_data: {},
@@ -232,7 +232,7 @@ export const useNewsletterBlocks = (
       }
 
       const response = await directus.request(
-        updateItem("newsletter_blocks", id, validated)
+        (updateItem as any)("newsletter_blocks", id, validated)
       );
 
       state.lastSaved = new Date();
@@ -371,7 +371,9 @@ export const useNewsletterBlocks = (
       await Promise.all(
         updates.map((update) =>
           directus.request(
-            updateItem("newsletter_blocks", update.id, { sort: update.sort })
+            (updateItem as any)("newsletter_blocks", update.id, {
+              sort: update.sort,
+            })
           )
         )
       );

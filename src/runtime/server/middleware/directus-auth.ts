@@ -1,6 +1,6 @@
-// src/runtime/server/middleware/directus-auth.ts
+import { defineEventHandler, createError, getHeader } from "h3";
+import { useRuntimeConfig } from "#imports";
 import { createDirectus, rest, staticToken, readMe } from "@directus/sdk";
-import { getDirectusClient } from "~/server/middleware/directus-auth";
 
 /**
  * Simplified authentication middleware that relies on Directus tokens
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   ];
 
   const isPublicEndpoint = publicEndpoints.some((endpoint) =>
-    event.node.req.url?.startsWith(endpoint),
+    event.node.req.url?.startsWith(endpoint)
   );
 
   if (isPublicEndpoint) {
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
     await client.request(
       readMe({
         fields: ["id", "email", "status", "role"],
-      }),
+      })
     );
 
     // Store the validated token and client for use in API handlers

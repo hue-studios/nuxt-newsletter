@@ -2,21 +2,27 @@
   "name": "@hue-studios/nuxt-newsletter",
   "version": "1.0.0",
   "description": "Complete newsletter management system for Nuxt 3 with Tailwind CSS 4 support",
-  "main": "./dist/module.mjs",
+  "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/module.mjs",
-      "require": "./dist/module.cjs"
+      "types": "./dist/types.d.mts",
+      "import": "./dist/module.mjs"
+    }
+  },
+  "main": "./dist/module.mjs",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/types.d.mts"
+      ]
     }
   },
   "files": [
     "dist"
   ],
-  
   "scripts": {
     "prepack": "nuxt-module-build build",
-    "build": "nuxt-module-build build",
-    "dev": "nuxt-module-build build --stub && nuxi dev playground",
+    "dev": "npm run dev:prepare && nuxi dev playground",
     "dev:build": "nuxi build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
     "release": "npm run lint && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
@@ -24,18 +30,14 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
     "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
-    "typecheck": "vue-tsc --noEmit",
-    "prepare": "husky install",
-    "setup:complete": "npm run install-collections && npm run install-advanced-blocks && npm run verify-setup",
+    "setup:complete": "npm run install-collections && npm run verify-setup",
     "verify-setup": "node scripts/verify-setup.js",
     "install-collections": "node scripts/install-directus-collections.js"
   },
   "dependencies": {
     "@directus/sdk": "^20.0.0",
-    "gsap": "^3.12.2",
+    "@sendgrid/mail": "^8.1.5",
     "@tiptap/core": "^2.1.13",
     "@tiptap/extension-bold": "^2.1.13",
     "@tiptap/extension-italic": "^2.1.13",
@@ -44,13 +46,14 @@
     "@tiptap/vue-3": "^2.1.13",
     "@vueuse/core": "^10.5.0",
     "@vueuse/nuxt": "^10.5.0",
+    "gsap": "^3.12.2",
     "handlebars": "^4.7.8",
     "mjml": "^4.15.3",
-    "@sendgrid/mail": "^8.1.5",
+    "recharts": "^3.0.2",
     "sortablejs": "^1.15.0",
     "zod": "^3.25.75"
   },
-    "devDependencies": {
+  "devDependencies": {
     "@nuxt/devtools": "^2.6.2",
     "@nuxt/eslint-config": "^1.5.2",
     "@nuxt/module-builder": "^1.0.1",
@@ -64,8 +67,6 @@
     "changelogen": "^0.6.2",
     "eslint": "^9.30.1",
     "happy-dom": "^18.0.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
     "nuxt": "^3.17.6",
     "playwright": "^1.53.2",
     "typescript": "^5.8.3",
@@ -73,10 +74,10 @@
     "vue-tsc": "^2.2.12"
   },
   "peerDependencies": {
-    "tailwindcss": "^4.0.0",
+    "@nuxtjs/color-mode": "^3.0.0",
     "@tailwindcss/vite": "^4.0.0",
     "shadcn-nuxt": "^2.0.0",
-    "@nuxtjs/color-mode": "^3.0.0"
+    "tailwindcss": "^4.0.0"
   },
   "peerDependenciesMeta": {
     "tailwindcss": {

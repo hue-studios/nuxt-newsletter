@@ -1,4 +1,4 @@
-// src/runtime/server/utils/webhooks.ts
+import { useRuntimeConfig } from "#imports";
 import crypto from "node:crypto";
 import { createDirectus, rest, createItem } from "@directus/sdk";
 
@@ -47,7 +47,7 @@ export class WebhookManager {
     source: string,
     payload: string,
     signature?: string,
-    secret?: string,
+    secret?: string
   ): Promise<{
     success: boolean;
     processed: number;
@@ -130,11 +130,11 @@ export class WebhookManager {
     try {
       const config = useRuntimeConfig();
       const directus = createDirectus(
-        config.public.newsletter.directusUrl,
+        config.public.newsletter.directusUrl
       ).with(rest());
 
       await directus.request(
-        createItem("newsletter_events", {
+        (createItem as any)("newsletter_events", {
           newsletter_id: event.newsletter_id,
           event_type: event.event_type,
           email: event.email,
@@ -142,7 +142,7 @@ export class WebhookManager {
           source: event.source,
           data: JSON.stringify(event.data),
           created_at: new Date().toISOString(),
-        }),
+        })
       );
     } catch (error) {
       console.error("Failed to save webhook event:", error);
@@ -192,8 +192,8 @@ export class WebhookManager {
       return null;
     }
 
-    const newsletterIdFromEvent
-      = newsletter_id || this.extractFromCustomArgs(event, "newsletter_id");
+    const newsletterIdFromEvent =
+      newsletter_id || this.extractFromCustomArgs(event, "newsletter_id");
 
     return {
       event_type: eventType,
@@ -287,7 +287,7 @@ export class WebhookManager {
   private validateSendGridSignature(
     signature: string,
     payload: string,
-    secret: string,
+    secret: string
   ): boolean {
     try {
       const expectedSignature = crypto
@@ -297,7 +297,7 @@ export class WebhookManager {
 
       return crypto.timingSafeEqual(
         Buffer.from(signature),
-        Buffer.from(expectedSignature),
+        Buffer.from(expectedSignature)
       );
     } catch (error) {
       return false;
@@ -307,7 +307,7 @@ export class WebhookManager {
   private validateMailgunSignature(
     signature: string,
     payload: string,
-    secret: string,
+    secret: string
   ): boolean {
     try {
       // Mailgun uses a different signature format
@@ -320,7 +320,7 @@ export class WebhookManager {
 
       return crypto.timingSafeEqual(
         Buffer.from(computedSignature),
-        Buffer.from(expectedSignature),
+        Buffer.from(expectedSignature)
       );
     } catch (error) {
       return false;
@@ -330,7 +330,7 @@ export class WebhookManager {
   private validatePostmarkSignature(
     signature: string,
     payload: string,
-    secret: string,
+    secret: string
   ): boolean {
     try {
       const expectedSignature = crypto
@@ -340,7 +340,7 @@ export class WebhookManager {
 
       return crypto.timingSafeEqual(
         Buffer.from(signature),
-        Buffer.from(expectedSignature),
+        Buffer.from(expectedSignature)
       );
     } catch (error) {
       return false;
@@ -377,11 +377,11 @@ export class WebhookManager {
 
   // Utility functions
   private extractFromCustomArgs(event: any, key: string): any {
-    const customArgs
-      = event.custom_args
-        || event.unique_args
-        || event["user-variables"]
-        || event.Metadata;
+    const customArgs =
+      event.custom_args ||
+      event.unique_args ||
+      event["user-variables"] ||
+      event.Metadata;
 
     if (typeof customArgs === "object" && customArgs[key]) {
       return customArgs[key];
@@ -409,7 +409,7 @@ export function verifyWebhookSignature(
   provider: string,
   signature: string,
   payload: string,
-  secret: string,
+  secret: string
 ): boolean {
   switch (provider.toLowerCase()) {
     case "sendgrid":
@@ -427,7 +427,7 @@ export function verifyWebhookSignature(
 export function verifySendGridSignature(
   signature: string,
   payload: string,
-  secret: string,
+  secret: string
 ): boolean {
   try {
     const expectedSignature = crypto
@@ -437,7 +437,7 @@ export function verifySendGridSignature(
 
     return crypto.timingSafeEqual(
       Buffer.from(signature),
-      Buffer.from(expectedSignature),
+      Buffer.from(expectedSignature)
     );
   } catch (error) {
     return false;
@@ -447,7 +447,7 @@ export function verifySendGridSignature(
 export function verifyMailgunSignature(
   signature: string,
   payload: string,
-  secret: string,
+  secret: string
 ): boolean {
   try {
     const [timestamp, token, computedSignature] = signature.split(",");
@@ -459,7 +459,7 @@ export function verifyMailgunSignature(
 
     return crypto.timingSafeEqual(
       Buffer.from(computedSignature),
-      Buffer.from(expectedSignature),
+      Buffer.from(expectedSignature)
     );
   } catch (error) {
     return false;
@@ -469,7 +469,7 @@ export function verifyMailgunSignature(
 export function verifyPostmarkSignature(
   signature: string,
   payload: string,
-  secret: string,
+  secret: string
 ): boolean {
   try {
     const expectedSignature = crypto
@@ -479,7 +479,7 @@ export function verifyPostmarkSignature(
 
     return crypto.timingSafeEqual(
       Buffer.from(signature),
-      Buffer.from(expectedSignature),
+      Buffer.from(expectedSignature)
     );
   } catch (error) {
     return false;
@@ -489,7 +489,7 @@ export function verifyPostmarkSignature(
 // Webhook event type normalizer
 export function normalizeEventType(
   provider: string,
-  eventType: string,
+  eventType: string
 ): string {
   const normalizations: Record<string, Record<string, string>> = {
     sendgrid: {
@@ -544,7 +544,7 @@ export class WebhookRetryManager {
     payload: string,
     source: string,
     signature?: string,
-    secret?: string,
+    secret?: string
   ): Promise<void> {
     const id = crypto.randomUUID();
 
@@ -562,7 +562,7 @@ export class WebhookRetryManager {
   async processRetryQueue(): Promise<void> {
     const now = new Date();
     const itemsToRetry = this.retryQueue.filter(
-      (item) => item.nextRetry <= now && item.attempts < this.maxRetries,
+      (item) => item.nextRetry <= now && item.attempts < this.maxRetries
     );
 
     for (const item of itemsToRetry) {
@@ -571,7 +571,7 @@ export class WebhookRetryManager {
           item.source,
           item.payload,
           item.signature,
-          item.secret,
+          item.secret
         );
 
         // Remove successful item
@@ -584,13 +584,13 @@ export class WebhookRetryManager {
           this.retryQueue = this.retryQueue.filter((i) => i.id !== item.id);
           console.error(
             `Webhook retry failed after ${this.maxRetries} attempts:`,
-            error,
+            error
           );
         } else {
           // Schedule next retry
-          const delay
-            = this.retryDelays[item.attempts - 1]
-              || this.retryDelays[this.retryDelays.length - 1];
+          const delay =
+            this.retryDelays[item.attempts - 1] ||
+            this.retryDelays[this.retryDelays.length - 1];
           item.nextRetry = new Date(Date.now() + delay);
         }
       }
@@ -599,10 +599,10 @@ export class WebhookRetryManager {
 
   getQueueStatus(): { pending: number; failed: number } {
     const pending = this.retryQueue.filter(
-      (item) => item.attempts < this.maxRetries,
+      (item) => item.attempts < this.maxRetries
     ).length;
     const failed = this.retryQueue.filter(
-      (item) => item.attempts >= this.maxRetries,
+      (item) => item.attempts >= this.maxRetries
     ).length;
 
     return { pending, failed };

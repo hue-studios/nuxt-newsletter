@@ -4,7 +4,7 @@ import {
   sanitizeHtml,
   sanitizeInput,
   validateEmail,
-} from "~/utils/security/sanitization";
+} from "../../../../utils/security/sanitization";
 
 // Common validation schemas
 export const commonSchemas = {
@@ -162,7 +162,7 @@ export const validationSchemas = {
 // Create validation middleware function
 export function createValidationMiddleware(
   schema: z.ZodSchema,
-  source: "body" | "query" | "params" = "body",
+  source: "body" | "query" | "params" = "body"
 ) {
   return defineEventHandler(async (event) => {
     try {
@@ -221,7 +221,7 @@ export function validateCSP(event: any) {
     setHeader(
       event,
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;",
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;"
     );
   }
 }
@@ -249,7 +249,7 @@ export function validateWebhookSignature(
   event: any,
   payload: string,
   signature: string,
-  secret: string,
+  secret: string
 ): boolean {
   const crypto = require("node:crypto");
 
@@ -264,14 +264,14 @@ export function validateWebhookSignature(
 
   return crypto.timingSafeEqual(
     Buffer.from(expectedSignature, "hex"),
-    Buffer.from(providedSignature, "hex"),
+    Buffer.from(providedSignature, "hex")
   );
 }
 
 // Helper to get validated data from context
 export function getValidatedData(
   event: any,
-  source: "body" | "query" | "params" = "body",
+  source: "body" | "query" | "params" = "body"
 ) {
   return event.context.validated?.[source];
 }
@@ -280,7 +280,7 @@ export function getValidatedData(
 export const validators = {
   newsletterId: createValidationMiddleware(
     z.object({ id: commonSchemas.newsletterId }),
-    "params",
+    "params"
   ),
 
   pagination: createValidationMiddleware(commonSchemas.pagination, "query"),
@@ -293,7 +293,7 @@ export const validators = {
 
   sendNewsletter: createValidationMiddleware(
     validationSchemas.sendNewsletter,
-    "body",
+    "body"
   ),
 
   template: createValidationMiddleware(validationSchemas.template, "body"),

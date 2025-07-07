@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:open="open">
+  <Dialog :open="open" @update:open="$emit('update:open', $event)">
     <DialogContent class="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Schedule Newsletter</DialogTitle>

@@ -91,7 +91,7 @@ export const useNewsletter = () => {
       if (options.category) params.append("category", options.category);
       if (options.search) params.append("search", options.search);
 
-      const response = await $fetch(`/api/newsletter/list?${params}`);
+      const response = await fetch(`/api/newsletter/list?${params}`);
       state.newsletters = response.data || [];
 
       return response;
@@ -107,7 +107,7 @@ export const useNewsletter = () => {
       state.isLoading = true;
       state.error = null;
 
-      const newsletter = await $fetch(`/api/newsletter/${id}`);
+      const newsletter = await fetch(`/api/newsletter/${id}`);
       state.currentNewsletter = newsletter;
 
       return newsletter;
@@ -126,7 +126,7 @@ export const useNewsletter = () => {
       // Validate input
       const validated = NewsletterSchema.parse(data);
 
-      const newsletter = await $fetch("/api/newsletter/create", {
+      const newsletter = await fetch("/api/newsletter/create", {
         method: "POST",
         body: validated,
       });
@@ -164,7 +164,7 @@ export const useNewsletter = () => {
       state.isUpdating = true;
       state.error = null;
 
-      const newsletter = await $fetch(`/api/newsletter/${id}`, {
+      const newsletter = await fetch(`/api/newsletter/${id}`, {
         method: "PATCH",
         body: data,
       });
@@ -196,7 +196,7 @@ export const useNewsletter = () => {
       const newsletter = state.newsletters.find((n) => n.id === id);
       const title = newsletter?.title || "Newsletter";
 
-      await $fetch(`/api/newsletter/${id}`, {
+      await fetch(`/api/newsletter/${id}`, {
         method: "DELETE",
       });
 
@@ -230,7 +230,7 @@ export const useNewsletter = () => {
         throw new Error("Newsletter not found");
       }
 
-      const newsletter = await $fetch(`/api/newsletter/${id}/duplicate`, {
+      const newsletter = await fetch(`/api/newsletter/${id}/duplicate`, {
         method: "POST",
         body: {
           title: newTitle || `${originalNewsletter.title} (Copy)`,
@@ -279,7 +279,7 @@ export const useNewsletter = () => {
       state.isLoading = true;
       state.error = null;
 
-      await $fetch("/api/newsletter/send-test", {
+      await fetch("/api/newsletter/send-test", {
         method: "POST",
         body: {
           newsletter_id: newsletter.id,
@@ -305,7 +305,7 @@ export const useNewsletter = () => {
       state.isCompiling = true;
       state.error = null;
 
-      const response = await $fetch("/api/newsletter/compile-mjml", {
+      const response = await fetch("/api/newsletter/compile-mjml", {
         method: "POST",
         body: { newsletter_id: newsletterId },
       });
@@ -334,9 +334,7 @@ export const useNewsletter = () => {
   // Enhanced analytics fetching
   const fetchAnalytics = async (newsletterId: number) => {
     try {
-      const response = await $fetch(
-        `/api/newsletter/analytics/${newsletterId}`
-      );
+      const response = await fetch(`/api/newsletter/analytics/${newsletterId}`);
       return response;
     } catch (error: any) {
       handleError(error, "fetch analytics");

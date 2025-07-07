@@ -1,7 +1,7 @@
-// src/runtime/server/utils/mjml.ts
+import { useRuntimeConfig } from "#imports";
 import mjml from "mjml";
 import Handlebars from "handlebars";
-import { sanitizeHtml } from "~/utils/security/sanitization";
+import { sanitizeHtml } from "../../utils/security/sanitization";
 
 export interface MJMLCompileOptions {
   validationLevel?: "strict" | "soft" | "skip";
