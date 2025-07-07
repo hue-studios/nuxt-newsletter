@@ -7,27 +7,20 @@ import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
 
 export default defineNuxtPlugin(() => {
   // Register GSAP plugins on client side only
-  if (import.meta.client) {
-    gsap.registerPlugin(
-      Draggable,
-      ScrollTrigger,
-      ScrollSmoother,
-      MorphSVGPlugin
-    );
+  gsap.registerPlugin(Draggable, ScrollTrigger, ScrollSmoother, MorphSVGPlugin);
 
-    // Make GSAP available globally for components that need it
-    return {
-      provide: {
-        gsap: {
-          gsap,
-          Draggable,
-          ScrollTrigger,
-          ScrollSmoother,
-          MorphSVGPlugin,
-        },
+  // Make GSAP available globally for components that need it
+  return {
+    provide: {
+      gsap: {
+        gsap,
+        Draggable,
+        ScrollTrigger,
+        ScrollSmoother,
+        MorphSVGPlugin,
       },
-    };
-  }
+    },
+  };
 });
 function defineNuxtPlugin(
   arg0: () =>

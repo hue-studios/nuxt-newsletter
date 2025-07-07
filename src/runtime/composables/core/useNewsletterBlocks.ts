@@ -1,10 +1,12 @@
 // src/runtime/composables/core/useNewsletterBlocks.ts
 import { z } from "zod";
+import { reactive, onBeforeUnmount } from "vue";
 import type {
   NewsletterBlock,
   BlockType,
-  FieldConfig,
-} from "~/types/newsletter";
+  BlockFieldConfig,
+} from "../../types/newsletter";
+import { toRefs, useDebounceFn } from "@vueuse/core";
 
 // Validation schemas
 const BlockSchema = z.object({
@@ -27,7 +29,7 @@ interface UseNewsletterBlocksOptions {
 }
 
 export const useNewsletterBlocks = (
-  options: UseNewsletterBlocksOptions = {},
+  options: UseNewsletterBlocksOptions = {}
 ) => {
   const {
     autoSave = true,
@@ -84,7 +86,7 @@ export const useNewsletterBlocks = (
       state.error = null;
 
       // Try cache first
-      const cached = await $fetch(`/api/_cache/${cache}`, {
+      const cached = await fetch(`/api/_cache/${cache}`, {
         method: "GET",
         ignoreResponseError: true,
       });
@@ -100,13 +102,13 @@ export const useNewsletterBlocks = (
           filter: { status: { _eq: "published" } },
           sort: ["category", "sort"],
           ...options,
-        }),
+        })
       );
 
       state.blockTypes = response as BlockType[];
 
       // Cache the result
-      await $fetch(`/api/_cache/${cache}`, {
+      await fetch(`/api/_cache/${cache}`, {
         method: "POST",
         body: { data: response, ttl: 600 }, // 10 minute cache
       });
@@ -143,7 +145,7 @@ export const useNewsletterBlocks = (
           filter: { newsletter_id: { _eq: newsletterId } },
           sort: ["sort"],
           ...options,
-        }),
+        })
       );
 
       state.blocks = response as NewsletterBlock[];
@@ -173,14 +175,14 @@ export const useNewsletterBlocks = (
           sort: maxSort + 1,
           field_data: {},
           ...validated,
-        }),
+        })
       );
 
       const block = response as NewsletterBlock;
 
       // Add to state with block type data
       const blockType = state.blockTypes.find(
-        (bt) => bt.id === block.block_type_id,
+        (bt) => bt.id === block.block_type_id
       );
       if (blockType) {
         block.block_type = blockType;
@@ -192,7 +194,7 @@ export const useNewsletterBlocks = (
       toast.success("Block added successfully");
 
       // Clear newsletter cache
-      await $fetch(`/api/_cache/newsletters-${validated.newsletter_id}`, {
+      await fetch(`/api/_cache/newsletters-${validated.newsletter_id}`, {
         method: "DELETE",
       });
 
@@ -230,7 +232,7 @@ export const useNewsletterBlocks = (
       }
 
       const response = await directus.request(
-        updateItem("newsletter_blocks", id, validated),
+        updateItem("newsletter_blocks", id, validated)
       );
 
       state.lastSaved = new Date();
@@ -238,7 +240,7 @@ export const useNewsletterBlocks = (
       // Clear caches
       const block = state.blocks.find((b) => b.id === id);
       if (block) {
-        await $fetch(`/api/_cache/newsletters-${block.newsletter_id}`, {
+        await fetch(`/api/_cache/newsletters-${block.newsletter_id}`, {
           method: "DELETE",
         });
       }
@@ -266,7 +268,7 @@ export const useNewsletterBlocks = (
         console.warn("Block auto-save failed:", error);
       }
     },
-    autoSaveDelay,
+    autoSaveDelay
   );
 
   // Delete block
@@ -293,7 +295,7 @@ export const useNewsletterBlocks = (
       toast.success("Block deleted successfully");
 
       // Clear newsletter cache
-      await $fetch(`/api/_cache/newsletters-${block.newsletter_id}`, {
+      await fetch(`/api/_cache/newsletters-${block.newsletter_id}`, {
         method: "DELETE",
       });
 
@@ -329,9 +331,9 @@ export const useNewsletterBlocks = (
             b.id === id
               ? b.sort
               : index >= duplicatedData.sort
-                ? (b.sort || 0) + 1
-                : b.sort || 0,
-        })),
+              ? (b.sort || 0) + 1
+              : b.sort || 0,
+        }))
       );
 
       return await createBlock(duplicatedData);
@@ -343,7 +345,7 @@ export const useNewsletterBlocks = (
   // Reorder blocks
   const reorderBlocks = async (
     newsletterId: number,
-    reorderedBlocks: { id: number; sort: number }[],
+    reorderedBlocks: { id: number; sort: number }[]
   ) => {
     try {
       state.isDragging = false;
@@ -369,15 +371,15 @@ export const useNewsletterBlocks = (
       await Promise.all(
         updates.map((update) =>
           directus.request(
-            updateItem("newsletter_blocks", update.id, { sort: update.sort }),
-          ),
-        ),
+            updateItem("newsletter_blocks", update.id, { sort: update.sort })
+          )
+        )
       );
 
       toast.success("Blocks reordered successfully");
 
       // Clear newsletter cache
-      await $fetch(`/api/_cache/newsletters-${newsletterId}`, {
+      await fetch(`/api/_cache/newsletters-${newsletterId}`, {
         method: "DELETE",
       });
 
@@ -529,3 +531,120 @@ export const useNewsletterBlocks = (
     autoSave: autoSaveFunction,
   };
 };
+function readonly(state: {
+  blocks: {
+    id: number;
+    newsletter_id: number;
+    block_type: {
+      id: number;
+      name: string;
+      slug: string;
+      description: string;
+      mjml_template: string;
+      status: "published" | "draft" | "archived";
+      field_visibility_config?: string[] | undefined;
+      icon?: string | undefined;
+      category: "content" | "layout" | "media" | "interactive";
+    };
+    sort: number;
+    title?: string | undefined;
+    subtitle?: string | undefined;
+    text_content?: string | undefined;
+    image_url?: string | undefined;
+    image_alt_text?: string | undefined;
+    image_caption?: string | undefined;
+    button_text?: string | undefined;
+    button_url?: string | undefined;
+    background_color: string;
+    text_color: string;
+    text_align: "left" | "center" | "right";
+    padding: string;
+    font_size: string;
+    content?: Record<string, any> | undefined;
+    mjml_output?: string | undefined;
+  }[];
+  blockTypes: {
+    id: number;
+    name: string;
+    slug: string;
+    description: string;
+    mjml_template: string;
+    status: "published" | "draft" | "archived";
+    field_visibility_config?: string[] | undefined;
+    icon?: string | undefined;
+    category: "content" | "layout" | "media" | "interactive";
+  }[];
+  currentBlock: {
+    id: number;
+    newsletter_id: number;
+    block_type: {
+      id: number;
+      name: string;
+      slug: string;
+      description: string;
+      mjml_template: string;
+      status: "published" | "draft" | "archived";
+      field_visibility_config?: string[] | undefined;
+      icon?: string | undefined;
+      category: "content" | "layout" | "media" | "interactive";
+    };
+    sort: number;
+    title?: string | undefined;
+    subtitle?: string | undefined;
+    text_content?: string | undefined;
+    image_url?: string | undefined;
+    image_alt_text?: string | undefined;
+    image_caption?: string | undefined;
+    button_text?: string | undefined;
+    button_url?: string | undefined;
+    background_color: string;
+    text_color: string;
+    text_align: "left" | "center" | "right";
+    padding: string;
+    font_size: string;
+    content?: Record<string, any> | undefined;
+    mjml_output?: string | undefined;
+  } | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  isDragging: boolean;
+  error: string | null;
+  lastSaved: Date | null;
+  dragState: {
+    draggedBlock: {
+      id: number;
+      newsletter_id: number;
+      block_type: {
+        id: number;
+        name: string;
+        slug: string;
+        description: string;
+        mjml_template: string;
+        status: "published" | "draft" | "archived";
+        field_visibility_config?: string[] | undefined;
+        icon?: string | undefined;
+        category: "content" | "layout" | "media" | "interactive";
+      };
+      sort: number;
+      title?: string | undefined;
+      subtitle?: string | undefined;
+      text_content?: string | undefined;
+      image_url?: string | undefined;
+      image_alt_text?: string | undefined;
+      image_caption?: string | undefined;
+      button_text?: string | undefined;
+      button_url?: string | undefined;
+      background_color: string;
+      text_color: string;
+      text_align: "left" | "center" | "right";
+      padding: string;
+      font_size: string;
+      content?: Record<string, any> | undefined;
+      mjml_output?: string | undefined;
+    } | null;
+    dropZone: number | null;
+    dragPreview: HTMLElement | null;
+  };
+}): any {
+  throw new Error("Function not implemented.");
+}

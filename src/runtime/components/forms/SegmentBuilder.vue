@@ -3,9 +3,7 @@
   <div class="segment-builder space-y-6">
     <!-- Header -->
     <div>
-      <h3 class="text-lg font-medium text-gray-900">
-        Audience Segmentation
-      </h3>
+      <h3 class="text-lg font-medium text-gray-900">Audience Segmentation</h3>
       <p class="text-sm text-gray-600 mt-1">
         Create custom audience segments based on subscriber data and behavior
       </p>
@@ -13,10 +11,7 @@
 
     <!-- Segment Name -->
     <div>
-      <Label
-        for="segment-name"
-        class="text-sm font-medium"
-      >Segment Name</Label>
+      <Label for="segment-name" class="text-sm font-medium">Segment Name</Label>
       <Input
         id="segment-name"
         v-model="segmentName"
@@ -28,12 +23,8 @@
     <!-- Segment Rules -->
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h4 class="font-medium text-gray-900">
-          Conditions
-        </h4>
-        <Badge variant="outline">
-          {{ segmentRules.length }} rules
-        </Badge>
+        <h4 class="font-medium text-gray-900">Conditions</h4>
+        <Badge variant="outline"> {{ segmentRules.length }} rules </Badge>
       </div>
 
       <div
@@ -45,34 +36,21 @@
         <div class="flex items-center justify-between">
           <!-- Connector -->
           <div class="flex items-center space-x-2">
-            <div
-              v-if="index > 0"
-              class="w-16"
-            >
+            <div v-if="index > 0" class="w-16">
               <Select v-model="rule.connector">
                 <SelectTrigger class="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AND">
-                    AND
-                  </SelectItem>
-                  <SelectItem value="OR">
-                    OR
-                  </SelectItem>
+                  <SelectItem value="AND"> AND </SelectItem>
+                  <SelectItem value="OR"> OR </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div
-              v-else
-              class="w-16 text-sm font-medium text-gray-700"
-            >
+            <div v-else class="w-16 text-sm font-medium text-gray-700">
               WHERE
             </div>
-            <Badge
-              variant="secondary"
-              class="text-xs"
-            >
+            <Badge variant="secondary" class="text-xs">
               Rule {{ index + 1 }}
             </Badge>
           </div>
@@ -84,10 +62,7 @@
             :disabled="segmentRules.length === 1"
             @click="removeRule(rule.id)"
           >
-            <Icon
-              name="lucide:x"
-              class="w-4 h-4"
-            />
+            <Icon name="lucide:x" class="w-4 h-4" />
           </Button>
         </div>
 
@@ -106,18 +81,10 @@
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Basic Info</SelectLabel>
-                  <SelectItem value="email">
-                    Email
-                  </SelectItem>
-                  <SelectItem value="name">
-                    Name
-                  </SelectItem>
-                  <SelectItem value="status">
-                    Status
-                  </SelectItem>
-                  <SelectItem value="subscription_source">
-                    Source
-                  </SelectItem>
+                  <SelectItem value="email"> Email </SelectItem>
+                  <SelectItem value="name"> Name </SelectItem>
+                  <SelectItem value="status"> Status </SelectItem>
+                  <SelectItem value="subscription_source"> Source </SelectItem>
                 </SelectGroup>
                 <SelectGroup>
                   <SelectLabel>Behavior</SelectLabel>
@@ -127,33 +94,21 @@
                   <SelectItem value="last_email_opened">
                     Last Email Opened
                   </SelectItem>
-                  <SelectItem value="total_opens">
-                    Total Opens
-                  </SelectItem>
-                  <SelectItem value="total_clicks">
-                    Total Clicks
-                  </SelectItem>
+                  <SelectItem value="total_opens"> Total Opens </SelectItem>
+                  <SelectItem value="total_clicks"> Total Clicks </SelectItem>
                 </SelectGroup>
                 <SelectGroup>
                   <SelectLabel>Dates</SelectLabel>
                   <SelectItem value="subscribed_at">
                     Subscribe Date
                   </SelectItem>
-                  <SelectItem value="last_activity">
-                    Last Activity
-                  </SelectItem>
+                  <SelectItem value="last_activity"> Last Activity </SelectItem>
                 </SelectGroup>
                 <SelectGroup>
                   <SelectLabel>Custom Fields</SelectLabel>
-                  <SelectItem value="company">
-                    Company
-                  </SelectItem>
-                  <SelectItem value="job_title">
-                    Job Title
-                  </SelectItem>
-                  <SelectItem value="location">
-                    Location
-                  </SelectItem>
+                  <SelectItem value="company"> Company </SelectItem>
+                  <SelectItem value="job_title"> Job Title </SelectItem>
+                  <SelectItem value="location"> Location </SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -243,10 +198,7 @@
                       toggleMultiValue(rule, option.value, $event)
                     "
                   />
-                  <Label
-                    :for="`${rule.id}-${option.value}`"
-                    class="text-sm"
-                  >
+                  <Label :for="`${rule.id}-${option.value}`" class="text-sm">
                     {{ option.label }}
                   </Label>
                 </div>
@@ -270,15 +222,8 @@
       </div>
 
       <!-- Add Rule Button -->
-      <Button
-        variant="outline"
-        class="w-full"
-        @click="addRule"
-      >
-        <Icon
-          name="lucide:plus"
-          class="w-4 h-4 mr-2"
-        />
+      <Button variant="outline" class="w-full" @click="addRule">
+        <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
         Add Another Rule
       </Button>
     </div>
@@ -286,9 +231,7 @@
     <!-- Segment Preview -->
     <div class="bg-gray-50 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <h4 class="font-medium text-gray-900">
-          Segment Preview
-        </h4>
+        <h4 class="font-medium text-gray-900">Segment Preview</h4>
         <div class="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -310,44 +253,32 @@
             size="sm"
             @click="exportSegment"
           >
-            <Icon
-              name="lucide:download"
-              class="w-4 h-4 mr-1"
-            />
+            <Icon name="lucide:download" class="w-4 h-4 mr-1" />
             Export
           </Button>
         </div>
       </div>
 
-      <div
-        v-if="segmentPreview"
-        class="space-y-4"
-      >
+      <div v-if="segmentPreview" class="space-y-4">
         <!-- Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="text-center">
             <div class="text-2xl font-bold text-blue-600">
               {{ segmentPreview.matchedCount.toLocaleString() }}
             </div>
-            <div class="text-sm text-gray-600">
-              Matching Subscribers
-            </div>
+            <div class="text-sm text-gray-600">Matching Subscribers</div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-green-600">
               {{ segmentPreview.percentage.toFixed(1) }}%
             </div>
-            <div class="text-sm text-gray-600">
-              of Total Audience
-            </div>
+            <div class="text-sm text-gray-600">of Total Audience</div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-purple-600">
               {{ segmentPreview.avgEngagement.toFixed(1) }}
             </div>
-            <div class="text-sm text-gray-600">
-              Avg. Engagement Score
-            </div>
+            <div class="text-sm text-gray-600">Avg. Engagement Score</div>
           </div>
         </div>
 
@@ -365,10 +296,7 @@
               <div
                 class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center"
               >
-                <Icon
-                  name="lucide:user"
-                  class="w-3 h-3 text-blue-600"
-                />
+                <Icon name="lucide:user" class="w-3 h-3 text-blue-600" />
               </div>
               <div>
                 <div class="font-medium">
@@ -384,9 +312,7 @@
 
         <!-- Segment Health -->
         <div class="border-t pt-4">
-          <h5 class="text-sm font-medium text-gray-900 mb-2">
-            Segment Health
-          </h5>
+          <h5 class="text-sm font-medium text-gray-900 mb-2">Segment Health</h5>
           <div class="space-y-2">
             <div class="flex items-center justify-between text-sm">
               <span>Size</span>
@@ -406,10 +332,7 @@
         </div>
       </div>
 
-      <div
-        v-else-if="!isCalculating"
-        class="text-center text-gray-500 py-8"
-      >
+      <div v-else-if="!isCalculating" class="text-center text-gray-500 py-8">
         <Icon
           name="lucide:users"
           class="w-12 h-12 mx-auto mb-2 text-gray-400"
@@ -419,40 +342,27 @@
         </p>
       </div>
 
-      <div
-        v-else
-        class="text-center text-gray-500 py-8"
-      >
+      <div v-else class="text-center text-gray-500 py-8">
         <Icon
           name="lucide:loader-2"
           class="w-8 h-8 mx-auto mb-2 animate-spin"
         />
-        <p class="text-sm">
-          Calculating segment...
-        </p>
+        <p class="text-sm">Calculating segment...</p>
       </div>
     </div>
 
     <!-- Actions -->
     <div class="flex justify-end space-x-3">
-      <Button
-        variant="outline"
-        @click="$emit('cancel')"
-      >
-        Cancel
-      </Button>
+      <Button variant="outline" @click="$emit('cancel')"> Cancel </Button>
       <Button
         :disabled="
-          !segmentPreview
-            || segmentPreview.matchedCount === 0
-            || !segmentName.trim()
+          !segmentPreview ||
+          segmentPreview.matchedCount === 0 ||
+          !segmentName.trim()
         "
         @click="saveSegment"
       >
-        <Icon
-          name="lucide:save"
-          class="w-4 h-4 mr-2"
-        />
+        <Icon name="lucide:save" class="w-4 h-4 mr-2" />
         Save Segment
       </Button>
     </div>
@@ -460,6 +370,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
 interface SegmentRule {
   id: string;
   connector: "AND" | "OR";
@@ -489,7 +400,7 @@ interface Emits {
   (e: "cancel"): void;
 }
 
-defineEmits<Emits>();
+const emit = defineEmits<Emits>();
 
 // State
 const segmentName = ref("");
@@ -575,10 +486,10 @@ const fieldOptions = {
 // Computed
 const canCalculate = computed(() => {
   return segmentRules.value.every(
-    (rule) =>
-      rule.field
-      && rule.operator
-      && (rule.value || ["is_null", "is_empty"].includes(rule.operator)),
+    (rule: { field: any; operator: string; value: any }) =>
+      rule.field &&
+      rule.operator &&
+      (rule.value || ["is_null", "is_empty"].includes(rule.operator))
   );
 });
 
@@ -598,7 +509,9 @@ function addRule() {
 }
 
 function removeRule(ruleId: string) {
-  segmentRules.value = segmentRules.value.filter((rule) => rule.id !== ruleId);
+  segmentRules.value = segmentRules.value.filter(
+    (rule: { id: string }) => rule.id !== ruleId
+  );
 }
 
 function onFieldChange(rule: SegmentRule) {
@@ -678,8 +591,8 @@ function getRuleDescription(rule: SegmentRule) {
   if (!rule.field || !rule.operator) return "Configure rule to see description";
 
   const fieldName = rule.field.replace(/_/g, " ");
-  const operator
-    = getOperatorsForField(rule.field).find((op) => op.value === rule.operator)
+  const operator =
+    getOperatorsForField(rule.field).find((op) => op.value === rule.operator)
       ?.label || rule.operator;
 
   let valueText = rule.value;
@@ -745,8 +658,8 @@ async function calculateSegment() {
       ],
     };
 
-    mockResult.percentage
-      = (mockResult.matchedCount / mockResult.totalCount) * 100;
+    mockResult.percentage =
+      (mockResult.matchedCount / mockResult.totalCount) * 100;
     segmentPreview.value = mockResult;
   } catch (error) {
     console.error("Failed to calculate segment:", error);

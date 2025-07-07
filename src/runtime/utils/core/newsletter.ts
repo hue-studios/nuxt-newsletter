@@ -2,7 +2,7 @@ import type {
   Newsletter,
   NewsletterBlock,
   BlockType,
-} from "~/types/newsletter";
+} from "../../types/newsletter";
 
 /**
  * Newsletter utility functions

@@ -30,10 +30,7 @@
           }"
           @click="selectedCategory = category.value"
         >
-          <Icon
-            :name="category.icon"
-            class="w-4 h-4 mr-1"
-          />
+          <Icon :name="category.icon" class="w-4 h-4 mr-1" />
           {{ category.label }}
         </Button>
       </div>
@@ -79,10 +76,7 @@
               </div>
 
               <!-- Category Badge -->
-              <Badge
-                variant="secondary"
-                class="text-xs"
-              >
+              <Badge variant="secondary" class="text-xs">
                 {{ blockType.category }}
               </Badge>
 
@@ -93,10 +87,7 @@
                 class="opacity-0 group-hover:opacity-100 transition-opacity"
                 @click.stop="previewBlock(blockType)"
               >
-                <Icon
-                  name="lucide:eye"
-                  class="w-3 h-3 mr-1"
-                />
+                <Icon name="lucide:eye" class="w-3 h-3 mr-1" />
                 Preview
               </Button>
             </div>
@@ -134,29 +125,15 @@
     </div>
 
     <!-- Empty State -->
-    <div
-      v-if="filteredCategories.length === 0"
-      class="text-center py-12"
-    >
+    <div v-if="filteredCategories.length === 0" class="text-center py-12">
       <Icon
         name="lucide:search-x"
         class="w-16 h-16 text-gray-400 mx-auto mb-4"
       />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">
-        No blocks found
-      </h3>
-      <p class="text-gray-600">
-        Try a different search term or category
-      </p>
-      <Button
-        variant="outline"
-        class="mt-4"
-        @click="clearFilters"
-      >
-        <Icon
-          name="lucide:refresh-cw"
-          class="w-4 h-4 mr-2"
-        />
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No blocks found</h3>
+      <p class="text-gray-600">Try a different search term or category</p>
+      <Button variant="outline" class="mt-4" @click="clearFilters">
+        <Icon name="lucide:refresh-cw" class="w-4 h-4 mr-2" />
         Clear Filters
       </Button>
     </div>
@@ -171,26 +148,18 @@
           </DialogDescription>
         </DialogHeader>
 
-        <div
-          v-if="previewBlockType"
-          class="space-y-4"
-        >
+        <div v-if="previewBlockType" class="space-y-4">
           <!-- Block Preview -->
           <div class="border border-gray-200 rounded-lg p-6 bg-gray-50">
             <div
               class="bg-white rounded p-4 min-h-[200px] flex items-center justify-center"
             >
               <!-- Mock preview based on block type -->
-              <div
-                v-if="previewBlockType.slug === 'hero'"
-                class="text-center"
-              >
+              <div v-if="previewBlockType.slug === 'hero'" class="text-center">
                 <h2 class="text-2xl font-bold text-gray-900 mb-2">
                   Hero Title
                 </h2>
-                <p class="text-gray-600 mb-4">
-                  Hero subtitle text goes here
-                </p>
+                <p class="text-gray-600 mb-4">Hero subtitle text goes here</p>
                 <div
                   class="inline-block bg-blue-600 text-white px-4 py-2 rounded"
                 >
@@ -198,10 +167,7 @@
                 </div>
               </div>
 
-              <div
-                v-else-if="previewBlockType.slug === 'text'"
-                class="prose"
-              >
+              <div v-else-if="previewBlockType.slug === 'text'" class="prose">
                 <p>
                   This is a sample text block with
                   <strong>rich formatting</strong> support.
@@ -216,14 +182,9 @@
                 <div
                   class="w-32 h-24 bg-gray-200 rounded mb-2 mx-auto flex items-center justify-center"
                 >
-                  <Icon
-                    name="lucide:image"
-                    class="w-8 h-8 text-gray-400"
-                  />
+                  <Icon name="lucide:image" class="w-8 h-8 text-gray-400" />
                 </div>
-                <p class="text-sm text-gray-600">
-                  Image caption goes here
-                </p>
+                <p class="text-sm text-gray-600">Image caption goes here</p>
               </div>
 
               <div
@@ -237,14 +198,8 @@
                 </div>
               </div>
 
-              <div
-                v-else
-                class="text-center text-gray-500"
-              >
-                <Icon
-                  name="lucide:layout"
-                  class="w-12 h-12 mx-auto mb-2"
-                />
+              <div v-else class="text-center text-gray-500">
+                <Icon name="lucide:layout" class="w-12 h-12 mx-auto mb-2" />
                 <p>{{ previewBlockType.name }} Block</p>
               </div>
             </div>
@@ -253,18 +208,14 @@
           <!-- Block Details -->
           <div class="space-y-3">
             <div>
-              <h4 class="font-medium text-gray-900">
-                Category
-              </h4>
+              <h4 class="font-medium text-gray-900">Category</h4>
               <Badge variant="outline">
                 {{ previewBlockType.category }}
               </Badge>
             </div>
 
             <div>
-              <h4 class="font-medium text-gray-900">
-                Available Fields
-              </h4>
+              <h4 class="font-medium text-gray-900">Available Fields</h4>
               <div class="flex flex-wrap gap-1 mt-1">
                 <Badge
                   v-for="field in previewBlockType.field_visibility_config"
@@ -280,17 +231,11 @@
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            @click="showPreview = false"
-          >
+          <Button variant="outline" @click="showPreview = false">
             Close
           </Button>
           <Button @click="selectBlock(previewBlockType!)">
-            <Icon
-              name="lucide:plus"
-              class="w-4 h-4 mr-2"
-            />
+            <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
             Add This Block
           </Button>
         </DialogFooter>
@@ -300,7 +245,8 @@
 </template>
 
 <script setup lang="ts">
-import type { BlockType } from "~/types/newsletter";
+import { ref, computed } from "vue";
+import type { BlockType } from "../../types/newsletter";
 
 interface Props {
   blockTypes: BlockType[];
@@ -337,30 +283,37 @@ const filteredCategories = computed(() => {
   const categoryMap = new Map();
 
   // Filter block types by search query and category
-  const filteredBlocks = props.blockTypes.filter((blockType) => {
-    // Search filter
-    if (searchQuery.value) {
-      const query = searchQuery.value.toLowerCase();
-      const matches
-        = blockType.name.toLowerCase().includes(query)
-          || blockType.description.toLowerCase().includes(query)
-          || blockType.category.toLowerCase().includes(query);
-      if (!matches) return false;
-    }
+  const filteredBlocks = props.blockTypes.filter(
+    (blockType: {
+      name: string;
+      description: string;
+      category: string;
+      status: string;
+    }) => {
+      // Search filter
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase();
+        const matches =
+          blockType.name.toLowerCase().includes(query) ||
+          blockType.description.toLowerCase().includes(query) ||
+          blockType.category.toLowerCase().includes(query);
+        if (!matches) return false;
+      }
 
-    // Category filter
-    if (
-      selectedCategory.value !== "all"
-      && blockType.category !== selectedCategory.value
-    ) {
-      return false;
-    }
+      // Category filter
+      if (
+        selectedCategory.value !== "all" &&
+        blockType.category !== selectedCategory.value
+      ) {
+        return false;
+      }
 
-    return blockType.status === "published";
-  });
+      return blockType.status === "published";
+    }
+  );
 
   // Group by category
-  filteredBlocks.forEach((blockType) => {
+  filteredBlocks.forEach((blockType: { category: string }) => {
     const category = blockType.category || "content";
     if (!categoryMap.has(category)) {
       categoryMap.set(category, {
@@ -379,9 +332,13 @@ const popularBlocks = computed(() => {
   const popularSlugs = ["hero", "text", "image", "button"];
 
   return props.blockTypes
-    .filter((bt) => popularSlugs.includes(bt.slug) && bt.status === "published")
+    .filter(
+      (bt: { slug: string; status: string }) =>
+        popularSlugs.includes(bt.slug) && bt.status === "published"
+    )
     .sort(
-      (a, b) => popularSlugs.indexOf(a.slug) - popularSlugs.indexOf(b.slug),
+      (a: { slug: string }, b: { slug: string }) =>
+        popularSlugs.indexOf(a.slug) - popularSlugs.indexOf(b.slug)
     );
 });
 

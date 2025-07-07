@@ -7,17 +7,12 @@
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600">
-                Total Sent
-              </p>
+              <p class="text-sm font-medium text-gray-600">Total Sent</p>
               <p class="text-2xl font-bold text-gray-900">
                 {{ stats.totalSent.toLocaleString() }}
               </p>
             </div>
-            <Icon
-              name="lucide:send"
-              class="w-8 h-8 text-blue-500"
-            />
+            <Icon name="lucide:send" class="w-8 h-8 text-blue-500" />
           </div>
         </CardContent>
       </Card>
@@ -26,17 +21,12 @@
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600">
-                Avg Open Rate
-              </p>
+              <p class="text-sm font-medium text-gray-600">Avg Open Rate</p>
               <p class="text-2xl font-bold text-green-600">
                 {{ stats.avgOpenRate }}%
               </p>
             </div>
-            <Icon
-              name="lucide:eye"
-              class="w-8 h-8 text-green-500"
-            />
+            <Icon name="lucide:eye" class="w-8 h-8 text-green-500" />
           </div>
         </CardContent>
       </Card>
@@ -45,9 +35,7 @@
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600">
-                Avg Click Rate
-              </p>
+              <p class="text-sm font-medium text-gray-600">Avg Click Rate</p>
               <p class="text-2xl font-bold text-blue-600">
                 {{ stats.avgClickRate }}%
               </p>
@@ -64,17 +52,12 @@
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600">
-                Total Subscribers
-              </p>
+              <p class="text-sm font-medium text-gray-600">Total Subscribers</p>
               <p class="text-2xl font-bold text-purple-600">
                 {{ stats.totalSubscribers.toLocaleString() }}
               </p>
             </div>
-            <Icon
-              name="lucide:users"
-              class="w-8 h-8 text-purple-500"
-            />
+            <Icon name="lucide:users" class="w-8 h-8 text-purple-500" />
           </div>
         </CardContent>
       </Card>
@@ -131,9 +114,7 @@
       <CardContent>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 class="font-medium text-gray-900 mb-3">
-              Best Sending Days
-            </h4>
+            <h4 class="font-medium text-gray-900 mb-3">Best Sending Days</h4>
             <div class="space-y-2">
               <div
                 v-for="day in bestDays"
@@ -147,9 +128,7 @@
           </div>
 
           <div>
-            <h4 class="font-medium text-gray-900 mb-3">
-              Best Sending Times
-            </h4>
+            <h4 class="font-medium text-gray-900 mb-3">Best Sending Times</h4>
             <div class="space-y-2">
               <div
                 v-for="time in bestTimes"
@@ -168,7 +147,8 @@
 </template>
 
 <script setup lang="ts">
-import type { Newsletter } from "~/types/newsletter";
+import { computed, ref } from "vue";
+import type { Newsletter } from "../../types/newsletter";
 
 interface Props {
   newsletters: Newsletter[];
@@ -181,12 +161,12 @@ const stats = computed(() => {
   const sent = props.newsletters.filter((n) => n.status === "sent");
   const totalSent = sent.length;
   const totalOpens = sent.reduce((sum, n) => sum + (n.total_opens || 0), 0);
-  const avgOpenRate
-    = sent.length > 0
+  const avgOpenRate =
+    sent.length > 0
       ? sent.reduce((sum, n) => sum + (n.open_rate || 0), 0) / sent.length
       : 0;
-  const avgClickRate
-    = sent.length > 0
+  const avgClickRate =
+    sent.length > 0
       ? sent.reduce((sum, n) => sum + (n.click_rate || 0), 0) / sent.length
       : 0;
 

@@ -3,9 +3,7 @@
     <div class="space-y-6">
       <!-- Header -->
       <div>
-        <h3 class="text-lg font-medium text-gray-900">
-          Audience Segmentation
-        </h3>
+        <h3 class="text-lg font-medium text-gray-900">Audience Segmentation</h3>
         <p class="text-sm text-gray-600 mt-1">
           Create custom audience segments based on subscriber data
         </p>
@@ -20,28 +18,18 @@
         >
           <div class="flex items-center space-x-4">
             <!-- Connector -->
-            <div
-              v-if="index > 0"
-              class="w-16"
-            >
+            <div v-if="index > 0" class="w-16">
               <Select v-model="rule.connector">
                 <SelectTrigger class="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AND">
-                    AND
-                  </SelectItem>
-                  <SelectItem value="OR">
-                    OR
-                  </SelectItem>
+                  <SelectItem value="AND"> AND </SelectItem>
+                  <SelectItem value="OR"> OR </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div
-              v-else
-              class="w-16 text-sm font-medium text-gray-700"
-            >
+            <div v-else class="w-16 text-sm font-medium text-gray-700">
               WHERE
             </div>
 
@@ -52,12 +40,8 @@
                   <SelectValue placeholder="Select field" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="status">
-                    Status
-                  </SelectItem>
-                  <SelectItem value="subscription_source">
-                    Source
-                  </SelectItem>
+                  <SelectItem value="status"> Status </SelectItem>
+                  <SelectItem value="subscription_source"> Source </SelectItem>
                   <SelectItem value="subscription_preferences">
                     Preferences
                   </SelectItem>
@@ -70,12 +54,8 @@
                   <SelectItem value="last_email_opened">
                     Last Opened
                   </SelectItem>
-                  <SelectItem value="company">
-                    Company
-                  </SelectItem>
-                  <SelectItem value="job_title">
-                    Job Title
-                  </SelectItem>
+                  <SelectItem value="company"> Company </SelectItem>
+                  <SelectItem value="job_title"> Job Title </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -142,24 +122,14 @@
               :disabled="segmentRules.length === 1"
               @click="removeRule(index)"
             >
-              <Icon
-                name="lucide:x"
-                class="w-4 h-4"
-              />
+              <Icon name="lucide:x" class="w-4 h-4" />
             </Button>
           </div>
         </div>
 
         <!-- Add Rule -->
-        <Button
-          variant="outline"
-          class="w-full"
-          @click="addRule"
-        >
-          <Icon
-            name="lucide:plus"
-            class="w-4 h-4 mr-2"
-          />
+        <Button variant="outline" class="w-full" @click="addRule">
+          <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
           Add Rule
         </Button>
       </div>
@@ -167,9 +137,7 @@
       <!-- Preview -->
       <div class="bg-gray-50 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
-          <h4 class="font-medium text-gray-900">
-            Segment Preview
-          </h4>
+          <h4 class="font-medium text-gray-900">Segment Preview</h4>
           <Button
             variant="outline"
             size="sm"
@@ -185,30 +153,26 @@
           </Button>
         </div>
 
-        <div
-          v-if="segmentPreview"
-          class="space-y-2"
-        >
+        <div v-if="segmentPreview" class="space-y-2">
           <div class="flex items-center space-x-4 text-sm">
             <div class="flex items-center space-x-2">
               <div class="w-3 h-3 bg-green-500 rounded-full" />
-              <span class="font-medium">{{ segmentPreview.matchedCount }} subscribers</span>
+              <span class="font-medium"
+                >{{ segmentPreview.matchedCount }} subscribers</span
+              >
             </div>
             <div class="text-gray-600">
               {{
                 (
-                  (segmentPreview.matchedCount / segmentPreview.totalCount)
-                  * 100
+                  (segmentPreview.matchedCount / segmentPreview.totalCount) *
+                  100
                 ).toFixed(1)
               }}% of total
             </div>
           </div>
 
           <!-- Sample Subscribers -->
-          <div
-            v-if="segmentPreview.sampleSubscribers.length > 0"
-            class="mt-3"
-          >
+          <div v-if="segmentPreview.sampleSubscribers.length > 0" class="mt-3">
             <p class="text-xs font-medium text-gray-700 mb-2">
               Sample subscribers:
             </p>
@@ -216,7 +180,7 @@
               <div
                 v-for="subscriber in segmentPreview.sampleSubscribers.slice(
                   0,
-                  3,
+                  3
                 )"
                 :key="subscriber.id"
                 class="text-xs text-gray-600"
@@ -227,22 +191,14 @@
           </div>
         </div>
 
-        <div
-          v-else
-          class="text-sm text-gray-600"
-        >
+        <div v-else class="text-sm text-gray-600">
           Click "Calculate" to preview your segment
         </div>
       </div>
 
       <!-- Actions -->
       <div class="flex justify-end space-x-3">
-        <Button
-          variant="outline"
-          @click="$emit('cancel')"
-        >
-          Cancel
-        </Button>
+        <Button variant="outline" @click="$emit('cancel')"> Cancel </Button>
         <Button
           :disabled="!segmentPreview || segmentPreview.matchedCount === 0"
           @click="saveSegment"
@@ -255,6 +211,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, emit } from "vue";
 interface SegmentRule {
   connector: "AND" | "OR";
   field: string;

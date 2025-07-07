@@ -51,6 +51,154 @@ export default defineNuxtModule<ModuleOptions>({
     const isStub = process.argv.includes("--stub");
     const isPrepare = process.argv.includes("prepare");
 
+    const composableGroups = {
+      core: ["useNewsletter", "useNewsletterBlocks", "useNewsletterTemplates"],
+      utils: ["useDirectus", "useFileUpload", "useValidation"],
+      ui: ["useDragDrop", "useEditor", "usePreview"],
+      features: ["useAnalytics", "useWebhooks", "useABTesting"],
+    };
+
+    Object.entries(composableGroups).forEach(([folder, composables]) => {
+      composables.forEach((composable) => {
+        addImports({
+          name: composable,
+          from: resolver.resolve(
+            `./runtime/composables/${folder}/${composable}`
+          ),
+        });
+      });
+    });
+
+    const components = [
+      {
+        name: "ABTestResults",
+        filePath: resolver.resolve(
+          "./runtime/components/analytics/ABTestResults.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterAnalytics",
+        filePath: resolver.resolve(
+          "./runtime/components/analytics/NewsletterAnalytics.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "PerformanceChart",
+        filePath: resolver.resolve(
+          "./runtime/components/analytics/PerformanceChart.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterBlock",
+        filePath: resolver.resolve(
+          "./runtime/components/editor/NewsletterBlock.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterEditor",
+        filePath: resolver.resolve(
+          "./runtime/components/editor/NewsletterEditor.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "BlockEditor",
+        filePath: resolver.resolve(
+          "./runtime/components/editor/BlockEditor.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "BlockPicker",
+        filePath: resolver.resolve(
+          "./runtime/components/editor/BlockPicker.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterScheduler",
+        filePath: resolver.resolve(
+          "./runtime/components/forms/NewsletterScheduler.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterSegmentBuilder",
+        filePath: resolver.resolve(
+          "./runtime/components/forms/NewsletterSegmentBuilder.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "SegmentBuilder",
+        filePath: resolver.resolve(
+          "./runtime/components/forms/SegmentBuilder.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "TiptapEditor",
+        filePath: resolver.resolve(
+          "./runtime/components/forms/TiptapEditor.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterDashboard",
+        filePath: resolver.resolve(
+          "./runtime/components/layout/NewsletterDashboard.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "TemplateBrowser",
+        filePath: resolver.resolve(
+          "./runtime/components/layout/TemplateBrowser.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "ContentLibrary",
+        filePath: resolver.resolve(
+          "./runtime/components/layout/ContentLibrary.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterCard",
+        filePath: resolver.resolve(
+          "./runtime/components/ui/NewsletterCard.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterPreview",
+        filePath: resolver.resolve(
+          "./runtime/components/ui/NewsletterPreview.vue"
+        ),
+        global: true,
+      },
+      {
+        name: "NewsletterValidation",
+        filePath: resolver.resolve(
+          "./runtime/components/ui/NewsletterValidation.vue"
+        ),
+        global: true,
+      },
+    ];
+
+    components.forEach((component) => {
+      addComponent(component);
+    });
+
+    // Add plugins
+    addPlugin(resolver.resolve("./runtime/plugins/gsap.client"));
+    addPlugin(resolver.resolve("./runtime/plugins/directus.client"));
+
     // Only validate required options in production builds
     if (!isDev && !isStub && !isPrepare && !options.directusUrl) {
       throw new Error("Newsletter module requires directusUrl option");

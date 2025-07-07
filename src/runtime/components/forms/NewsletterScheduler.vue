@@ -12,10 +12,7 @@
         <!-- Newsletter Info -->
         <div class="bg-gray-50 rounded-lg p-4">
           <div class="flex items-center space-x-3">
-            <Icon
-              name="lucide:mail"
-              class="w-5 h-5 text-gray-600"
-            />
+            <Icon name="lucide:mail" class="w-5 h-5 text-gray-600" />
             <div>
               <h4 class="font-medium text-gray-900">
                 {{ newsletter.title }}
@@ -31,29 +28,14 @@
         <div class="space-y-4">
           <div>
             <Label class="text-sm font-medium">Send Time</Label>
-            <RadioGroup
-              v-model="scheduleType"
-              class="mt-2"
-            >
+            <RadioGroup v-model="scheduleType" class="mt-2">
               <div class="flex items-center space-x-2">
-                <RadioGroupItem
-                  id="now"
-                  value="now"
-                />
-                <Label
-                  for="now"
-                  class="text-sm"
-                >Send immediately</Label>
+                <RadioGroupItem id="now" value="now" />
+                <Label for="now" class="text-sm">Send immediately</Label>
               </div>
               <div class="flex items-center space-x-2">
-                <RadioGroupItem
-                  id="schedule"
-                  value="schedule"
-                />
-                <Label
-                  for="schedule"
-                  class="text-sm"
-                >Schedule for later</Label>
+                <RadioGroupItem id="schedule" value="schedule" />
+                <Label for="schedule" class="text-sm">Schedule for later</Label>
               </div>
             </RadioGroup>
           </div>
@@ -64,10 +46,7 @@
             class="grid grid-cols-2 gap-4"
           >
             <div>
-              <Label
-                for="send-date"
-                class="text-sm"
-              >Date</Label>
+              <Label for="send-date" class="text-sm">Date</Label>
               <Input
                 id="send-date"
                 v-model="sendDate"
@@ -77,10 +56,7 @@
               />
             </div>
             <div>
-              <Label
-                for="send-time"
-                class="text-sm"
-              >Time</Label>
+              <Label for="send-time" class="text-sm">Time</Label>
               <Input
                 id="send-time"
                 v-model="sendTime"
@@ -92,10 +68,7 @@
 
           <!-- Timezone -->
           <div v-if="scheduleType === 'schedule'">
-            <Label
-              for="timezone"
-              class="text-sm"
-            >Timezone</Label>
+            <Label for="timezone" class="text-sm">Timezone</Label>
             <Select v-model="timezone">
               <SelectTrigger class="mt-1">
                 <SelectValue placeholder="Select timezone" />
@@ -114,10 +87,7 @@
 
           <!-- Mailing List -->
           <div>
-            <Label
-              for="mailing-list"
-              class="text-sm"
-            >Mailing List</Label>
+            <Label for="mailing-list" class="text-sm">Mailing List</Label>
             <Select v-model="selectedMailingList">
               <SelectTrigger class="mt-1">
                 <SelectValue placeholder="Select mailing list" />
@@ -136,25 +106,15 @@
           </div>
 
           <!-- A/B Testing -->
-          <div
-            v-if="newsletter.is_ab_test"
-            class="space-y-3"
-          >
+          <div v-if="newsletter.is_ab_test" class="space-y-3">
             <div class="flex items-center space-x-2">
-              <Checkbox
-                id="enable-ab-test"
-                v-model:checked="enableABTest"
-              />
-              <Label
-                for="enable-ab-test"
-                class="text-sm"
-              >Enable A/B Testing</Label>
+              <Checkbox id="enable-ab-test" v-model:checked="enableABTest" />
+              <Label for="enable-ab-test" class="text-sm"
+                >Enable A/B Testing</Label
+              >
             </div>
 
-            <div
-              v-if="enableABTest"
-              class="space-y-3 pl-6"
-            >
+            <div v-if="enableABTest" class="space-y-3 pl-6">
               <div>
                 <Label class="text-sm">Test Percentage</Label>
                 <Slider
@@ -184,26 +144,17 @@
           <!-- Preview -->
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-start space-x-3">
-              <Icon
-                name="lucide:info"
-                class="w-5 h-5 text-blue-600 mt-0.5"
-              />
+              <Icon name="lucide:info" class="w-5 h-5 text-blue-600 mt-0.5" />
               <div class="text-sm">
-                <p class="font-medium text-blue-900">
-                  Send Summary
-                </p>
+                <p class="font-medium text-blue-900">Send Summary</p>
                 <ul class="text-blue-800 mt-2 space-y-1">
                   <li>
                     • Recipients:
                     {{ selectedMailingListInfo?.active_subscriber_count || 0 }}
                     subscribers
                   </li>
-                  <li v-if="scheduleType === 'now'">
-                    • Send immediately
-                  </li>
-                  <li v-else>
-                    • Scheduled for: {{ formattedScheduleTime }}
-                  </li>
+                  <li v-if="scheduleType === 'now'">• Send immediately</li>
+                  <li v-else>• Scheduled for: {{ formattedScheduleTime }}</li>
                   <li v-if="enableABTest">
                     • A/B test with {{ abTestPercentage[0] }}% split
                   </li>
@@ -215,20 +166,9 @@
       </div>
 
       <DialogFooter>
-        <Button
-          variant="outline"
-          @click="open = false"
-        >
-          Cancel
-        </Button>
-        <Button
-          :disabled="!canSchedule"
-          @click="scheduleNewsletter"
-        >
-          <Icon
-            name="lucide:clock"
-            class="w-4 h-4 mr-2"
-          />
+        <Button variant="outline" @click="open = false"> Cancel </Button>
+        <Button :disabled="!canSchedule" @click="scheduleNewsletter">
+          <Icon name="lucide:clock" class="w-4 h-4 mr-2" />
           {{ scheduleType === "now" ? "Send Now" : "Schedule" }}
         </Button>
       </DialogFooter>
@@ -237,7 +177,8 @@
 </template>
 
 <script setup lang="ts">
-import type { Newsletter, MailingList } from "~/types/newsletter";
+import { computed, ref, onMounted } from "vue";
+import type { Newsletter, MailingList } from "../../types/newsletter";
 
 interface Props {
   newsletter: Newsletter;
@@ -281,7 +222,7 @@ const minDate = computed(() => {
 
 const selectedMailingListInfo = computed(() => {
   return props.mailingLists.find(
-    (list) => list.id.toString() === selectedMailingList.value,
+    (list) => list.id.toString() === selectedMailingList.value
   );
 });
 

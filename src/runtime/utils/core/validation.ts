@@ -1,4 +1,4 @@
-import type { Newsletter, NewsletterBlock } from "~/types/newsletter";
+import type { Newsletter, NewsletterBlock } from "../../types/newsletter";
 
 export interface ValidationError {
   field: string;

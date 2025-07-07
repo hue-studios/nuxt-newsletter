@@ -14,10 +14,7 @@
       :style="{ backgroundColor: block.background_color }"
     >
       <!-- Hero Block -->
-      <div
-        v-if="block.block_type.slug === 'hero'"
-        class="text-center p-8"
-      >
+      <div v-if="block.block_type.slug === 'hero'" class="text-center p-8">
         <h1
           class="text-3xl font-bold mb-4"
           :style="{
@@ -58,16 +55,8 @@
           fontSize: block.font_size,
         }"
       >
-        <div
-          v-if="block.text_content"
-          v-html="block.text_content"
-        />
-        <p
-          v-else
-          class="text-gray-500 italic"
-        >
-          Click to add text content...
-        </p>
+        <div v-if="block.text_content" v-html="block.text_content" />
+        <p v-else class="text-gray-500 italic">Click to add text content...</p>
       </div>
 
       <!-- Image Block -->
@@ -81,7 +70,7 @@
           :src="getImageUrl(block.image_url)"
           :alt="block.image_alt_text || ''"
           class="max-w-full h-auto rounded-lg mx-auto"
-        >
+        />
         <div
           v-else
           class="bg-gray-200 border-2 border-dashed border-gray-400 rounded-lg p-12 text-center"
@@ -90,9 +79,7 @@
             name="lucide:image"
             class="w-12 h-12 text-gray-400 mx-auto mb-4"
           />
-          <p class="text-gray-500">
-            Click to add image
-          </p>
+          <p class="text-gray-500">Click to add image</p>
         </div>
         <p
           v-if="block.image_caption"
@@ -161,7 +148,7 @@
         <hr
           class="border-0 h-px"
           :style="{ backgroundColor: block.text_color || '#e5e7eb' }"
-        >
+        />
       </div>
 
       <!-- Fallback for unknown block types -->
@@ -169,10 +156,7 @@
         v-else
         class="p-4 border-2 border-dashed border-gray-300 text-center text-gray-500"
       >
-        <Icon
-          name="lucide:help-circle"
-          class="w-8 h-8 mx-auto mb-2"
-        />
+        <Icon name="lucide:help-circle" class="w-8 h-8 mx-auto mb-2" />
         <p>Unknown block type: {{ block.block_type.slug }}</p>
       </div>
     </div>
@@ -187,10 +171,7 @@
         class="absolute -top-10 left-0 right-0 flex items-center justify-between"
       >
         <div class="flex items-center space-x-1">
-          <Badge
-            variant="secondary"
-            class="text-xs"
-          >
+          <Badge variant="secondary" class="text-xs">
             {{ block.block_type.name }}
           </Badge>
           <span class="text-xs text-gray-500">#{{ block.sort }}</span>
@@ -204,10 +185,7 @@
             size="sm"
             @click.stop="$emit('move-up', block.id)"
           >
-            <Icon
-              name="lucide:chevron-up"
-              class="w-3 h-3"
-            />
+            <Icon name="lucide:chevron-up" class="w-3 h-3" />
           </Button>
 
           <!-- Move Down -->
@@ -217,10 +195,7 @@
             size="sm"
             @click.stop="$emit('move-down', block.id)"
           >
-            <Icon
-              name="lucide:chevron-down"
-              class="w-3 h-3"
-            />
+            <Icon name="lucide:chevron-down" class="w-3 h-3" />
           </Button>
 
           <!-- Duplicate -->
@@ -229,22 +204,12 @@
             size="sm"
             @click.stop="$emit('duplicate', block)"
           >
-            <Icon
-              name="lucide:copy"
-              class="w-3 h-3"
-            />
+            <Icon name="lucide:copy" class="w-3 h-3" />
           </Button>
 
           <!-- Delete -->
-          <Button
-            variant="outline"
-            size="sm"
-            @click.stop="confirmDelete"
-          >
-            <Icon
-              name="lucide:trash-2"
-              class="w-3 h-3"
-            />
+          <Button variant="outline" size="sm" @click.stop="confirmDelete">
+            <Icon name="lucide:trash-2" class="w-3 h-3" />
           </Button>
         </div>
       </div>
@@ -256,18 +221,9 @@
         @click.stop
       >
         <div class="flex items-center justify-between mb-4">
-          <h4 class="font-medium">
-            Quick Edit
-          </h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            @click="showQuickEdit = false"
-          >
-            <Icon
-              name="lucide:x"
-              class="w-4 h-4"
-            />
+          <h4 class="font-medium">Quick Edit</h4>
+          <Button variant="ghost" size="sm" @click="showQuickEdit = false">
+            <Icon name="lucide:x" class="w-4 h-4" />
           </Button>
         </div>
 
@@ -313,15 +269,8 @@
       v-show="!isSelected"
       class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
     >
-      <Button
-        variant="outline"
-        size="sm"
-        @click.stop="showQuickEdit = true"
-      >
-        <Icon
-          name="lucide:edit-2"
-          class="w-3 h-3"
-        />
+      <Button variant="outline" size="sm" @click.stop="showQuickEdit = true">
+        <Icon name="lucide:edit-2" class="w-3 h-3" />
       </Button>
     </div>
 
@@ -338,16 +287,10 @@
         </DialogHeader>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            @click="showDeleteDialog = false"
-          >
+          <Button variant="outline" @click="showDeleteDialog = false">
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            @click="deleteBlock"
-          >
+          <Button variant="destructive" @click="deleteBlock">
             Delete Block
           </Button>
         </DialogFooter>
@@ -357,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import type { NewsletterBlock, BlockFieldConfig } from "~/types/newsletter";
+import type { NewsletterBlock, BlockFieldConfig } from "../../types/newsletter";
 </script>
 
 <template>
@@ -715,7 +658,7 @@ watch(
     if (!selected) {
       showQuickEdit.value = false;
     }
-  },
+  }
 );
 
 interface Props {

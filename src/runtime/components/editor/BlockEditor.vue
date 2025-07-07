@@ -1,4 +1,3 @@
-<!-- src/runtime/components/editor/BlockEditor.vue -->
 <template>
   <div class="block-editor space-y-6">
     <!-- Block Type Info -->
@@ -24,15 +23,9 @@
         :key="fieldConfig.field"
         class="space-y-2"
       >
-        <Label
-          :for="fieldConfig.field"
-          class="text-sm font-medium"
-        >
+        <Label :for="fieldConfig.field" class="text-sm font-medium">
           {{ fieldConfig.label }}
-          <span
-            v-if="fieldConfig.required"
-            class="text-red-500"
-          >*</span>
+          <span v-if="fieldConfig.required" class="text-red-500">*</span>
         </Label>
 
         <!-- Text Input -->
@@ -57,10 +50,7 @@
         />
 
         <!-- Rich Text Editor -->
-        <div
-          v-else-if="fieldConfig.type === 'rich-text'"
-          class="space-y-2"
-        >
+        <div v-else-if="fieldConfig.type === 'rich-text'" class="space-y-2">
           <TiptapEditor
             :model-value="getFieldValue(fieldConfig.field)"
             :placeholder="fieldConfig.placeholder"
@@ -81,10 +71,10 @@
             @input="
               updateField(
                 fieldConfig.field,
-                ($event.target as HTMLInputElement).value,
+                ($event.target as HTMLInputElement).value
               )
             "
-          >
+          />
           <Input
             :model-value="getFieldValue(fieldConfig.field)"
             placeholder="#000000"
@@ -125,10 +115,7 @@
         />
 
         <!-- File Upload -->
-        <div
-          v-else-if="fieldConfig.type === 'file'"
-          class="space-y-2"
-        >
+        <div v-else-if="fieldConfig.type === 'file'" class="space-y-2">
           <div class="flex items-center space-x-2">
             <Input
               :model-value="getFieldValue(fieldConfig.field)"
@@ -136,15 +123,8 @@
               class="flex-1"
               @update:model-value="updateField(fieldConfig.field, $event)"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              @click="triggerFileUpload"
-            >
-              <Icon
-                name="lucide:upload"
-                class="w-4 h-4 mr-1"
-              />
+            <Button variant="outline" size="sm" @click="triggerFileUpload">
+              <Icon name="lucide:upload" class="w-4 h-4 mr-1" />
               Upload
             </Button>
           </div>
@@ -156,13 +136,13 @@
             accept="image/*"
             class="hidden"
             @change="handleFileUpload"
-          >
+          />
 
           <!-- Image Preview -->
           <div
             v-if="
-              getFieldValue(fieldConfig.field)
-                && fieldConfig.field === 'image_url'
+              getFieldValue(fieldConfig.field) &&
+              fieldConfig.field === 'image_url'
             "
             class="mt-2"
           >
@@ -170,7 +150,7 @@
               :src="getImageUrl(getFieldValue(fieldConfig.field))"
               alt="Preview"
               class="max-w-full h-32 object-cover rounded border border-gray-200"
-            >
+            />
           </div>
         </div>
 
@@ -186,10 +166,7 @@
         />
 
         <!-- Field Help Text -->
-        <p
-          v-if="fieldConfig.help"
-          class="text-xs text-gray-500"
-        >
+        <p v-if="fieldConfig.help" class="text-xs text-gray-500">
           {{ fieldConfig.help }}
         </p>
       </div>
@@ -197,17 +174,12 @@
 
     <!-- Styling Section -->
     <div class="border-t border-gray-200 pt-6">
-      <h5 class="font-medium text-gray-900 mb-4">
-        Styling Options
-      </h5>
+      <h5 class="font-medium text-gray-900 mb-4">Styling Options</h5>
 
       <div class="grid grid-cols-2 gap-4">
         <!-- Background Color -->
         <div>
-          <Label
-            for="background_color"
-            class="text-sm"
-          >Background</Label>
+          <Label for="background_color" class="text-sm">Background</Label>
           <div class="flex items-center space-x-2 mt-1">
             <input
               id="background_color"
@@ -217,10 +189,10 @@
               @input="
                 updateField(
                   'background_color',
-                  ($event.target as HTMLInputElement).value,
+                  ($event.target as HTMLInputElement).value
                 )
               "
-            >
+            />
             <Input
               :model-value="block.background_color"
               placeholder="#ffffff"
@@ -232,10 +204,7 @@
 
         <!-- Text Color -->
         <div>
-          <Label
-            for="text_color"
-            class="text-sm"
-          >Text Color</Label>
+          <Label for="text_color" class="text-sm">Text Color</Label>
           <div class="flex items-center space-x-2 mt-1">
             <input
               id="text_color"
@@ -245,10 +214,10 @@
               @input="
                 updateField(
                   'text_color',
-                  ($event.target as HTMLInputElement).value,
+                  ($event.target as HTMLInputElement).value
                 )
               "
-            >
+            />
             <Input
               :model-value="block.text_color"
               placeholder="#333333"
@@ -269,15 +238,9 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="left">
-                Left
-              </SelectItem>
-              <SelectItem value="center">
-                Center
-              </SelectItem>
-              <SelectItem value="right">
-                Right
-              </SelectItem>
+              <SelectItem value="left"> Left </SelectItem>
+              <SelectItem value="center"> Center </SelectItem>
+              <SelectItem value="right"> Right </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -293,21 +256,11 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="12px">
-                Small (12px)
-              </SelectItem>
-              <SelectItem value="14px">
-                Normal (14px)
-              </SelectItem>
-              <SelectItem value="16px">
-                Large (16px)
-              </SelectItem>
-              <SelectItem value="18px">
-                Extra Large (18px)
-              </SelectItem>
-              <SelectItem value="20px">
-                Huge (20px)
-              </SelectItem>
+              <SelectItem value="12px"> Small (12px) </SelectItem>
+              <SelectItem value="14px"> Normal (14px) </SelectItem>
+              <SelectItem value="16px"> Large (16px) </SelectItem>
+              <SelectItem value="18px"> Extra Large (18px) </SelectItem>
+              <SelectItem value="20px"> Huge (20px) </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -315,10 +268,7 @@
 
       <!-- Padding -->
       <div class="mt-4">
-        <Label
-          for="padding"
-          class="text-sm"
-        >Padding</Label>
+        <Label for="padding" class="text-sm">Padding</Label>
         <Input
           id="padding"
           :model-value="block.padding"
@@ -335,15 +285,8 @@
     <!-- Block Actions -->
     <div class="border-t border-gray-200 pt-6">
       <div class="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          @click="$emit('duplicate')"
-        >
-          <Icon
-            name="lucide:copy"
-            class="w-4 h-4 mr-1"
-          />
+        <Button variant="outline" size="sm" @click="$emit('duplicate')">
+          <Icon name="lucide:copy" class="w-4 h-4 mr-1" />
           Duplicate Block
         </Button>
 
@@ -353,10 +296,7 @@
           class="text-red-600 hover:text-red-700"
           @click="$emit('delete')"
         >
-          <Icon
-            name="lucide:trash-2"
-            class="w-4 h-4 mr-1"
-          />
+          <Icon name="lucide:trash-2" class="w-4 h-4 mr-1" />
           Delete Block
         </Button>
       </div>
@@ -394,7 +334,7 @@
               :model-value="
                 JSON.stringify(block.content?.attributes || {}, null, 2)
               "
-              placeholder="{&quot;data-track&quot;: &quot;button-click&quot;, &quot;id&quot;: &quot;hero-button&quot;}"
+              placeholder='{"data-track": "button-click", "id": "hero-button"}'
               class="mt-1 font-mono text-sm"
               rows="3"
               @update:model-value="updateCustomAttributes"
@@ -407,7 +347,8 @@
 </template>
 
 <script setup lang="ts">
-import type { NewsletterBlock, BlockFieldConfig } from "~/types/newsletter";
+import { computed, ref } from "vue";
+import type { NewsletterBlock, BlockFieldConfig } from "../../types/newsletter";
 
 interface Props {
   block: NewsletterBlock;
