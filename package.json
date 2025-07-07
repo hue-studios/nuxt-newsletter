@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Complete newsletter management system for Nuxt 3 with Tailwind CSS 4 support",
   "main": "./dist/module.mjs",
-  "types": "./dist/types.d.ts",
   "exports": {
     ".": {
       "import": "./dist/module.mjs",

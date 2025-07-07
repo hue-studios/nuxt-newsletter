@@ -1,4 +1,3 @@
-<script lang="ts">
 import type { Newsletter, NewsletterBlock } from "~/types/newsletter";
 
 export interface ValidationError {
@@ -284,4 +283,3 @@ export function getValidationSummary(errors: ValidationError[]) {
         : "Newsletter is ready to send",
   };
 }
-</script>

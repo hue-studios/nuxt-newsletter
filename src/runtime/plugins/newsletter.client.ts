@@ -1,4 +1,3 @@
-<script lang="ts">
 export default defineNuxtPlugin(() => {
   // Register global newsletter utilities
   return {
@@ -16,4 +15,3 @@ export default defineNuxtPlugin(() => {
     },
   };
 });
-</script>

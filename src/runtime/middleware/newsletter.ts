@@ -1,4 +1,3 @@
-<script lang="ts">
 export default defineNuxtRouteMiddleware((to) => {
   // Validate newsletter ID parameter
   if (to.params.id && !/^\d+$/.test(to.params.id as string)) {
@@ -8,4 +7,3 @@ export default defineNuxtRouteMiddleware((to) => {
     });
   }
 });
-</script>

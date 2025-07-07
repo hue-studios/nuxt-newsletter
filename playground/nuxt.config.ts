@@ -1,3 +1,5 @@
+import tailwindcss from "@tailwindcss/vite";
+
 export default defineNuxtConfig({
   typescript: {
     typeCheck: true,
@@ -24,5 +26,11 @@ export default defineNuxtConfig({
   shadcn: {
     prefix: "",
     componentDir: "./components/ui",
+  },
+  vite: {
+    plugins: [tailwindcss()],
+  },
+  build: {
+    transpile: ["@sendgrid/mail", "gsap", "swiper"],
   },
 });

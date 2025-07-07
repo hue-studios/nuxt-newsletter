@@ -1,7 +1,4 @@
-// src/runtime/utils/performance/caching.ts
-/**
- * Advanced caching utilities for newsletter system
- */
+import { readItems } from "@directus/sdk";
 
 // In-memory cache with TTL support
 export class MemoryCache<T = any> {
@@ -68,8 +65,8 @@ export class MemoryCache<T = any> {
   }
 
   getStats() {
-    const hitRate
-      = this.stats.hits / (this.stats.hits + this.stats.misses) || 0;
+    const hitRate =
+      this.stats.hits / (this.stats.hits + this.stats.misses) || 0;
     return {
       ...this.stats,
       hitRate: Math.round(hitRate * 100) / 100,

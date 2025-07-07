@@ -6,11 +6,26 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler", // <-- CRITICAL CHANGE HERE
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // Add these for better compatibility with modern Nuxt/Vite/ESM
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noEmit": true, // Typically true for Nuxt projects as Nuxt handles emission
+    "isolatedModules": true // Important for some bundlers/loaders
   },
-  "include": ["src/**/*", "playground/**/*", "test/**/*"],
-  "exclude": ["node_modules", "dist", ".nuxt"]
+  "include": [
+    "src/**/*",
+    "playground/**/*",
+    "test/**/*",
+    "*.d.ts", // <-- Include root-level .d.ts files
+    "types/**/*" // <-- If you have a dedicated 'types' folder
+  ],
+  "exclude": ["node_modules", "dist", ".nuxt", ".output"] // <-- Add .output if not already there
 }
