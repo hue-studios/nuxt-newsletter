@@ -1,6 +1,7 @@
 // src/runtime/server/api/newsletter/analytics/export.post.ts
 import { createDirectus, rest, readItems, readItem } from "@directus/sdk";
 import { z } from "zod";
+import { getDirectusClient } from "~/server/middleware/directus-auth";
 
 const ExportSchema = z.object({
   newsletter_ids: z
@@ -48,9 +49,7 @@ export default defineEventHandler(async (event) => {
       // e.g., check if user can access these newsletters
     }
 
-    const directus = createDirectus(config.public.newsletter.directusUrl).with(
-      rest()
-    );
+    const directus = getDirectusClient(event);
 
     // Build time filter
     const timeFilter: any = {};

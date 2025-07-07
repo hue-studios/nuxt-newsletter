@@ -28,6 +28,7 @@
     "typecheck": "vue-tsc --noEmit",
     "prepack": "nuxt-module build",
     "prepare": "husky install",
+    "setup:complete": "npm run install-collections && npm run install-advanced-blocks && npm run verify-setup",
     "verify-setup": "node scripts/verify-setup.js",
     "install-collections": "node scripts/install-directus-collections.js"
   },

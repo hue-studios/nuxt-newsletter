@@ -1,6 +1,7 @@
 // src/runtime/utils/security/validation.ts
 /**
- * Security-focused validation utilities
+ * Security-focused validation utilities for newsletter content
+ * Authentication-related functions have been removed
  */
 
 // Input validation patterns
@@ -10,8 +11,6 @@ export const VALIDATION_PATTERNS = {
   slug: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
   hexColor: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
   phoneNumber: /^\+?[\d\s\-\(\)]{10,}$/,
-  strongPassword:
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
 };
 
 // Validate against common injection attacks
@@ -168,17 +167,140 @@ export function validateNewsletterContent(content: any): {
   };
 }
 
-// Rate limiting validation
-export function validateRateLimit(
-  identifier: string,
-  limits: { requests: number; windowMs: number }
-): { allowed: boolean; remaining: number; resetTime: number | null } {
-  // This would integrate with your rate limiter instance
-  const rateLimiter = new RateLimiter(limits.requests, limits.windowMs);
+// Email validation specifically for newsletters
+export function validateEmail(email: string): boolean {
+  if (!VALIDATION_PATTERNS.email.test(email)) {
+    return false;
+  }
+
+  // Additional checks for newsletter context
+  const disposableEmailDomains = [
+    "10minutemail.com",
+    "guerrillamail.com",
+    "mailinator.com",
+    "tempmail.org",
+  ];
+
+  const domain = email.toLowerCase().split("@")[1];
+  if (disposableEmailDomains.includes(domain)) {
+    return false; // Optionally reject disposable emails
+  }
+
+  return true;
+}
+
+// MJML template validation
+export function validateMJMLTemplate(mjml: string): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  // Check for required MJML structure
+  if (!mjml.includes("<mjml>")) {
+    errors.push("MJML template must contain <mjml> root element");
+  }
+
+  if (!mjml.includes("<mj-head>") && !mjml.includes("<mj-body>")) {
+    errors.push("MJML template must contain <mj-head> or <mj-body> elements");
+  }
+
+  // Check for potentially dangerous elements
+  const dangerousPatterns = [
+    /<script/gi,
+    /javascript:/gi,
+    /on\w+\s*=/gi,
+    /<iframe/gi,
+  ];
+
+  dangerousPatterns.forEach((pattern) => {
+    if (pattern.test(mjml)) {
+      errors.push("MJML template contains potentially unsafe elements");
+    }
+  });
+
+  // Validate Handlebars syntax (basic check)
+  const handlebarsPattern = /\{\{([^}]+)\}\}/g;
+  const matches = mjml.match(handlebarsPattern);
+
+  if (matches) {
+    matches.forEach((match) => {
+      // Check for potentially dangerous Handlebars expressions
+      if (match.includes("eval") || match.includes("require")) {
+        errors.push(`Potentially unsafe Handlebars expression: ${match}`);
+      }
+    });
+  }
 
   return {
-    allowed: rateLimiter.isAllowed(identifier),
-    remaining: rateLimiter.getRemainingRequests(identifier),
-    resetTime: rateLimiter.getResetTime(identifier),
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+// Newsletter sending validation
+export function validateNewsletterSend(
+  newsletter: any,
+  subscribers: any[]
+): {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+} {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Check newsletter completeness
+  if (!newsletter.subject_line?.trim()) {
+    errors.push("Newsletter must have a subject line");
+  }
+
+  if (!newsletter.from_email?.trim()) {
+    errors.push("Newsletter must have a from email");
+  }
+
+  if (!newsletter.from_name?.trim()) {
+    errors.push("Newsletter must have a from name");
+  }
+
+  // Check subscriber list
+  if (!subscribers || subscribers.length === 0) {
+    errors.push("No subscribers found for this newsletter");
+  }
+
+  // Validate subscriber emails
+  const invalidEmails = subscribers.filter((sub) => !validateEmail(sub.email));
+  if (invalidEmails.length > 0) {
+    warnings.push(
+      `${invalidEmails.length} subscribers have invalid email addresses`
+    );
+  }
+
+  // Check for reasonable subject line length
+  if (newsletter.subject_line && newsletter.subject_line.length > 50) {
+    warnings.push(
+      "Subject line is longer than 50 characters - may be truncated in some email clients"
+    );
+  }
+
+  // Check for spam trigger words (basic check)
+  const spamWords = ["free", "urgent", "limited time", "act now", "!!!"];
+  const subjectLower = newsletter.subject_line?.toLowerCase() || "";
+  const foundSpamWords = spamWords.filter((word) =>
+    subjectLower.includes(word)
+  );
+
+  if (foundSpamWords.length > 0) {
+    warnings.push(
+      `Subject line contains potential spam trigger words: ${foundSpamWords.join(
+        ", "
+      )}`
+    );
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
   };
 }

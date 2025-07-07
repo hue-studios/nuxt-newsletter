@@ -7,6 +7,7 @@ import {
   updateItem,
 } from "@directus/sdk";
 import { validateWebhookSignature } from "~/server/middleware/validation";
+import { getDirectusClient } from "~/server/middleware/directus-auth";
 
 // SendGrid event types we track
 const TRACKED_EVENTS = [
@@ -83,9 +84,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Initialize Directus client
-    const directus = createDirectus(config.public.newsletter.directusUrl).with(
-      rest()
-    );
+    const directus = getDirectusClient(event);
 
     // Process each event
     const results = {

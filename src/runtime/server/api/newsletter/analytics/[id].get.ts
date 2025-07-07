@@ -7,6 +7,8 @@ import {
   aggregate,
 } from "@directus/sdk";
 
+import { getDirectusClient } from "~/server/middleware/directus-auth";
+
 export default defineEventHandler(async (event) => {
   try {
     const config = useRuntimeConfig();
@@ -19,9 +21,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const directus = createDirectus(config.public.newsletter.directusUrl).with(
-      rest()
-    );
+    const directus = getDirectusClient(event);
 
     // Get query parameters for filtering
     const query = getQuery(event);

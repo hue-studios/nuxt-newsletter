@@ -2,6 +2,7 @@
 import { createDirectus, rest, readItem, readItems } from "@directus/sdk";
 import mjml from "mjml";
 import Handlebars from "handlebars";
+import { getDirectusClient } from "~/server/middleware/directus-auth";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -17,9 +18,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Initialize Directus client
-    const directus = createDirectus(config.public.newsletter.directusUrl).with(
-      rest()
-    );
+    const directus = getDirectusClient(event);
 
     // Fetch newsletter with blocks
     const newsletter = await directus.request(

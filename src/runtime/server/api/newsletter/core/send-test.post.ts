@@ -2,6 +2,7 @@
 import { createDirectus, rest, readItem } from "@directus/sdk";
 import { EmailService } from "~/server/utils/email";
 import { validators, getValidatedData } from "~/server/middleware/validation";
+import { getDirectusClient } from "~/server/middleware/directus-auth";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -15,9 +16,8 @@ export default defineEventHandler(async (event) => {
     const config = useRuntimeConfig();
 
     // Initialize services
-    const directus = createDirectus(config.public.newsletter.directusUrl).with(
-      rest()
-    );
+    const directus = getDirectusClient(event);
+
     const emailService = new EmailService({
       apiKey: config.newsletter.sendgridApiKey,
       defaultFromEmail: config.newsletter.defaultFromEmail,

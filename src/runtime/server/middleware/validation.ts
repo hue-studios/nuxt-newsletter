@@ -67,186 +67,106 @@ export const validationSchemas = {
 
     template_id: z.coerce.number().positive().optional(),
 
-    scheduled_at: z.string().datetime().optional(),
+    preview_text: z
+      .string()
+      .max(150)
+      .optional()
+      .transform((val) => (val ? sanitizeInput(val) : val)),
 
-    is_ab_test: z.boolean().default(false),
+    reply_to: z.string().email().optional(),
 
-    ab_test_percentage: z.number().min(1).max(50).optional(),
+    status: z.enum(["draft", "scheduled", "sending", "sent"]).default("draft"),
   }),
 
   // Block creation/update
   block: z.object({
-    newsletter_id: commonSchemas.newsletterId,
+    type: z.string().min(1, "Block type is required"),
 
-    block_type_id: z.coerce.number().positive("Block type ID is required"),
-
-    sort: z.coerce.number().min(0).default(0),
-
-    field_data: z.record(z.any()).transform((data) => {
-      // Sanitize HTML content in field data
-      const sanitized: Record<string, any> = {};
-
-      for (const [key, value] of Object.entries(data)) {
-        if (typeof value === "string") {
-          // Sanitize HTML for content fields
-          if (
-            key.includes("content") ||
-            key.includes("text") ||
-            key.includes("html")
-          ) {
-            sanitized[key] = sanitizeHtml(value);
-          } else {
-            sanitized[key] = sanitizeInput(value);
-          }
-        } else {
-          sanitized[key] = value;
-        }
+    content: z.record(z.any()).transform((content) => {
+      // Sanitize HTML content fields
+      if (content.text_content) {
+        content.text_content = sanitizeHtml(content.text_content);
       }
-
-      return sanitized;
+      if (content.title) {
+        content.title = sanitizeInput(content.title);
+      }
+      if (content.subtitle) {
+        content.subtitle = sanitizeInput(content.subtitle);
+      }
+      return content;
     }),
 
-    status: z.enum(["published", "draft"]).default("published"),
+    order: z.coerce.number().min(0).default(0),
+
+    newsletter_id: commonSchemas.newsletterId,
   }),
 
-  // Send test email
+  // Test email sending
   sendTest: z.object({
-    newsletter_id: commonSchemas.newsletterId,
-
     test_emails: z
       .array(commonSchemas.email)
-      .min(1, "At least one test email is required")
-      .max(10, "Maximum 10 test emails allowed"),
-
-    include_analytics: z.boolean().default(false),
+      .min(1, "At least one test email required"),
+    newsletter_id: commonSchemas.newsletterId,
   }),
 
-  // Send newsletter
+  // Newsletter sending
   sendNewsletter: z.object({
     newsletter_id: commonSchemas.newsletterId,
-
-    mailing_list_ids: z
-      .array(z.coerce.number().positive())
-      .min(1, "At least one mailing list is required")
-      .max(10, "Maximum 10 mailing lists allowed"),
-
-    scheduled_at: z.string().datetime().optional(),
-
-    send_immediately: z.boolean().default(false),
-
-    ab_test_config: z
-      .object({
-        enabled: z.boolean().default(false),
-        percentage: z.number().min(1).max(50).default(10),
-        variant_subject: z.string().max(998).optional(),
-      })
-      .optional(),
+    send_at: z.string().datetime().optional(),
+    mailing_list_ids: z.array(z.coerce.number().positive()).optional(),
   }),
 
-  // File upload
-  fileUpload: z.object({
-    folder: z
-      .string()
-      .regex(/^[a-zA-Z0-9_-]+$/, "Invalid folder name")
-      .max(50)
-      .default("newsletter-assets"),
-
-    title: z.string().max(200).optional(),
-
-    description: z.string().max(500).optional(),
-  }),
-
-  // Template operations
+  // Template creation/update
   template: z.object({
     name: z
       .string()
       .min(1, "Template name is required")
-      .max(100, "Template name too long")
       .transform(sanitizeInput),
-
     description: z
       .string()
-      .max(500, "Description too long")
-      .transform(sanitizeInput)
-      .optional(),
-
-    category: z.enum([
-      "general",
-      "marketing",
-      "newsletter",
-      "announcement",
-      "event",
-      "product",
-      "seasonal",
-    ]),
-
-    tags: z.array(z.string().max(50)).max(10).default([]),
-
-    is_public: z.boolean().default(false),
-
-    featured: z.boolean().default(false),
+      .optional()
+      .transform((val) => (val ? sanitizeInput(val) : val)),
+    mjml_template: z.string().min(1, "MJML template is required"),
+    category: z.string().optional(),
+    is_default: z.boolean().default(false),
   }),
 
-  // Subscriber operations
+  // Subscriber creation/update
   subscriber: z.object({
     email: commonSchemas.email,
-
-    name: z
+    first_name: z
       .string()
-      .max(100, "Name too long")
-      .transform(sanitizeInput)
-      .optional(),
-
+      .optional()
+      .transform((val) => (val ? sanitizeInput(val) : val)),
+    last_name: z
+      .string()
+      .optional()
+      .transform((val) => (val ? sanitizeInput(val) : val)),
     status: z
-      .enum(["active", "inactive", "unsubscribed", "bounced"])
+      .enum(["active", "unsubscribed", "bounced", "complained"])
       .default("active"),
-
+    mailing_lists: z.array(z.coerce.number().positive()).optional(),
     metadata: z.record(z.any()).optional(),
-
-    preferences: z
-      .object({
-        frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
-        categories: z.array(z.string()).max(20).optional(),
-      })
-      .optional(),
   }),
 
-  // Webhook validation
+  // Webhook validation (newsletter-specific)
   webhook: z.object({
-    event: z.string().min(1, "Event type is required"),
-
-    timestamp: z.coerce.number().positive(),
-
+    event_type: z.string().min(1, "Event type is required"),
+    timestamp: z.coerce.number().positive("Valid timestamp required"),
     email: commonSchemas.email.optional(),
-
     newsletter_id: z.coerce.number().positive().optional(),
-
-    url: z.string().url().optional(),
-
-    user_agent: z.string().max(500).optional(),
-
-    ip: z.string().ip().optional(),
+    data: z.record(z.any()).optional(),
   }),
 };
 
-// Validation middleware factory
+// Create validation middleware function
 export function createValidationMiddleware(
   schema: z.ZodSchema,
   source: "body" | "query" | "params" = "body"
 ) {
   return defineEventHandler(async (event) => {
-    // Skip validation for non-newsletter API routes
-    if (!event.node.req.url?.startsWith("/api/newsletter")) {
-      return;
-    }
-
-    // Skip validation for GET requests unless it's query validation
-    if (event.node.req.method === "GET" && source === "body") {
-      return;
-    }
-
     try {
-      let data: any;
+      let data;
 
       switch (source) {
         case "body":
@@ -260,15 +180,14 @@ export function createValidationMiddleware(
           break;
       }
 
-      // Validate and sanitize data
       const validatedData = schema.parse(data);
 
       // Store validated data in context
-      event.context.validated = {
-        ...event.context.validated,
-        [source]: validatedData,
-      };
-    } catch (error: any) {
+      if (!event.context.validated) {
+        event.context.validated = {};
+      }
+      event.context.validated[source] = validatedData;
+    } catch (error) {
       if (error instanceof z.ZodError) {
         const errors = error.errors.map((err) => ({
           field: err.path.join("."),
@@ -325,7 +244,7 @@ export function validateFileSize(file: any, maxSizeBytes: number): boolean {
   return file.size <= maxSizeBytes;
 }
 
-// Webhook signature validation
+// Webhook signature validation (newsletter-specific)
 export function validateWebhookSignature(
   event: any,
   payload: string,
