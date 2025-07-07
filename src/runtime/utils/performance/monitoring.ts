@@ -86,7 +86,18 @@ export class PerformanceMonitor {
   }
 
   // Get metrics summary
-  getSummary(timeRange?: { start: number; end: number }): Record<string, any> {
+  getSummary(timeRange?: { start: number; end: number }): Record<
+    string,
+    {
+      count: number;
+      min: number;
+      max: number;
+      avg: number;
+      p50: number;
+      p95: number;
+      p99: number;
+    }
+  > {
     let filteredMetrics = this.metrics;
 
     if (timeRange) {
@@ -95,7 +106,18 @@ export class PerformanceMonitor {
       );
     }
 
-    const summary: Record<string, any> = {};
+    const summary: Record<
+      string,
+      {
+        count: number;
+        min: number;
+        max: number;
+        avg: number;
+        p50: number;
+        p95: number;
+        p99: number;
+      }
+    > = {};
 
     // Group by metric name
     const grouped = filteredMetrics.reduce((acc, metric) => {
@@ -156,9 +178,9 @@ export const performanceMonitor = new PerformanceMonitor();
 // Newsletter-specific performance tracking
 export function trackNewsletterPerformance() {
   // Track MJML compilation time
-  const originalCompile = window.mjml?.compile;
+  const originalCompile = (window as any).mjml?.compile;
   if (originalCompile) {
-    window.mjml.compile = function (...args: any[]) {
+    (window as any).mjml.compile = function (...args: unknown[]) {
       return performanceMonitor.measure("mjml_compile", () =>
         originalCompile.apply(this, args)
       );
@@ -213,8 +235,8 @@ export function trackWebVitals() {
   const clsObserver = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       if (
-        entry.entryType === "layout-shift" &&
-        !(entry as any).hadRecentInput
+        entry.entryType === "layout-shift"
+        && !(entry as any).hadRecentInput
       ) {
         clsValue += (entry as any).value;
       }

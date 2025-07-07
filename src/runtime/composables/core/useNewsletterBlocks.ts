@@ -27,7 +27,7 @@ interface UseNewsletterBlocksOptions {
 }
 
 export const useNewsletterBlocks = (
-  options: UseNewsletterBlocksOptions = {}
+  options: UseNewsletterBlocksOptions = {},
 ) => {
   const {
     autoSave = true,
@@ -100,7 +100,7 @@ export const useNewsletterBlocks = (
           filter: { status: { _eq: "published" } },
           sort: ["category", "sort"],
           ...options,
-        })
+        }),
       );
 
       state.blockTypes = response as BlockType[];
@@ -143,7 +143,7 @@ export const useNewsletterBlocks = (
           filter: { newsletter_id: { _eq: newsletterId } },
           sort: ["sort"],
           ...options,
-        })
+        }),
       );
 
       state.blocks = response as NewsletterBlock[];
@@ -173,14 +173,14 @@ export const useNewsletterBlocks = (
           sort: maxSort + 1,
           field_data: {},
           ...validated,
-        })
+        }),
       );
 
       const block = response as NewsletterBlock;
 
       // Add to state with block type data
       const blockType = state.blockTypes.find(
-        (bt) => bt.id === block.block_type_id
+        (bt) => bt.id === block.block_type_id,
       );
       if (blockType) {
         block.block_type = blockType;
@@ -230,7 +230,7 @@ export const useNewsletterBlocks = (
       }
 
       const response = await directus.request(
-        updateItem("newsletter_blocks", id, validated)
+        updateItem("newsletter_blocks", id, validated),
       );
 
       state.lastSaved = new Date();
@@ -266,7 +266,7 @@ export const useNewsletterBlocks = (
         console.warn("Block auto-save failed:", error);
       }
     },
-    autoSaveDelay
+    autoSaveDelay,
   );
 
   // Delete block
@@ -329,9 +329,9 @@ export const useNewsletterBlocks = (
             b.id === id
               ? b.sort
               : index >= duplicatedData.sort
-              ? (b.sort || 0) + 1
-              : b.sort || 0,
-        }))
+                ? (b.sort || 0) + 1
+                : b.sort || 0,
+        })),
       );
 
       return await createBlock(duplicatedData);
@@ -343,7 +343,7 @@ export const useNewsletterBlocks = (
   // Reorder blocks
   const reorderBlocks = async (
     newsletterId: number,
-    reorderedBlocks: { id: number; sort: number }[]
+    reorderedBlocks: { id: number; sort: number }[],
   ) => {
     try {
       state.isDragging = false;
@@ -369,9 +369,9 @@ export const useNewsletterBlocks = (
       await Promise.all(
         updates.map((update) =>
           directus.request(
-            updateItem("newsletter_blocks", update.id, { sort: update.sort })
-          )
-        )
+            updateItem("newsletter_blocks", update.id, { sort: update.sort }),
+          ),
+        ),
       );
 
       toast.success("Blocks reordered successfully");

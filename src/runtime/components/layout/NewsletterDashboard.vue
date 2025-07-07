@@ -4,20 +4,31 @@
     <div class="mb-8">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Newsletters</h1>
+          <h1 class="text-3xl font-bold text-gray-900">
+            Newsletters
+          </h1>
           <p class="text-gray-600 mt-1">
             Create and manage your email newsletters
           </p>
         </div>
 
         <div class="flex items-center space-x-3">
-          <Button variant="outline" @click="showTemplateLibrary = true">
-            <Icon name="lucide:layout-template" class="w-4 h-4 mr-2" />
+          <Button
+            variant="outline"
+            @click="showTemplateLibrary = true"
+          >
+            <Icon
+              name="lucide:layout-template"
+              class="w-4 h-4 mr-2"
+            />
             Templates
           </Button>
 
           <Button @click="createNewNewsletter">
-            <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
+            <Icon
+              name="lucide:plus"
+              class="w-4 h-4 mr-2"
+            />
             New Newsletter
           </Button>
         </div>
@@ -30,10 +41,17 @@
         <CardContent class="p-6">
           <div class="flex items-center">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-600">Total Newsletters</p>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.total }}</p>
+              <p class="text-sm font-medium text-gray-600">
+                Total Newsletters
+              </p>
+              <p class="text-2xl font-bold text-gray-900">
+                {{ stats.total }}
+              </p>
             </div>
-            <Icon name="lucide:mail" class="w-8 h-8 text-blue-500" />
+            <Icon
+              name="lucide:mail"
+              class="w-8 h-8 text-blue-500"
+            />
           </div>
         </CardContent>
       </Card>
@@ -42,12 +60,17 @@
         <CardContent class="p-6">
           <div class="flex items-center">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-600">Sent This Month</p>
+              <p class="text-sm font-medium text-gray-600">
+                Sent This Month
+              </p>
               <p class="text-2xl font-bold text-gray-900">
                 {{ stats.sentThisMonth }}
               </p>
             </div>
-            <Icon name="lucide:send" class="w-8 h-8 text-green-500" />
+            <Icon
+              name="lucide:send"
+              class="w-8 h-8 text-green-500"
+            />
           </div>
         </CardContent>
       </Card>
@@ -56,12 +79,17 @@
         <CardContent class="p-6">
           <div class="flex items-center">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-600">Avg. Open Rate</p>
+              <p class="text-sm font-medium text-gray-600">
+                Avg. Open Rate
+              </p>
               <p class="text-2xl font-bold text-gray-900">
                 {{ stats.avgOpenRate }}%
               </p>
             </div>
-            <Icon name="lucide:eye" class="w-8 h-8 text-purple-500" />
+            <Icon
+              name="lucide:eye"
+              class="w-8 h-8 text-purple-500"
+            />
           </div>
         </CardContent>
       </Card>
@@ -70,12 +98,17 @@
         <CardContent class="p-6">
           <div class="flex items-center">
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-600">Subscribers</p>
+              <p class="text-sm font-medium text-gray-600">
+                Subscribers
+              </p>
               <p class="text-2xl font-bold text-gray-900">
                 {{ stats.totalSubscribers }}
               </p>
             </div>
-            <Icon name="lucide:users" class="w-8 h-8 text-orange-500" />
+            <Icon
+              name="lucide:users"
+              class="w-8 h-8 text-orange-500"
+            />
           </div>
         </CardContent>
       </Card>
@@ -103,11 +136,21 @@
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="ready">Ready</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
+            <SelectItem value="">
+              All Status
+            </SelectItem>
+            <SelectItem value="draft">
+              Draft
+            </SelectItem>
+            <SelectItem value="ready">
+              Ready
+            </SelectItem>
+            <SelectItem value="scheduled">
+              Scheduled
+            </SelectItem>
+            <SelectItem value="sent">
+              Sent
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -117,12 +160,24 @@
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
-            <SelectItem value="company">Company</SelectItem>
-            <SelectItem value="product">Product</SelectItem>
-            <SelectItem value="weekly">Weekly</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="event">Event</SelectItem>
+            <SelectItem value="">
+              All Categories
+            </SelectItem>
+            <SelectItem value="company">
+              Company
+            </SelectItem>
+            <SelectItem value="product">
+              Product
+            </SelectItem>
+            <SelectItem value="weekly">
+              Weekly
+            </SelectItem>
+            <SelectItem value="monthly">
+              Monthly
+            </SelectItem>
+            <SelectItem value="event">
+              Event
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -135,7 +190,10 @@
           :class="{ 'bg-gray-100': viewMode === 'grid' }"
           @click="viewMode = 'grid'"
         >
-          <Icon name="lucide:grid-3x3" class="w-4 h-4" />
+          <Icon
+            name="lucide:grid-3x3"
+            class="w-4 h-4"
+          />
         </Button>
         <Button
           variant="ghost"
@@ -143,7 +201,10 @@
           :class="{ 'bg-gray-100': viewMode === 'list' }"
           @click="viewMode = 'list'"
         >
-          <Icon name="lucide:list" class="w-4 h-4" />
+          <Icon
+            name="lucide:list"
+            class="w-4 h-4"
+          />
         </Button>
       </div>
     </div>
@@ -153,12 +214,16 @@
       v-if="isLoading"
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
     >
-      <Card v-for="i in 6" :key="i" class="animate-pulse">
+      <Card
+        v-for="i in 6"
+        :key="i"
+        class="animate-pulse"
+      >
         <CardContent class="p-6">
           <div class="space-y-3">
-            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div class="h-3 bg-gray-200 rounded w-1/2"></div>
-            <div class="h-20 bg-gray-200 rounded"></div>
+            <div class="h-4 bg-gray-200 rounded w-3/4" />
+            <div class="h-3 bg-gray-200 rounded w-1/2" />
+            <div class="h-20 bg-gray-200 rounded" />
           </div>
         </CardContent>
       </Card>
@@ -193,7 +258,9 @@
             <TableHead>Category</TableHead>
             <TableHead>Open Rate</TableHead>
             <TableHead>Created</TableHead>
-            <TableHead class="text-right">Actions</TableHead>
+            <TableHead class="text-right">
+              Actions
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -219,45 +286,67 @@
               </Badge>
             </TableCell>
             <TableCell>
-              <Badge variant="outline">{{ newsletter.category }}</Badge>
+              <Badge variant="outline">
+                {{ newsletter.category }}
+              </Badge>
             </TableCell>
             <TableCell>
-              <span v-if="newsletter.open_rate"
-                >{{ newsletter.open_rate.toFixed(1) }}%</span
-              >
-              <span v-else class="text-gray-400">-</span>
+              <span v-if="newsletter.open_rate">{{ newsletter.open_rate.toFixed(1) }}%</span>
+              <span
+                v-else
+                class="text-gray-400"
+              >-</span>
             </TableCell>
             <TableCell class="text-gray-600">
               {{ formatDate(newsletter.created_at) }}
             </TableCell>
             <TableCell class="text-right">
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" @click.stop>
-                    <Icon name="lucide:more-horizontal" class="w-4 h-4" />
+                <DropdownMenuTrigger as-child>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    @click.stop
+                  >
+                    <Icon
+                      name="lucide:more-horizontal"
+                      class="w-4 h-4"
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem @click.stop="editNewsletter(newsletter.id)">
-                    <Icon name="lucide:edit" class="w-4 h-4 mr-2" />
+                    <Icon
+                      name="lucide:edit"
+                      class="w-4 h-4 mr-2"
+                    />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     @click.stop="duplicateNewsletter(newsletter.id)"
                   >
-                    <Icon name="lucide:copy" class="w-4 h-4 mr-2" />
+                    <Icon
+                      name="lucide:copy"
+                      class="w-4 h-4 mr-2"
+                    />
                     Duplicate
                   </DropdownMenuItem>
                   <DropdownMenuItem @click.stop="sendTestEmail(newsletter)">
-                    <Icon name="lucide:send" class="w-4 h-4 mr-2" />
+                    <Icon
+                      name="lucide:send"
+                      class="w-4 h-4 mr-2"
+                    />
                     Send Test
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    @click.stop="deleteNewsletter(newsletter.id)"
                     class="text-red-600"
+                    @click.stop="deleteNewsletter(newsletter.id)"
                   >
-                    <Icon name="lucide:trash-2" class="w-4 h-4 mr-2" />
+                    <Icon
+                      name="lucide:trash-2"
+                      class="w-4 h-4 mr-2"
+                    />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -273,7 +362,10 @@
       v-if="!isLoading && filteredNewsletters.length === 0"
       class="text-center py-16"
     >
-      <Icon name="lucide:mail" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+      <Icon
+        name="lucide:mail"
+        class="w-16 h-16 text-gray-400 mx-auto mb-4"
+      />
       <h3 class="text-lg font-medium text-gray-900 mb-2">
         {{
           searchQuery || statusFilter || categoryFilter
@@ -292,7 +384,10 @@
         v-if="!searchQuery && !statusFilter && !categoryFilter"
         @click="createNewNewsletter"
       >
-        <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
+        <Icon
+          name="lucide:plus"
+          class="w-4 h-4 mr-2"
+        />
         Create Newsletter
       </Button>
     </div>
@@ -307,7 +402,10 @@
           </DialogDescription>
         </DialogHeader>
 
-        <TemplateBrowser :templates="templates" @select="createFromTemplate" />
+        <TemplateBrowser
+          :templates="templates"
+          @select="createFromTemplate"
+        />
       </DialogContent>
     </Dialog>
   </div>
@@ -348,23 +446,23 @@ const filteredNewsletters = computed(() => {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(
       (newsletter) =>
-        newsletter.title.toLowerCase().includes(query) ||
-        newsletter.subject_line.toLowerCase().includes(query) ||
-        newsletter.category.toLowerCase().includes(query)
+        newsletter.title.toLowerCase().includes(query)
+        || newsletter.subject_line.toLowerCase().includes(query)
+        || newsletter.category.toLowerCase().includes(query),
     );
   }
 
   // Status filter
   if (statusFilter.value) {
     filtered = filtered.filter(
-      (newsletter) => newsletter.status === statusFilter.value
+      (newsletter) => newsletter.status === statusFilter.value,
     );
   }
 
   // Category filter
   if (categoryFilter.value) {
     filtered = filtered.filter(
-      (newsletter) => newsletter.category === categoryFilter.value
+      (newsletter) => newsletter.category === categoryFilter.value,
     );
   }
 
@@ -388,8 +486,8 @@ const stats = computed(() => {
     .filter((n) => n.open_rate && n.open_rate > 0)
     .map((n) => n.open_rate!);
 
-  const avgOpenRate =
-    openRates.length > 0
+  const avgOpenRate
+    = openRates.length > 0
       ? openRates.reduce((sum, rate) => sum + rate, 0) / openRates.length
       : 0;
 

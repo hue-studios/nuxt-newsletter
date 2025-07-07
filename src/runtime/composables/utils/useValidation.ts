@@ -20,7 +20,7 @@ export const useValidation = () => {
         if (newsletter.subject_line.length > 50) {
           addError(
             "subject_line",
-            "Subject line should be 50 characters or less for optimal display"
+            "Subject line should be 50 characters or less for optimal display",
           );
         }
 
@@ -38,12 +38,12 @@ export const useValidation = () => {
           "guaranteed",
         ];
         const hasSpamWords = spamWords.some((word) =>
-          newsletter.subject_line.toLowerCase().includes(word)
+          newsletter.subject_line.toLowerCase().includes(word),
         );
         if (hasSpamWords) {
           addError(
             "subject_line",
-            "Subject line contains words that may trigger spam filters"
+            "Subject line contains words that may trigger spam filters",
           );
         }
       }
@@ -62,7 +62,7 @@ export const useValidation = () => {
       if (newsletter.preview_text && newsletter.preview_text.length > 90) {
         addError(
           "preview_text",
-          "Preview text should be 90 characters or less"
+          "Preview text should be 90 characters or less",
         );
       }
 
@@ -78,14 +78,14 @@ export const useValidation = () => {
         if (!newsletter.mailing_list_id) {
           addError(
             "mailing_list_id",
-            "Please select a mailing list before sending"
+            "Please select a mailing list before sending",
           );
         }
 
         if (!newsletter.compiled_html) {
           addError(
             "compiled_html",
-            "Newsletter must be compiled before sending"
+            "Newsletter must be compiled before sending",
           );
         }
       }
@@ -112,7 +112,7 @@ export const useValidation = () => {
           if (!block.text_content?.trim()) {
             addError(
               `${fieldPrefix}.text_content`,
-              "Text block cannot be empty"
+              "Text block cannot be empty",
             );
           }
           break;
@@ -124,7 +124,7 @@ export const useValidation = () => {
           if (!block.image_alt_text?.trim()) {
             addError(
               `${fieldPrefix}.image_alt_text`,
-              "Image needs alt text for accessibility"
+              "Image needs alt text for accessibility",
             );
           }
           break;
@@ -145,12 +145,12 @@ export const useValidation = () => {
       if (block.background_color && block.text_color) {
         const contrast = calculateColorContrast(
           block.background_color,
-          block.text_color
+          block.text_color,
         );
         if (contrast < 4.5) {
           addError(
             `${fieldPrefix}.colors`,
-            "Text may be hard to read due to low color contrast"
+            "Text may be hard to read due to low color contrast",
           );
         }
       }
@@ -238,7 +238,7 @@ export const useValidation = () => {
 
   // Email validation
   const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
@@ -256,9 +256,9 @@ export const useValidation = () => {
   const calculateColorContrast = (bg: string, text: string): number => {
     const getLuminance = (color: string) => {
       const hex = color.replace("#", "");
-      const r = parseInt(hex.substr(0, 2), 16) / 255;
-      const g = parseInt(hex.substr(2, 2), 16) / 255;
-      const b = parseInt(hex.substr(4, 2), 16) / 255;
+      const r = Number.parseInt(hex.substr(0, 2), 16) / 255;
+      const g = Number.parseInt(hex.substr(2, 2), 16) / 255;
+      const b = Number.parseInt(hex.substr(4, 2), 16) / 255;
 
       const toLinear = (c: number) =>
         c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);

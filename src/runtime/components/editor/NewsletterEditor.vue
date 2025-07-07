@@ -6,21 +6,32 @@
         <div class="flex items-center justify-between h-16">
           <!-- Back Button & Title -->
           <div class="flex items-center space-x-4">
-            <Button variant="ghost" @click="emit('back')">
-              <Icon name="lucide:arrow-left" class="w-4 h-4 mr-2" />
+            <Button
+              variant="ghost"
+              @click="emit('back')"
+            >
+              <Icon
+                name="lucide:arrow-left"
+                class="w-4 h-4 mr-2"
+              />
               Back
             </Button>
             <div>
               <h1 class="text-xl font-semibold text-gray-900">
                 {{ newsletter.title }}
               </h1>
-              <p class="text-sm text-gray-500">{{ newsletter.status }}</p>
+              <p class="text-sm text-gray-500">
+                {{ newsletter.status }}
+              </p>
             </div>
           </div>
 
           <!-- Actions -->
           <div class="flex items-center space-x-3">
-            <Button variant="outline" @click="togglePreview">
+            <Button
+              variant="outline"
+              @click="togglePreview"
+            >
               <Icon
                 :name="
                   editorState.isPreviewMode ? 'lucide:edit-3' : 'lucide:eye'
@@ -30,13 +41,22 @@
               {{ editorState.isPreviewMode ? "Edit" : "Preview" }}
             </Button>
 
-            <Button variant="outline" @click="showSendTestDialog = true">
-              <Icon name="lucide:send" class="w-4 h-4 mr-2" />
+            <Button
+              variant="outline"
+              @click="showSendTestDialog = true"
+            >
+              <Icon
+                name="lucide:send"
+                class="w-4 h-4 mr-2"
+              />
               Send Test
             </Button>
 
             <Button @click="autoSave">
-              <Icon name="lucide:save" class="w-4 h-4 mr-2" />
+              <Icon
+                name="lucide:save"
+                class="w-4 h-4 mr-2"
+              />
               Save
             </Button>
           </div>
@@ -51,7 +71,9 @@
         <div class="col-span-3">
           <div class="bg-white rounded-lg shadow">
             <div class="p-4 border-b border-gray-200">
-              <h2 class="text-lg font-medium text-gray-900">Blocks</h2>
+              <h2 class="text-lg font-medium text-gray-900">
+                Blocks
+              </h2>
             </div>
             <div class="p-4 space-y-3">
               <Button
@@ -59,14 +81,19 @@
                 :key="blockType.id"
                 variant="outline"
                 class="w-full justify-start h-auto p-3"
-                @click="addBlock(blockType)"
                 draggable="true"
+                @click="addBlock(blockType)"
                 @dragstart="handleBlockTypeStart(blockType, $event)"
                 @dragend="handleDragEnd"
               >
-                <Icon :name="blockType.icon" class="w-4 h-4 mr-3" />
+                <Icon
+                  :name="blockType.icon"
+                  class="w-4 h-4 mr-3"
+                />
                 <div class="text-left">
-                  <div class="font-medium">{{ blockType.name }}</div>
+                  <div class="font-medium">
+                    {{ blockType.name }}
+                  </div>
                   <div class="text-xs text-gray-500">
                     {{ blockType.description }}
                   </div>
@@ -93,10 +120,13 @@
                   class="drop-zone"
                   :class="{ active: activeDropZone === index }"
                   :style="{ top: `${zone.y}px` }"
-                ></div>
+                />
 
                 <!-- Newsletter Blocks -->
-                <TransitionGroup name="block" tag="div">
+                <TransitionGroup
+                  name="block"
+                  tag="div"
+                >
                   <NewsletterBlock
                     v-for="(block, index) in newsletter.blocks"
                     :key="block.id"
@@ -133,7 +163,9 @@
         <div class="col-span-3">
           <div class="bg-white rounded-lg shadow">
             <div class="p-4 border-b border-gray-200">
-              <h2 class="text-lg font-medium text-gray-900">Properties</h2>
+              <h2 class="text-lg font-medium text-gray-900">
+                Properties
+              </h2>
             </div>
             <div class="p-4">
               <BlockEditor
@@ -141,7 +173,10 @@
                 :block="editorState.selectedBlock"
                 @update="updateBlock"
               />
-              <div v-else class="text-center text-gray-500 py-8">
+              <div
+                v-else
+                class="text-center text-gray-500 py-8"
+              >
                 <Icon
                   name="lucide:mouse-pointer-click"
                   class="w-8 h-8 mx-auto mb-3"
@@ -180,11 +215,20 @@
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showSendTestDialog = false">
+          <Button
+            variant="outline"
+            @click="showSendTestDialog = false"
+          >
             Cancel
           </Button>
-          <Button @click="sendTestEmail" :disabled="!testEmails.trim()">
-            <Icon name="lucide:send" class="w-4 h-4 mr-2" />
+          <Button
+            :disabled="!testEmails.trim()"
+            @click="sendTestEmail"
+          >
+            <Icon
+              name="lucide:send"
+              class="w-4 h-4 mr-2"
+            />
             Send Test
           </Button>
         </DialogFooter>
@@ -201,7 +245,10 @@
           </DialogDescription>
         </DialogHeader>
 
-        <BlockPicker :block-types="blockTypes" @select="addBlockFromPicker" />
+        <BlockPicker
+          :block-types="blockTypes"
+          @select="addBlockFromPicker"
+        />
       </DialogContent>
     </Dialog>
   </div>
@@ -218,7 +265,7 @@ import type {
 } from "~/types/newsletter";
 
 // Register GSAP plugins
-if (process.client) {
+if (import.meta.client) {
   gsap.registerPlugin(Draggable, ScrollTrigger);
 }
 
@@ -267,7 +314,7 @@ const dropZones = ref<any[]>([]);
 const activeDropZone = ref<number | null>(null);
 
 // Drag and drop state
-let draggableInstances: any[] = [];
+const draggableInstances: any[] = [];
 
 // Methods
 const addBlock = async (blockType: BlockType, index?: number) => {
@@ -341,7 +388,7 @@ const handleBlockTypeStart = (blockType: BlockType, event: DragEvent) => {
   if (event.dataTransfer) {
     event.dataTransfer.setData(
       "application/json",
-      JSON.stringify({ type: "block-type", data: blockType })
+      JSON.stringify({ type: "block-type", data: blockType }),
     );
     event.dataTransfer.effectAllowed = "copy";
   }
@@ -399,8 +446,8 @@ const calculateDropZones = () => {
   zones.push({ y: 0, height: 20 });
 
   // Zones between blocks
-  const blockElements =
-    newsletterCanvas.value.querySelectorAll("[data-block-id]");
+  const blockElements
+    = newsletterCanvas.value.querySelectorAll("[data-block-id]");
   blockElements.forEach((element) => {
     const rect = element.getBoundingClientRect();
     const relativeY = rect.bottom - containerRect.top;
@@ -447,7 +494,7 @@ onMounted(async () => {
   await fetchBlockTypes();
 
   // Initialize GSAP animations
-  if (process.client && newsletterCanvas.value) {
+  if (import.meta.client && newsletterCanvas.value) {
     // Setup any additional GSAP animations here
     gsap.set(".newsletter-block", { scale: 1 });
   }

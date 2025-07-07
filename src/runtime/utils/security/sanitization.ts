@@ -88,7 +88,7 @@ export function sanitizeHtml(
 
   // Simple tag and attribute filtering
   sanitized = sanitized.replace(
-    /<(\/?)([\w]+)([^>]*)>/gi,
+    /<(\/?)(\w+)([^>]*)>/g,
     (match, slash, tagName, attributes) => {
       const tag = tagName.toLowerCase();
 
@@ -97,17 +97,17 @@ export function sanitizeHtml(
         return "";
       }
 
-      // Filter attributes
+      // Filter attributes with a safer regex
       if (attributes && allowedAttributes[tag]) {
         const filteredAttrs = attributes.replace(
-          /\s*([\w-]+)\s*=\s*["']([^"']*)["']/g,
+          /\s*([\w-]+)\s*=\s*"([^"]*)"/g, // Simplified, non-backtracking regex
           (attrMatch: string, attrName: string, attrValue: string) => {
             if (allowedAttributes[tag]?.includes(attrName.toLowerCase())) {
               // Additional validation for href attributes
               if (attrName.toLowerCase() === "href") {
                 if (
-                  attrValue.startsWith("javascript:") ||
-                  attrValue.startsWith("data:")
+                  attrValue.startsWith("javascript:")
+                  || attrValue.startsWith("data:")
                 ) {
                   return "";
                 }
@@ -184,7 +184,7 @@ export function escapeHtml(text: string): string {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
-    '"': "&quot;",
+    "\"": "&quot;",
     "'": "&#39;",
   };
   return text.replace(/[&<>"']/g, (char) => escapeMap[char]);
@@ -195,8 +195,8 @@ export function escapeRegex(text: string): string {
 }
 
 export function escapeCsv(text: string): string {
-  if (text.includes(",") || text.includes('"') || text.includes("\n")) {
-    return '"' + text.replace(/"/g, '""') + '"';
+  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
+    return "\"" + text.replace(/"/g, "\"\"") + "\"";
   }
   return text;
 }

@@ -16,7 +16,7 @@ export const useFileUpload = () => {
       maxSize?: number; // in MB
       allowedTypes?: string[];
       onProgress?: (progress: number) => void;
-    } = {}
+    } = {},
   ) => {
     const {
       folder = "newsletter-assets",
@@ -56,7 +56,7 @@ export const useFileUpload = () => {
         body: formData,
         onUploadProgress: (progress) => {
           const percentage = Math.round(
-            (progress.loaded / progress.total) * 100
+            (progress.loaded / progress.total) * 100,
           );
           uploadState.value.progress = percentage;
           onProgress?.(percentage);
@@ -104,7 +104,7 @@ export const useFileUpload = () => {
       multiple?: boolean;
       accept?: string;
       onSelect?: (files: FileList) => void;
-    } = {}
+    } = {},
   ) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -129,7 +129,7 @@ export const useFileUpload = () => {
       height?: number;
       quality?: number;
       format?: "jpg" | "png" | "webp";
-    } = {}
+    } = {},
   ) => {
     const config = useRuntimeConfig();
     let url = `${config.public.newsletter.directusUrl}/assets/${fileId}`;
@@ -154,7 +154,7 @@ export const useFileUpload = () => {
       maxWidth?: number;
       maxHeight?: number;
       quality?: number;
-    } = {}
+    } = {},
   ): Promise<File> => {
     return new Promise((resolve, reject) => {
       const { maxWidth = 1200, maxHeight = 800, quality = 0.8 } = options;
@@ -193,7 +193,7 @@ export const useFileUpload = () => {
             }
           },
           "image/jpeg",
-          quality
+          quality,
         );
       };
 
@@ -228,14 +228,14 @@ export const useFileUpload = () => {
       maxWidth?: number;
       maxHeight?: number;
       aspectRatio?: number;
-    }
+    },
   ): Promise<boolean> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         const { width, height } = img;
-        const { minWidth, minHeight, maxWidth, maxHeight, aspectRatio } =
-          constraints;
+        const { minWidth, minHeight, maxWidth, maxHeight, aspectRatio }
+          = constraints;
 
         if (minWidth && width < minWidth) {
           reject(new Error(`Image width must be at least ${minWidth}px`));
@@ -262,8 +262,8 @@ export const useFileUpload = () => {
           if (Math.abs(ratio - aspectRatio) > 0.1) {
             reject(
               new Error(
-                `Image aspect ratio must be approximately ${aspectRatio}:1`
-              )
+                `Image aspect ratio must be approximately ${aspectRatio}:1`,
+              ),
             );
             return;
           }

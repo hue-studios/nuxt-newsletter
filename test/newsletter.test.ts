@@ -124,7 +124,7 @@ describe("NewsletterEditor", () => {
   });
 
   it("emits back event when back button clicked", async () => {
-    const backButton = wrapper.find('button[data-testid="back-button"]');
+    const backButton = wrapper.find("button[data-testid=\"back-button\"]");
     if (backButton.exists()) {
       await backButton.trigger("click");
       expect(wrapper.emitted("back")).toBeTruthy();

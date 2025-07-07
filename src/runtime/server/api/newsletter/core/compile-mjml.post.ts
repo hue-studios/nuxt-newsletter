@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
           "template_id.mjml_template",
           "template_id.default_values",
         ],
-      })
+      }),
     );
 
     if (!newsletter) {
@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
 
     // Sort blocks by sort order
     const sortedBlocks = (newsletter.blocks || []).sort(
-      (a: any, b: any) => (a.sort || 0) - (b.sort || 0)
+      (a: any, b: any) => (a.sort || 0) - (b.sort || 0),
     );
 
     // Register Handlebars helpers
@@ -59,10 +59,10 @@ export default defineEventHandler(async (event) => {
       <mjml>
         <mj-head>
           <mj-title>${escapeHtml(
-            newsletter.subject_line || newsletter.title
+            newsletter.subject_line || newsletter.title,
           )}</mj-title>
           <mj-preview>${escapeHtml(
-            newsletter.preview_text || newsletter.title
+            newsletter.preview_text || newsletter.title,
           )}</mj-preview>
           <mj-attributes>
             <mj-all font-family="Arial, sans-serif" />
@@ -86,7 +86,7 @@ export default defineEventHandler(async (event) => {
       } catch (error: any) {
         console.error(`Error processing block ${block.id}:`, error);
         warnings.push(
-          `Block ${block.id} (${block.block_type?.name}): ${error.message}`
+          `Block ${block.id} (${block.block_type?.name}): ${error.message}`,
         );
       }
     }
@@ -134,7 +134,7 @@ export default defineEventHandler(async (event) => {
         compiled_html: mjmlResult.html,
         compiled_at: new Date().toISOString(),
         compilation_warnings: warnings.length > 0 ? warnings : null,
-      })
+      }),
     );
 
     return {
@@ -165,7 +165,7 @@ export default defineEventHandler(async (event) => {
 async function processBlock(
   block: any,
   newsletter: any,
-  warnings: string[]
+  warnings: string[],
 ): Promise<string> {
   const blockType = block.block_type;
 
@@ -243,7 +243,7 @@ function registerHandlebarsHelpers() {
       }
 
       return url;
-    }
+    },
   );
 
   // Date formatting helper
@@ -271,7 +271,7 @@ function registerHandlebarsHelpers() {
         default:
           return d.toISOString().split("T")[0];
       }
-    }
+    },
   );
 
   // Conditional helper
@@ -295,7 +295,7 @@ function registerHandlebarsHelpers() {
       }
 
       return result;
-    }
+    },
   );
 }
 

@@ -6,11 +6,12 @@
 
 // Input validation patterns
 export const VALIDATION_PATTERNS = {
-  email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  url: /^https?:\/\/([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
+  email: /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/,
+  // Fixed: More efficient URL regex that avoids super-linear backtracking
+  url: /^https?:\/\/[\da-z.-]+\.[a-z.]{2,6}(?:\/[\w.-]*)*\/?$/i,
   slug: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-  hexColor: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
-  phoneNumber: /^\+?[\d\s\-\(\)]{10,}$/,
+  hexColor: /^#(?:[A-F0-9]{6}|[A-F0-9]{3})$/i,
+  phoneNumber: /^\+?[\d\s\-()]{10,}$/,
 };
 
 // Validate against common injection attacks
@@ -124,8 +125,8 @@ export function validateNewsletterContent(content: any): {
     }
 
     if (
-      content.button_url.includes("javascript:") ||
-      content.button_url.includes("data:")
+      content.button_url.includes("javascript:")
+      || content.button_url.includes("data:")
     ) {
       errors.push("Potentially unsafe button URL detected");
     }
@@ -134,8 +135,8 @@ export function validateNewsletterContent(content: any): {
   // Check for suspicious image URLs
   if (content.image_url) {
     if (
-      !VALIDATION_PATTERNS.url.test(content.image_url) &&
-      !content.image_url.startsWith("/")
+      !VALIDATION_PATTERNS.url.test(content.image_url)
+      && !content.image_url.startsWith("/")
     ) {
       errors.push("Invalid image URL format");
     }
@@ -148,15 +149,15 @@ export function validateNewsletterContent(content: any): {
 
   // Check color values
   if (
-    content.background_color &&
-    !VALIDATION_PATTERNS.hexColor.test(content.background_color)
+    content.background_color
+    && !VALIDATION_PATTERNS.hexColor.test(content.background_color)
   ) {
     errors.push("Invalid background color format");
   }
 
   if (
-    content.text_color &&
-    !VALIDATION_PATTERNS.hexColor.test(content.text_color)
+    content.text_color
+    && !VALIDATION_PATTERNS.hexColor.test(content.text_color)
   ) {
     errors.push("Invalid text color format");
   }
@@ -240,8 +241,12 @@ export function validateMJMLTemplate(mjml: string): {
 
 // Newsletter sending validation
 export function validateNewsletterSend(
-  newsletter: any,
-  subscribers: any[]
+  newsletter: {
+    subject_line?: string;
+    from_email?: string;
+    from_name?: string;
+  },
+  subscribers: Array<{ email: string }>
 ): {
   isValid: boolean;
   errors: string[];

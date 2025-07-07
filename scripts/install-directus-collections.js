@@ -18,8 +18,8 @@ import {
   readItems,
   updateCollection,
 } from "@directus/sdk";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 class DirectusNewsletterInstaller {
   constructor(directusUrl, email, password) {
@@ -85,15 +85,15 @@ class DirectusNewsletterInstaller {
       return true;
     } catch (error) {
       if (
-        error.message?.includes("already exists") ||
-        error.message?.includes("duplicate")
+        error.message?.includes("already exists")
+        || error.message?.includes("duplicate")
       ) {
         console.log(`⏭️  Field ${fieldConfig.field} already exists`);
         return true;
       }
       console.error(
         `❌ Failed to create field ${fieldConfig.field}:`,
-        error.message
+        error.message,
       );
       return false;
     }
@@ -1313,13 +1313,13 @@ class DirectusNewsletterInstaller {
       try {
         await this.directus.request(createRelation(relation));
         console.log(
-          `✅ Created relation: ${relation.collection}.${relation.field} → ${relation.related_collection}`
+          `✅ Created relation: ${relation.collection}.${relation.field} → ${relation.related_collection}`,
         );
         await this.delay(1000);
       } catch (error) {
         if (error.message?.includes("already exists")) {
           console.log(
-            `⏭️  Relation already exists: ${relation.collection}.${relation.field}`
+            `⏭️  Relation already exists: ${relation.collection}.${relation.field}`,
           );
         } else {
           console.error(`❌ Failed to create relation: ${error.message}`);
@@ -1456,7 +1456,7 @@ class DirectusNewsletterInstaller {
         await this.delay(300);
       } catch (error) {
         console.log(
-          `⚠️  Could not create block type ${blockType.name}: ${error.message}`
+          `⚠️  Could not create block type ${blockType.name}: ${error.message}`,
         );
       }
     }
@@ -1479,7 +1479,7 @@ class DirectusNewsletterInstaller {
       await this.installSampleData();
 
       console.log(
-        "\n🎉 Newsletter system installation completed successfully!"
+        "\n🎉 Newsletter system installation completed successfully!",
       );
       console.log("\n📋 What was installed:");
       console.log("    • 10 Collections for newsletter management");
@@ -1509,12 +1509,12 @@ async function main() {
     console.log("Newsletter System Installer");
     console.log("");
     console.log(
-      "Usage: node install-directus-collections.js <directus-url> <email> <password>"
+      "Usage: node install-directus-collections.js <directus-url> <email> <password>",
     );
     console.log("");
     console.log("Examples:");
     console.log(
-      "  node install-directus-collections.js https://admin.example.com admin@example.com password123"
+      "  node install-directus-collections.js https://admin.example.com admin@example.com password123",
     );
     process.exit(1);
   }
@@ -1524,7 +1524,7 @@ async function main() {
   const installer = new DirectusNewsletterInstaller(
     directusUrl,
     email,
-    password
+    password,
   );
 
   const success = await installer.run();

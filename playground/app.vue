@@ -10,6 +10,7 @@
       <h2>Newsletter Components</h2>
       <p>Test your newsletter components here...</p>
     </div>
+    <NewsletterList />
   </div>
 </template>
 

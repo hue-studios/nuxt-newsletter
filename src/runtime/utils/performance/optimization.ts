@@ -4,7 +4,7 @@
  */
 
 // Debounce function calls
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
   immediate?: boolean
@@ -27,7 +27,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle function calls
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -43,6 +43,9 @@ export function throttle<T extends (...args: any[]) => any>(
 }
 
 // Lazy loading utility
+// src/runtime/utils/performance/optimization.ts
+
+// Replace the createLazyLoader function (around line 60):
 export function createLazyLoader<T>(
   loader: () => Promise<T>,
   options: {
@@ -57,7 +60,8 @@ export function createLazyLoader<T>(
   return () => {
     if (cached) return cached;
 
-    cached = new Promise(async (resolve, reject) => {
+    // Fixed: Remove async from Promise constructor
+    cached = new Promise<T>((resolve, reject) => {
       let attempts = 0;
 
       const attempt = async (): Promise<void> => {
@@ -79,7 +83,8 @@ export function createLazyLoader<T>(
         }
       };
 
-      await attempt();
+      // Call attempt without await in Promise constructor
+      attempt().catch(reject);
     });
 
     return cached;
@@ -99,7 +104,10 @@ export class BatchProcessor<T, R> {
 
   add(item: T): Promise<R> {
     return new Promise((resolve, reject) => {
-      this.queue.push({ ...item, resolve, reject } as any);
+      this.queue.push({ ...item, resolve, reject } as T & {
+        resolve: (value: R) => void;
+        reject: (reason?: unknown) => void;
+      });
       this.scheduleProcessing();
     });
   }
@@ -115,22 +123,24 @@ export class BatchProcessor<T, R> {
   private async processBatch(): Promise<void> {
     if (this.queue.length === 0) return;
 
-    const batch = this.queue.splice(0, this.batchSize);
+    const batch = this.queue.splice(0, this.batchSize) as Array<
+      T & { resolve: (value: R) => void; reject: (reason?: unknown) => void }
+    >;
     this.timeout = null;
 
     try {
       const results = await this.processor(
         batch.map((item) => {
-          const { resolve, reject, ...data } = item as any;
-          return data;
+          const { resolve, reject, ...data } = item;
+          return data as T;
         })
       );
 
-      batch.forEach((item: any, index) => {
+      batch.forEach((item, index) => {
         item.resolve(results[index]);
       });
     } catch (error) {
-      batch.forEach((item: any) => {
+      batch.forEach((item) => {
         item.reject(error);
       });
     }

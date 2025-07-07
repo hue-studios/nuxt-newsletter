@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     await validators.sendTest(event);
     const { newsletter_id, test_emails, include_analytics } = getValidatedData(
       event,
-      "body"
+      "body",
     );
 
     const config = useRuntimeConfig();
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     const newsletter = await directus.request(
       readItem("newsletters", newsletter_id, {
         fields: ["*"],
-      })
+      }),
     );
 
     if (!newsletter) {
@@ -71,7 +71,7 @@ export default defineEventHandler(async (event) => {
     // Send test emails
     const sendResult = await emailService.sendTestEmail(
       newsletter,
-      test_emails
+      test_emails,
     );
 
     // Log test send
@@ -83,7 +83,7 @@ export default defineEventHandler(async (event) => {
         sent_by: event.context.user?.id || null,
         sendgrid_message_id: sendResult[0]?.headers?.["x-message-id"] || null,
         status: "sent",
-      })
+      }),
     );
 
     // Update newsletter stats
@@ -92,7 +92,7 @@ export default defineEventHandler(async (event) => {
         test_sends_count:
           (newsletter.test_sends_count || 0) + test_emails.length,
         last_test_sent_at: new Date().toISOString(),
-      })
+      }),
     );
 
     return {
@@ -114,7 +114,7 @@ export default defineEventHandler(async (event) => {
     try {
       const body = await readBody(event);
       const directus = createDirectus(
-        config.public.newsletter.directusUrl
+        config.public.newsletter.directusUrl,
       ).with(rest());
 
       await directus.request(
@@ -125,7 +125,7 @@ export default defineEventHandler(async (event) => {
           sent_by: event.context.user?.id || null,
           status: "failed",
           error_message: error.message,
-        })
+        }),
       );
     } catch (logError) {
       console.error("Failed to log test send error:", logError);
@@ -151,7 +151,7 @@ export default defineEventHandler(async (event) => {
 // Process HTML for test emails
 function processTestHtml(
   html: string,
-  includeAnalytics: boolean = false
+  includeAnalytics: boolean = false,
 ): string {
   let processedHtml = html;
 
@@ -160,7 +160,7 @@ function processTestHtml(
     // Remove tracking pixels
     processedHtml = processedHtml.replace(
       /<img[^>]*src=[^>]*track[^>]*>/gi,
-      ""
+      "",
     );
 
     // Remove UTM parameters from links
@@ -201,7 +201,7 @@ function addTestIndicators(html: string): string {
 // Validate email addresses
 function validateEmailAddresses(emails: string[]): string[] {
   const validEmails: string[] = [];
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
   for (const email of emails) {
     const trimmedEmail = email.trim().toLowerCase();

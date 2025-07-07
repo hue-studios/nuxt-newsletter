@@ -39,9 +39,9 @@ export default defineEventHandler(async (event) => {
     // Verify webhook signature if secret is configured
     const webhookSecret = config.newsletter?.webhookSecret;
     if (webhookSecret) {
-      const signature =
-        getHeader(event, "x-twilio-email-event-webhook-signature") ||
-        getHeader(event, "x-sendgrid-signature");
+      const signature
+        = getHeader(event, "x-twilio-email-event-webhook-signature")
+          || getHeader(event, "x-sendgrid-signature");
 
       if (!signature) {
         throw createError({
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
         event,
         body.toString(),
         signature,
-        webhookSecret
+        webhookSecret,
       );
 
       if (!isValidSignature) {
@@ -182,10 +182,10 @@ async function processWebhookEvent(directus: any, webhookEvent: any) {
   }
 
   // Extract newsletter ID from custom args
-  const newsletterIdFromEvent =
-    newsletter_id ||
-    webhookEvent.newsletter_id ||
-    extractFromCustomArgs(webhookEvent, "newsletter_id");
+  const newsletterIdFromEvent
+    = newsletter_id
+      || webhookEvent.newsletter_id
+      || extractFromCustomArgs(webhookEvent, "newsletter_id");
 
   if (!newsletterIdFromEvent) {
     return {
@@ -199,7 +199,7 @@ async function processWebhookEvent(directus: any, webhookEvent: any) {
     // Create newsletter event record
     const eventRecord = await directus.request(
       createItem("newsletter_events", {
-        newsletter_id: parseInt(newsletterIdFromEvent),
+        newsletter_id: Number.parseInt(newsletterIdFromEvent),
         event_type: eventType,
         email: email.toLowerCase(),
         timestamp: new Date(timestamp * 1000).toISOString(),
@@ -214,14 +214,14 @@ async function processWebhookEvent(directus: any, webhookEvent: any) {
         attempt_number: attempt || null,
         metadata: JSON.stringify(additionalData),
         created_at: new Date().toISOString(),
-      })
+      }),
     );
 
     // Update newsletter statistics
     await updateNewsletterStats(
       directus,
-      parseInt(newsletterIdFromEvent),
-      eventType
+      Number.parseInt(newsletterIdFromEvent),
+      eventType,
     );
 
     // Handle specific event types
@@ -241,7 +241,7 @@ async function processWebhookEvent(directus: any, webhookEvent: any) {
 async function updateNewsletterStats(
   directus: any,
   newsletterId: number,
-  eventType: string
+  eventType: string,
 ) {
   try {
     const newsletter = await directus.request(
@@ -253,7 +253,7 @@ async function updateNewsletterStats(
           "total_unsubscribes",
           "total_complaints",
         ],
-      })
+      }),
     );
 
     if (!newsletter) {
@@ -296,7 +296,7 @@ async function handleSpecificEvent(
   directus: any,
   eventType: string,
   email: string,
-  webhookEvent: any
+  webhookEvent: any,
 ) {
   switch (eventType) {
     case "unsubscribe":
@@ -322,7 +322,7 @@ async function handleSpecificEvent(
 async function handleUnsubscribe(
   directus: any,
   email: string,
-  webhookEvent: any
+  webhookEvent: any,
 ) {
   try {
     // Find subscriber and update status
@@ -330,7 +330,7 @@ async function handleUnsubscribe(
       readItems("subscribers", {
         filter: { email: { _eq: email.toLowerCase() } },
         limit: 1,
-      })
+      }),
     );
 
     if (subscribers.length > 0) {
@@ -339,7 +339,7 @@ async function handleUnsubscribe(
           status: "unsubscribed",
           unsubscribed_at: new Date().toISOString(),
           unsubscribe_reason: "webhook_unsubscribe",
-        })
+        }),
       );
     }
 
@@ -351,7 +351,7 @@ async function handleUnsubscribe(
         newsletter_id: extractFromCustomArgs(webhookEvent, "newsletter_id"),
         timestamp: new Date(webhookEvent.timestamp * 1000).toISOString(),
         metadata: JSON.stringify(webhookEvent),
-      })
+      }),
     );
   } catch (error) {
     console.error("Error handling unsubscribe:", error);
@@ -362,8 +362,8 @@ async function handleUnsubscribe(
 async function handleBounce(directus: any, email: string, webhookEvent: any) {
   try {
     const bounceType = webhookEvent.type || "unknown";
-    const isHardBounce =
-      bounceType === "bounce" || webhookEvent.reason?.includes("invalid");
+    const isHardBounce
+      = bounceType === "bounce" || webhookEvent.reason?.includes("invalid");
 
     // Update subscriber status for hard bounces
     if (isHardBounce) {
@@ -371,7 +371,7 @@ async function handleBounce(directus: any, email: string, webhookEvent: any) {
         readItems("subscribers", {
           filter: { email: { _eq: email.toLowerCase() } },
           limit: 1,
-        })
+        }),
       );
 
       if (subscribers.length > 0) {
@@ -380,7 +380,7 @@ async function handleBounce(directus: any, email: string, webhookEvent: any) {
             status: "bounced",
             bounce_count: (subscribers[0].bounce_count || 0) + 1,
             last_bounce_at: new Date().toISOString(),
-          })
+          }),
         );
       }
     }
@@ -395,7 +395,7 @@ async function handleBounce(directus: any, email: string, webhookEvent: any) {
         timestamp: new Date(webhookEvent.timestamp * 1000).toISOString(),
         is_hard_bounce: isHardBounce,
         metadata: JSON.stringify(webhookEvent),
-      })
+      }),
     );
   } catch (error) {
     console.error("Error handling bounce:", error);
@@ -406,7 +406,7 @@ async function handleBounce(directus: any, email: string, webhookEvent: any) {
 async function handleSpamComplaint(
   directus: any,
   email: string,
-  webhookEvent: any
+  webhookEvent: any,
 ) {
   try {
     // Update subscriber status
@@ -414,7 +414,7 @@ async function handleSpamComplaint(
       readItems("subscribers", {
         filter: { email: { _eq: email.toLowerCase() } },
         limit: 1,
-      })
+      }),
     );
 
     if (subscribers.length > 0) {
@@ -423,7 +423,7 @@ async function handleSpamComplaint(
           status: "complained",
           complaint_count: (subscribers[0].complaint_count || 0) + 1,
           last_complaint_at: new Date().toISOString(),
-        })
+        }),
       );
     }
 
@@ -434,7 +434,7 @@ async function handleSpamComplaint(
         newsletter_id: extractFromCustomArgs(webhookEvent, "newsletter_id"),
         timestamp: new Date(webhookEvent.timestamp * 1000).toISOString(),
         metadata: JSON.stringify(webhookEvent),
-      })
+      }),
     );
   } catch (error) {
     console.error("Error handling spam complaint:", error);
@@ -452,7 +452,7 @@ async function handleDrop(directus: any, email: string, webhookEvent: any) {
         newsletter_id: extractFromCustomArgs(webhookEvent, "newsletter_id"),
         timestamp: new Date(webhookEvent.timestamp * 1000).toISOString(),
         metadata: JSON.stringify(webhookEvent),
-      })
+      }),
     );
   } catch (error) {
     console.error("Error handling drop:", error);
@@ -462,8 +462,8 @@ async function handleDrop(directus: any, email: string, webhookEvent: any) {
 // Extract data from custom args
 function extractFromCustomArgs(webhookEvent: any, key: string) {
   // Try different possible locations for custom args
-  const customArgs =
-    webhookEvent.custom_args || webhookEvent.unique_args || webhookEvent[key];
+  const customArgs
+    = webhookEvent.custom_args || webhookEvent.unique_args || webhookEvent[key];
 
   if (typeof customArgs === "object" && customArgs[key]) {
     return customArgs[key];

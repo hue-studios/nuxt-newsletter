@@ -1,7 +1,7 @@
 export const useDirectus = () => {
   const config = useRuntimeConfig();
   const directus = createDirectus(config.public.newsletter.directusUrl).with(
-    rest()
+    rest(),
   );
 
   // Connection state
@@ -65,10 +65,10 @@ export const useDirectus = () => {
 
   const batchUpdate = async (
     collection: string,
-    updates: { id: any; data: any }[]
+    updates: { id: any; data: any }[],
   ) => {
     const promises = updates.map(({ id, data }) =>
-      directus.request(updateItem(collection, id, data))
+      directus.request(updateItem(collection, id, data)),
     );
     return await Promise.all(promises);
   };
@@ -81,7 +81,7 @@ export const useDirectus = () => {
   const search = async (
     collection: string,
     query: string,
-    fields: string[] = []
+    fields: string[] = [],
   ) => {
     const searchFilter = {
       _or: fields.map((field) => ({
@@ -93,7 +93,7 @@ export const useDirectus = () => {
       readItems(collection, {
         filter: searchFilter,
         limit: 50,
-      })
+      }),
     );
   };
 
@@ -103,7 +103,7 @@ export const useDirectus = () => {
       aggregate(collection, {
         aggregate: { count: "*" },
         filter,
-      })
+      }),
     );
     return result[0]?.count || 0;
   };
@@ -113,7 +113,7 @@ export const useDirectus = () => {
       aggregate(collection, {
         aggregate: { sum: [field] },
         filter,
-      })
+      }),
     );
     return result[0]?.sum || 0;
   };
@@ -123,7 +123,7 @@ export const useDirectus = () => {
       aggregate(collection, {
         aggregate: { avg: [field] },
         filter,
-      })
+      }),
     );
     return result[0]?.avg || 0;
   };
@@ -164,7 +164,7 @@ export const useDirectus = () => {
   const readItemsCached = async (
     collection: string,
     options?: any,
-    cacheKey?: string
+    cacheKey?: string,
   ) => {
     const key = cacheKey || `${collection}-${JSON.stringify(options)}`;
     const cached = getCached(key);
@@ -182,7 +182,7 @@ export const useDirectus = () => {
     collection: string,
     id: any,
     options?: any,
-    cacheKey?: string
+    cacheKey?: string,
   ) => {
     const key = cacheKey || `${collection}-${id}-${JSON.stringify(options)}`;
     const cached = getCached(key);
@@ -202,7 +202,7 @@ export const useDirectus = () => {
   const subscribe = (
     collection: string,
     callback: (data: any) => void,
-    filter?: any
+    filter?: any,
   ) => {
     // Note: This would require WebSocket implementation in Directus
     const subscriptionKey = `${collection}-${JSON.stringify(filter)}`;

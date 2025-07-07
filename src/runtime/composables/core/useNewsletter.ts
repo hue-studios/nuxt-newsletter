@@ -61,13 +61,13 @@ export const useNewsletter = () => {
 
   // Computed
   const drafts = computed(() =>
-    state.newsletters.filter((n) => n.status === "draft")
+    state.newsletters.filter((n) => n.status === "draft"),
   );
   const scheduled = computed(() =>
-    state.newsletters.filter((n) => n.status === "scheduled")
+    state.newsletters.filter((n) => n.status === "scheduled"),
   );
   const sent = computed(() =>
-    state.newsletters.filter((n) => n.status === "sent")
+    state.newsletters.filter((n) => n.status === "sent"),
   );
 
   // Newsletter CRUD operations
@@ -78,7 +78,7 @@ export const useNewsletter = () => {
       status?: string;
       category?: string;
       search?: string;
-    } = {}
+    } = {},
   ) => {
     try {
       state.isLoading = true;
@@ -335,7 +335,7 @@ export const useNewsletter = () => {
   const fetchAnalytics = async (newsletterId: number) => {
     try {
       const response = await $fetch(
-        `/api/newsletter/analytics/${newsletterId}`
+        `/api/newsletter/analytics/${newsletterId}`,
       );
       return response;
     } catch (error: any) {

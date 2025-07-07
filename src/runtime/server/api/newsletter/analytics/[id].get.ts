@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
           "total_bounces",
           "total_unsubscribes",
         ],
-      })
+      }),
     );
 
     if (!newsletter) {
@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
       response.details = await fetchDetailedEvents(
         directus,
         Number(newsletterId),
-        timeFilter
+        timeFilter,
       );
     }
 
@@ -175,7 +175,7 @@ function buildTimeFilter(timeRange: string) {
 async function fetchSendStats(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   const sendStats = await directus.request(
     aggregate("newsletter_sends", {
@@ -187,7 +187,7 @@ async function fetchSendStats(
         newsletter_id: { _eq: newsletterId },
         ...timeFilter,
       },
-    })
+    }),
   );
 
   const result = sendStats[0] || {};
@@ -202,7 +202,7 @@ async function fetchSendStats(
 async function fetchEventStats(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   const eventStats = await directus.request(
     readItems("newsletter_events", {
@@ -214,7 +214,7 @@ async function fetchEventStats(
         newsletter_id: { _eq: newsletterId },
         ...timeFilter,
       },
-    })
+    }),
   );
 
   const events: any = {
@@ -256,7 +256,7 @@ async function fetchEventStats(
 async function fetchTopLinks(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   try {
     const links = await directus.request(
@@ -271,7 +271,7 @@ async function fetchTopLinks(
         groupBy: ["url"],
         sort: ["-count"],
         limit: 10,
-      })
+      }),
     );
 
     return links.map((link: any) => ({
@@ -289,7 +289,7 @@ async function fetchTopLinks(
 async function fetchDeviceStats(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   try {
     const devices = await directus.request(
@@ -304,7 +304,7 @@ async function fetchDeviceStats(
         groupBy: ["user_agent"],
         sort: ["-count"],
         limit: 10,
-      })
+      }),
     );
 
     // Categorize devices
@@ -323,17 +323,17 @@ async function fetchDeviceStats(
 
       // Categorize device type
       if (
-        userAgent.includes("mobile") ||
-        userAgent.includes("android") ||
-        userAgent.includes("iphone")
+        userAgent.includes("mobile")
+        || userAgent.includes("android")
+        || userAgent.includes("iphone")
       ) {
         categories.mobile += count;
       } else if (userAgent.includes("tablet") || userAgent.includes("ipad")) {
         categories.tablet += count;
       } else if (
-        userAgent.includes("windows") ||
-        userAgent.includes("macintosh") ||
-        userAgent.includes("linux")
+        userAgent.includes("windows")
+        || userAgent.includes("macintosh")
+        || userAgent.includes("linux")
       ) {
         categories.desktop += count;
       } else {
@@ -369,7 +369,7 @@ async function fetchDeviceStats(
 async function fetchLocationStats(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   try {
     const locations = await directus.request(
@@ -384,7 +384,7 @@ async function fetchLocationStats(
         groupBy: ["ip_location"],
         sort: ["-count"],
         limit: 10,
-      })
+      }),
     );
 
     return locations.map((location: any) => ({
@@ -401,7 +401,7 @@ async function fetchLocationStats(
 async function fetchTimeSeriesData(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   try {
     const events = await directus.request(
@@ -413,7 +413,7 @@ async function fetchTimeSeriesData(
         },
         groupBy: ["created_at::date", "event_type"],
         sort: ["created_at"],
-      })
+      }),
     );
 
     // Group by date
@@ -464,8 +464,8 @@ function calculateAnalytics(newsletter: any, sends: any, events: any) {
   const opens = events.opens || newsletter.total_opens || 0;
   const clicks = events.clicks || newsletter.total_clicks || 0;
   const bounces = events.bounces || newsletter.total_bounces || 0;
-  const unsubscribes =
-    events.unsubscribes || newsletter.total_unsubscribes || 0;
+  const unsubscribes
+    = events.unsubscribes || newsletter.total_unsubscribes || 0;
 
   return {
     total_sent: totalSent,
@@ -491,7 +491,7 @@ function calculateAnalytics(newsletter: any, sends: any, events: any) {
 async function fetchDetailedEvents(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   try {
     const events = await directus.request(
@@ -512,7 +512,7 @@ async function fetchDetailedEvents(
         },
         sort: ["-created_at"],
         limit: 1000, // Limit to prevent huge responses
-      })
+      }),
     );
 
     return events;

@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   ];
 
   const isPublicEndpoint = publicEndpoints.some((endpoint) =>
-    event.node.req.url?.startsWith(endpoint)
+    event.node.req.url?.startsWith(endpoint),
   );
 
   if (isPublicEndpoint) {
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
     await client.request(
       readMe({
         fields: ["id", "email", "status", "role"],
-      })
+      }),
     );
 
     // Store the validated token and client for use in API handlers

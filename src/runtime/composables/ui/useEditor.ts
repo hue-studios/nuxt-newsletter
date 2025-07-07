@@ -33,13 +33,13 @@ export const useEditor = (newsletter: Ref<any>) => {
   };
 
   const toggleTemplateLibrary = () => {
-    editorState.value.showTemplateLibrary =
-      !editorState.value.showTemplateLibrary;
+    editorState.value.showTemplateLibrary
+      = !editorState.value.showTemplateLibrary;
   };
 
   const toggleContentLibrary = () => {
-    editorState.value.showContentLibrary =
-      !editorState.value.showContentLibrary;
+    editorState.value.showContentLibrary
+      = !editorState.value.showContentLibrary;
   };
 
   // History management
@@ -75,8 +75,8 @@ export const useEditor = (newsletter: Ref<any>) => {
 
   const redo = () => {
     if (
-      editorState.value.canRedo &&
-      historyIndex.value < history.value.length - 1
+      editorState.value.canRedo
+      && historyIndex.value < history.value.length - 1
     ) {
       historyIndex.value++;
       const nextState = history.value[historyIndex.value];
@@ -177,7 +177,7 @@ export const useEditor = (newsletter: Ref<any>) => {
     if (!newsletter.value.blocks) return;
 
     const blockIndex = newsletter.value.blocks.findIndex(
-      (b: any) => b.id === blockId
+      (b: any) => b.id === blockId,
     );
     if (blockIndex === -1) return;
 
@@ -196,13 +196,13 @@ export const useEditor = (newsletter: Ref<any>) => {
       "button_url",
     ];
     const hasSignificantChange = Object.keys(updates).some((key) =>
-      significantFields.includes(key)
+      significantFields.includes(key),
     );
 
     if (hasSignificantChange) {
       saveToHistory(
         newsletter.value,
-        `Updated ${oldBlock.block_type.name} block`
+        `Updated ${oldBlock.block_type.name} block`,
       );
     }
   };
@@ -211,7 +211,7 @@ export const useEditor = (newsletter: Ref<any>) => {
     if (!newsletter.value.blocks) return;
 
     const blockIndex = newsletter.value.blocks.findIndex(
-      (b: any) => b.id === blockId
+      (b: any) => b.id === blockId,
     );
     if (blockIndex === -1) return;
 
@@ -225,7 +225,7 @@ export const useEditor = (newsletter: Ref<any>) => {
 
     saveToHistory(
       newsletter.value,
-      `Deleted ${deletedBlock.block_type.name} block`
+      `Deleted ${deletedBlock.block_type.name} block`,
     );
 
     // Deselect if deleted block was selected
@@ -246,8 +246,8 @@ export const useEditor = (newsletter: Ref<any>) => {
     }
 
     // Insert after the original block
-    const insertIndex =
-      newsletter.value.blocks.findIndex((b: any) => b.id === block.id) + 1;
+    const insertIndex
+      = newsletter.value.blocks.findIndex((b: any) => b.id === block.id) + 1;
     newsletter.value.blocks.splice(insertIndex, 0, duplicatedBlock);
 
     // Update sort order for subsequent blocks
@@ -257,7 +257,7 @@ export const useEditor = (newsletter: Ref<any>) => {
 
     saveToHistory(
       newsletter.value,
-      `Duplicated ${block.block_type.name} block`
+      `Duplicated ${block.block_type.name} block`,
     );
     selectBlock(duplicatedBlock);
   };
@@ -266,7 +266,7 @@ export const useEditor = (newsletter: Ref<any>) => {
     if (!newsletter.value.blocks) return;
 
     const blockIndex = newsletter.value.blocks.findIndex(
-      (b: any) => b.id === blockId
+      (b: any) => b.id === blockId,
     );
     if (blockIndex === -1) return;
 
@@ -285,7 +285,7 @@ export const useEditor = (newsletter: Ref<any>) => {
 
     saveToHistory(
       newsletter.value,
-      `Moved ${temp.block_type.name} block ${direction}`
+      `Moved ${temp.block_type.name} block ${direction}`,
     );
   };
 

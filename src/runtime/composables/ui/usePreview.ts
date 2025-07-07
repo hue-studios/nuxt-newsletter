@@ -35,7 +35,7 @@ export const usePreview = () => {
 
   // Email client simulation
   const setEmailClient = (
-    client: "generic" | "gmail" | "outlook" | "apple"
+    client: "generic" | "gmail" | "outlook" | "apple",
   ) => {
     previewState.value.emailClient = client;
   };
@@ -96,12 +96,12 @@ export const usePreview = () => {
 
     // Count images and links
     previewData.value.imageCount = newsletter.blocks.filter(
-      (b: any) => b.block_type.slug === "image" && b.image_url
+      (b: any) => b.block_type.slug === "image" && b.image_url,
     ).length;
 
     previewData.value.linkCount = newsletter.blocks.filter(
       (b: any) =>
-        b.button_url || (b.text_content && b.text_content.includes("<a"))
+        b.button_url || (b.text_content && b.text_content.includes("<a")),
     ).length;
   };
 
@@ -114,18 +114,18 @@ export const usePreview = () => {
     newsletter.blocks.forEach((block: any) => {
       // Check for images without alt text
       if (
-        block.block_type.slug === "image" &&
-        block.image_url &&
-        !block.image_alt_text
+        block.block_type.slug === "image"
+        && block.image_url
+        && !block.image_alt_text
       ) {
-        issues.push(`Image block missing alt text`);
+        issues.push("Image block missing alt text");
       }
 
       // Check for poor color contrast
       if (block.background_color && block.text_color) {
         const contrast = calculateColorContrast(
           block.background_color,
-          block.text_color
+          block.text_color,
         );
         if (contrast < 4.5) {
           issues.push(`Poor color contrast in ${block.block_type.name} block`);
@@ -134,14 +134,14 @@ export const usePreview = () => {
 
       // Check for buttons without descriptive text
       if (
-        block.block_type.slug === "button" &&
-        (!block.button_text || block.button_text.length < 3)
+        block.block_type.slug === "button"
+        && (!block.button_text || block.button_text.length < 3)
       ) {
-        issues.push(`Button with insufficient descriptive text`);
+        issues.push("Button with insufficient descriptive text");
       }
 
       // Check for very small font sizes
-      if (block.font_size && parseInt(block.font_size) < 12) {
+      if (block.font_size && Number.parseInt(block.font_size) < 12) {
         issues.push(`Font size too small in ${block.block_type.name} block`);
       }
     });
@@ -154,9 +154,9 @@ export const usePreview = () => {
   const calculateColorContrast = (bg: string, text: string): number => {
     const getLuminance = (color: string) => {
       const hex = color.replace("#", "");
-      const r = parseInt(hex.substr(0, 2), 16) / 255;
-      const g = parseInt(hex.substr(2, 2), 16) / 255;
-      const b = parseInt(hex.substr(4, 2), 16) / 255;
+      const r = Number.parseInt(hex.substr(0, 2), 16) / 255;
+      const g = Number.parseInt(hex.substr(2, 2), 16) / 255;
+      const b = Number.parseInt(hex.substr(4, 2), 16) / 255;
 
       const toLinear = (c: number) =>
         c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);

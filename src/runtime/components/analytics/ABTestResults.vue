@@ -11,31 +11,52 @@
         </div>
 
         <div class="flex items-center space-x-2">
-          <Badge :variant="testStatusVariant" class="capitalize">
+          <Badge
+            :variant="testStatusVariant"
+            class="capitalize"
+          >
             {{ abTest.status }}
           </Badge>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Icon name="lucide:more-horizontal" class="w-4 h-4" />
+            <DropdownMenuTrigger as-child>
+              <Button
+                variant="outline"
+                size="sm"
+              >
+                <Icon
+                  name="lucide:more-horizontal"
+                  class="w-4 h-4"
+                />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem @click="exportResults">
-                <Icon name="lucide:download" class="w-4 h-4 mr-2" />
+                <Icon
+                  name="lucide:download"
+                  class="w-4 h-4 mr-2"
+                />
                 Export Results
               </DropdownMenuItem>
-              <DropdownMenuItem @click="duplicateWinner" :disabled="!hasWinner">
-                <Icon name="lucide:copy" class="w-4 h-4 mr-2" />
+              <DropdownMenuItem
+                :disabled="!hasWinner"
+                @click="duplicateWinner"
+              >
+                <Icon
+                  name="lucide:copy"
+                  class="w-4 h-4 mr-2"
+                />
                 Duplicate Winner
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                @click="stopTest"
                 :disabled="abTest.status !== 'running'"
+                @click="stopTest"
               >
-                <Icon name="lucide:stop-circle" class="w-4 h-4 mr-2" />
+                <Icon
+                  name="lucide:stop-circle"
+                  class="w-4 h-4 mr-2"
+                />
                 Stop Test
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -50,18 +71,29 @@
         class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg"
       >
         <div class="text-center">
-          <div class="text-sm text-gray-600">Test Duration</div>
-          <div class="text-lg font-bold text-gray-900">{{ testDuration }}</div>
+          <div class="text-sm text-gray-600">
+            Test Duration
+          </div>
+          <div class="text-lg font-bold text-gray-900">
+            {{ testDuration }}
+          </div>
         </div>
         <div class="text-center">
-          <div class="text-sm text-gray-600">Total Recipients</div>
+          <div class="text-sm text-gray-600">
+            Total Recipients
+          </div>
           <div class="text-lg font-bold text-gray-900">
             {{ (abTest.variantA.sent + abTest.variantB.sent).toLocaleString() }}
           </div>
         </div>
         <div class="text-center">
-          <div class="text-sm text-gray-600">Confidence Level</div>
-          <div class="text-lg font-bold" :class="confidenceColor">
+          <div class="text-sm text-gray-600">
+            Confidence Level
+          </div>
+          <div
+            class="text-lg font-bold"
+            :class="confidenceColor"
+          >
             {{ confidenceLevel }}%
           </div>
         </div>
@@ -78,22 +110,34 @@
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <h3 class="text-lg font-semibold text-gray-900">Variant A</h3>
-              <Badge variant="outline" class="text-xs">Control</Badge>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Variant A
+              </h3>
+              <Badge
+                variant="outline"
+                class="text-xs"
+              >
+                Control
+              </Badge>
             </div>
             <Badge
               v-if="winnerVariant === 'A'"
               variant="default"
               class="bg-green-600"
             >
-              <Icon name="lucide:crown" class="w-3 h-3 mr-1" />
+              <Icon
+                name="lucide:crown"
+                class="w-3 h-3 mr-1"
+              />
               Winner
             </Badge>
           </div>
 
           <!-- Subject Line -->
           <div class="space-y-1">
-            <div class="text-sm text-gray-600">Subject Line</div>
+            <div class="text-sm text-gray-600">
+              Subject Line
+            </div>
             <div
               class="font-medium text-gray-900 p-2 bg-gray-100 rounded text-sm"
             >
@@ -107,13 +151,17 @@
               <div class="text-2xl font-bold text-blue-600">
                 {{ abTest.variantA.sent.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Recipients</div>
+              <div class="text-xs text-gray-600">
+                Recipients
+              </div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-green-600">
                 {{ abTest.variantA.opens.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Opens</div>
+              <div class="text-xs text-gray-600">
+                Opens
+              </div>
             </div>
           </div>
 
@@ -121,28 +169,24 @@
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Open Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantAOpenRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantAOpenRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
                 class="bg-green-600 h-2 rounded-full transition-all duration-500"
                 :style="{ width: variantAOpenRate + '%' }"
-              ></div>
+              />
             </div>
 
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Click Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantAClickRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantAClickRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
                 class="bg-blue-600 h-2 rounded-full transition-all duration-500"
                 :style="{ width: variantAClickRate + '%' }"
-              ></div>
+              />
             </div>
           </div>
         </div>
@@ -156,22 +200,34 @@
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <h3 class="text-lg font-semibold text-gray-900">Variant B</h3>
-              <Badge variant="outline" class="text-xs">Test</Badge>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Variant B
+              </h3>
+              <Badge
+                variant="outline"
+                class="text-xs"
+              >
+                Test
+              </Badge>
             </div>
             <Badge
               v-if="winnerVariant === 'B'"
               variant="default"
               class="bg-green-600"
             >
-              <Icon name="lucide:crown" class="w-3 h-3 mr-1" />
+              <Icon
+                name="lucide:crown"
+                class="w-3 h-3 mr-1"
+              />
               Winner
             </Badge>
           </div>
 
           <!-- Subject Line -->
           <div class="space-y-1">
-            <div class="text-sm text-gray-600">Subject Line</div>
+            <div class="text-sm text-gray-600">
+              Subject Line
+            </div>
             <div
               class="font-medium text-gray-900 p-2 bg-gray-100 rounded text-sm"
             >
@@ -185,13 +241,17 @@
               <div class="text-2xl font-bold text-blue-600">
                 {{ abTest.variantB.sent.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Recipients</div>
+              <div class="text-xs text-gray-600">
+                Recipients
+              </div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-green-600">
                 {{ abTest.variantB.opens.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Opens</div>
+              <div class="text-xs text-gray-600">
+                Opens
+              </div>
             </div>
           </div>
 
@@ -199,28 +259,24 @@
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Open Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantBOpenRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantBOpenRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
                 class="bg-green-600 h-2 rounded-full transition-all duration-500"
                 :style="{ width: variantBOpenRate + '%' }"
-              ></div>
+              />
             </div>
 
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Click Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantBClickRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantBClickRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
                 class="bg-blue-600 h-2 rounded-full transition-all duration-500"
                 :style="{ width: variantBClickRate + '%' }"
-              ></div>
+              />
             </div>
           </div>
         </div>
@@ -228,15 +284,15 @@
 
       <!-- Performance Comparison -->
       <div class="space-y-4">
-        <h4 class="font-semibold text-gray-900">Performance Analysis</h4>
+        <h4 class="font-semibold text-gray-900">
+          Performance Analysis
+        </h4>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Open Rate Difference -->
           <div class="p-4 border border-gray-200 rounded-lg">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-900"
-                >Open Rate Difference</span
-              >
+              <span class="text-sm font-medium text-gray-900">Open Rate Difference</span>
               <div class="flex items-center space-x-1">
                 <Icon
                   :name="
@@ -279,9 +335,7 @@
           <!-- Click Rate Difference -->
           <div class="p-4 border border-gray-200 rounded-lg">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-900"
-                >Click Rate Difference</span
-              >
+              <span class="text-sm font-medium text-gray-900">Click Rate Difference</span>
               <div class="flex items-center space-x-1">
                 <Icon
                   :name="
@@ -331,7 +385,9 @@
             class="w-5 h-5 text-blue-600 mt-0.5"
           />
           <div>
-            <h5 class="font-medium text-blue-900">Statistical Analysis</h5>
+            <h5 class="font-medium text-blue-900">
+              Statistical Analysis
+            </h5>
             <div class="text-sm text-blue-800 mt-1 space-y-1">
               <p>
                 <strong>Confidence Level:</strong> {{ confidenceLevel }}%
@@ -362,29 +418,41 @@
 
       <!-- Time Series Chart -->
       <div v-if="timeSeriesData.length > 0">
-        <h4 class="font-semibold text-gray-900 mb-4">Performance Over Time</h4>
+        <h4 class="font-semibold text-gray-900 mb-4">
+          Performance Over Time
+        </h4>
         <div class="h-64 w-full">
           <LineChart
             :data="timeSeriesData"
             :margin="{ top: 5, right: 30, left: 20, bottom: 5 }"
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} /> <YAxis tick={{ fontSize: 12 }}
+            <CartesianGrid stroke-dasharray="3 3" />
+            <XAxis
+              data-key="time"
+              tick="{{"
+              fontSize:
+              12
+              }}
+            /> <YAxis
+              tick="{{"
+              fontSize:
+              12
+              }}
             />
             <Tooltip />
             <Legend />
             <Line
               type="monotone"
-              dataKey="variantA"
+              data-key="variantA"
               stroke="#3b82f6"
-              strokeWidth="2"
+              stroke-width="2"
               name="Variant A"
             />
             <Line
               type="monotone"
-              dataKey="variantB"
+              data-key="variantB"
               stroke="#10b981"
-              strokeWidth="2"
+              stroke-width="2"
               name="Variant B"
             />
           </LineChart>
@@ -393,17 +461,26 @@
 
       <!-- Actions -->
       <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-        <Button variant="outline" @click="exportResults">
-          <Icon name="lucide:download" class="w-4 h-4 mr-2" />
+        <Button
+          variant="outline"
+          @click="exportResults"
+        >
+          <Icon
+            name="lucide:download"
+            class="w-4 h-4 mr-2"
+          />
           Export Results
         </Button>
 
         <Button
           v-if="hasWinner"
-          @click="sendWinningVariant"
           :disabled="abTest.status !== 'completed'"
+          @click="sendWinningVariant"
         >
-          <Icon name="lucide:send" class="w-4 h-4 mr-2" />
+          <Icon
+            name="lucide:send"
+            class="w-4 h-4 mr-2"
+          />
           Send Winning Variant
         </Button>
       </div>
@@ -542,7 +619,7 @@ const testDuration = computed(() => {
     ? new Date(props.abTest.endDate)
     : new Date();
   const days = Math.ceil(
-    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   if (days === 1) return "1 day";

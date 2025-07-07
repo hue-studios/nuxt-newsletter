@@ -49,14 +49,14 @@ export default defineNuxtModule<ModuleOptions>({
     if (!options.directusUrl) {
       options.directusUrl = "http://localhost:8055";
       console.log(
-        "🔧 Newsletter module: Using default directusUrl for development"
+        "🔧 Newsletter module: Using default directusUrl for development",
       );
     }
 
     // Rest of your existing code continues here...
     console.log(
       "📧 Newsletter module loaded with directusUrl:",
-      options.directusUrl
+      options.directusUrl,
     );
 
     // Check for required dependencies - Updated for Tailwind CSS 4
@@ -64,9 +64,9 @@ export default defineNuxtModule<ModuleOptions>({
 
     const missingModules = requiredModules.filter((module) => {
       return (
-        !nuxt.options.modules?.includes(module) &&
-        !nuxt.options._modules?.find((m) =>
-          typeof m === "string" ? m === module : m[0] === module
+        !nuxt.options.modules?.includes(module)
+        && !nuxt.options._modules?.find((m) =>
+          typeof m === "string" ? m === module : m[0] === module,
         )
       );
     });
@@ -101,7 +101,7 @@ For detailed setup instructions, see: https://github.com/hue-studios/nuxt-newsle
       } else {
         console.warn(`⚠️  ${errorMessage}`);
         console.log(
-          "🔧 Newsletter module: Continuing in development mode without strict dependency validation"
+          "🔧 Newsletter module: Continuing in development mode without strict dependency validation",
         );
       }
     }
@@ -110,11 +110,11 @@ For detailed setup instructions, see: https://github.com/hue-studios/nuxt-newsle
     const hasTailwindVitePlugin = nuxt.options.vite?.plugins?.some(
       (plugin: any) => {
         return (
-          plugin?.name === "tailwindcss" ||
-          (typeof plugin === "function" &&
-            plugin.toString().includes("tailwindcss"))
+          plugin?.name === "tailwindcss"
+          || (typeof plugin === "function"
+            && plugin.toString().includes("tailwindcss"))
         );
-      }
+      },
     );
 
     if (!hasTailwindVitePlugin) {
@@ -170,7 +170,7 @@ Please install it with: npm install tailwindcss
     // ... (add your existing plugin registrations, server handlers, etc.)
 
     console.log(
-      "✅ Newsletter module loaded successfully with Tailwind CSS 4 support!"
+      "✅ Newsletter module loaded successfully with Tailwind CSS 4 support!",
     );
   },
 });

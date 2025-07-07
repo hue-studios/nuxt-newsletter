@@ -42,15 +42,15 @@ class AdvancedBlocksInstaller {
       return true;
     } catch (error) {
       if (
-        error.message?.includes("already exists") ||
-        error.message?.includes("duplicate")
+        error.message?.includes("already exists")
+        || error.message?.includes("duplicate")
       ) {
         console.log(`⏭️  Field ${fieldConfig.field} already exists`);
         return true;
       }
       console.error(
         `❌ Failed to create field ${fieldConfig.field}:`,
-        error.message
+        error.message,
       );
       return false;
     }
@@ -846,13 +846,13 @@ class AdvancedBlocksInstaller {
         await this.delay(300);
       } catch (error) {
         if (
-          error.message?.includes("duplicate") ||
-          error.message?.includes("unique")
+          error.message?.includes("duplicate")
+          || error.message?.includes("unique")
         ) {
           console.log(`⏭️  Block type "${blockType.name}" already exists`);
         } else {
           console.log(
-            `⚠️  Could not create block type ${blockType.name}: ${error.message}`
+            `⚠️  Could not create block type ${blockType.name}: ${error.message}`,
           );
         }
       }
@@ -873,7 +873,7 @@ class AdvancedBlocksInstaller {
       await this.installAdvancedBlocks();
 
       console.log(
-        "\n🎉 Advanced block types installation completed successfully!"
+        "\n🎉 Advanced block types installation completed successfully!",
       );
       console.log("\n📋 What was installed:");
       console.log("    • 30+ additional fields for advanced blocks");
@@ -890,7 +890,7 @@ class AdvancedBlocksInstaller {
       console.log("        - Progress Bar");
 
       console.log(
-        "\n📋 These blocks are now available in your newsletter editor!"
+        "\n📋 These blocks are now available in your newsletter editor!",
       );
 
       return true;
@@ -910,16 +910,16 @@ async function main() {
     console.log("Advanced Newsletter Blocks Installer");
     console.log("");
     console.log(
-      "Usage: node create-advanced-blocks.js <directus-url> <email> <password>"
+      "Usage: node create-advanced-blocks.js <directus-url> <email> <password>",
     );
     console.log("");
     console.log("Examples:");
     console.log(
-      "  node create-advanced-blocks.js https://admin.example.com admin@example.com password123"
+      "  node create-advanced-blocks.js https://admin.example.com admin@example.com password123",
     );
     console.log("");
     console.log(
-      "Note: Run this AFTER installing the basic collections with install-directus-collections.js"
+      "Note: Run this AFTER installing the basic collections with install-directus-collections.js",
     );
     process.exit(1);
   }

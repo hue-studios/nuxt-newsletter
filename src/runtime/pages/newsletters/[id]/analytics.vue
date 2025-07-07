@@ -4,8 +4,14 @@
       <!-- Header -->
       <div class="mb-8">
         <div class="flex items-center space-x-4 mb-4">
-          <Button variant="ghost" @click="navigateTo('/newsletters')">
-            <Icon name="lucide:arrow-left" class="w-4 h-4 mr-2" />
+          <Button
+            variant="ghost"
+            @click="navigateTo('/newsletters')"
+          >
+            <Icon
+              name="lucide:arrow-left"
+              class="w-4 h-4 mr-2"
+            />
             Back to Newsletters
           </Button>
         </div>
@@ -15,7 +21,10 @@
             <h1 class="text-3xl font-bold text-gray-900">
               Newsletter Analytics
             </h1>
-            <p v-if="newsletter" class="text-gray-600 mt-1">
+            <p
+              v-if="newsletter"
+              class="text-gray-600 mt-1"
+            >
               {{ newsletter.title }}
             </p>
           </div>
@@ -28,7 +37,10 @@
               variant="outline"
               @click="navigateTo(`/newsletters/${newsletterId}/edit`)"
             >
-              <Icon name="lucide:edit" class="w-4 h-4 mr-2" />
+              <Icon
+                name="lucide:edit"
+                class="w-4 h-4 mr-2"
+              />
               Edit Newsletter
             </Button>
           </div>
@@ -36,29 +48,44 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="pending" class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card v-for="i in 4" :key="i" class="animate-pulse">
+      <div
+        v-if="pending"
+        class="grid grid-cols-1 md:grid-cols-4 gap-6"
+      >
+        <Card
+          v-for="i in 4"
+          :key="i"
+          class="animate-pulse"
+        >
           <CardContent class="p-6">
-            <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-            <div class="h-8 bg-gray-200 rounded w-3/4"></div>
+            <div class="h-4 bg-gray-200 rounded w-1/2 mb-4" />
+            <div class="h-8 bg-gray-200 rounded w-3/4" />
           </CardContent>
         </Card>
       </div>
 
       <!-- Analytics Content -->
-      <div v-else-if="analytics" class="space-y-8">
+      <div
+        v-else-if="analytics"
+        class="space-y-8"
+      >
         <!-- Key Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardContent class="p-6">
               <div class="flex items-center">
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-600">Total Sent</p>
+                  <p class="text-sm font-medium text-gray-600">
+                    Total Sent
+                  </p>
                   <p class="text-2xl font-bold text-gray-900">
                     {{ analytics.statistics.total_sent.toLocaleString() }}
                   </p>
                 </div>
-                <Icon name="lucide:send" class="w-8 h-8 text-blue-500" />
+                <Icon
+                  name="lucide:send"
+                  class="w-8 h-8 text-blue-500"
+                />
               </div>
             </CardContent>
           </Card>
@@ -67,7 +94,9 @@
             <CardContent class="p-6">
               <div class="flex items-center">
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-600">Open Rate</p>
+                  <p class="text-sm font-medium text-gray-600">
+                    Open Rate
+                  </p>
                   <p class="text-2xl font-bold text-gray-900">
                     {{ analytics.statistics.open_rate }}%
                   </p>
@@ -76,7 +105,10 @@
                     opens
                   </p>
                 </div>
-                <Icon name="lucide:eye" class="w-8 h-8 text-green-500" />
+                <Icon
+                  name="lucide:eye"
+                  class="w-8 h-8 text-green-500"
+                />
               </div>
             </CardContent>
           </Card>
@@ -85,7 +117,9 @@
             <CardContent class="p-6">
               <div class="flex items-center">
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-600">Click Rate</p>
+                  <p class="text-sm font-medium text-gray-600">
+                    Click Rate
+                  </p>
                   <p class="text-2xl font-bold text-gray-900">
                     {{ analytics.statistics.click_rate }}%
                   </p>
@@ -106,11 +140,15 @@
             <CardContent class="p-6">
               <div class="flex items-center">
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-600">Click-to-Open</p>
+                  <p class="text-sm font-medium text-gray-600">
+                    Click-to-Open
+                  </p>
                   <p class="text-2xl font-bold text-gray-900">
                     {{ analytics.statistics.click_to_open_rate }}%
                   </p>
-                  <p class="text-sm text-gray-500">Engagement quality</p>
+                  <p class="text-sm text-gray-500">
+                    Engagement quality
+                  </p>
                 </div>
                 <Icon
                   name="lucide:trending-up"
@@ -194,7 +232,10 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="text-center py-16">
+      <div
+        v-else-if="error"
+        class="text-center py-16"
+      >
         <Icon
           name="lucide:alert-circle"
           class="w-16 h-16 text-red-500 mx-auto mb-4"
@@ -202,9 +243,14 @@
         <h3 class="text-lg font-medium text-gray-900 mb-2">
           Failed to load analytics
         </h3>
-        <p class="text-gray-600 mb-4">{{ error.message }}</p>
+        <p class="text-gray-600 mb-4">
+          {{ error.message }}
+        </p>
         <Button @click="refresh()">
-          <Icon name="lucide:refresh-cw" class="w-4 h-4 mr-2" />
+          <Icon
+            name="lucide:refresh-cw"
+            class="w-4 h-4 mr-2"
+          />
           Try Again
         </Button>
       </div>
@@ -215,7 +261,7 @@
 <script setup lang="ts">
 // Route params
 const route = useRoute();
-const newsletterId = computed(() => parseInt(route.params.id as string));
+const newsletterId = computed(() => Number.parseInt(route.params.id as string));
 
 // Fetch analytics data
 const {
@@ -228,7 +274,7 @@ const {
   () => $fetch(`/api/newsletter/analytics/${newsletterId.value}`),
   {
     server: false,
-  }
+  },
 );
 
 // Computed

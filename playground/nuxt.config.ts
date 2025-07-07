@@ -1,16 +1,15 @@
 export default defineNuxtConfig({
-  modules: ["shadcn-nuxt", "@nuxtjs/color-mode", "../src/module"],
-
-  // Shadcn configuration
-  shadcn: {
-    prefix: "",
-    componentDir: "./components/ui",
+  typescript: {
+    typeCheck: true,
   },
+  modules: ["shadcn-nuxt", "@nuxtjs/color-mode", "../src/module"],
+  devtools: { enabled: true },
 
   // Color mode configuration
   colorMode: {
     classSuffix: "",
   },
+  compatibilityDate: "2024-11-01",
 
   newsletter: {
     directusUrl: process.env.DIRECTUS_URL || "http://localhost:8055",
@@ -20,6 +19,10 @@ export default defineNuxtConfig({
     enableAnalytics: true,
     enableWebhooks: false,
   },
-  devtools: { enabled: true },
-  compatibilityDate: "2024-11-01",
+
+  // Shadcn configuration
+  shadcn: {
+    prefix: "",
+    componentDir: "./components/ui",
+  },
 });

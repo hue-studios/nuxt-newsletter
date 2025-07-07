@@ -12,7 +12,7 @@ export const useDragDrop = () => {
   const startDrag = (
     item: any,
     type: "block" | "block-type",
-    event: DragEvent
+    event: DragEvent,
   ) => {
     dragState.value.isDragging = true;
     dragState.value.draggedItem = item;
@@ -22,7 +22,7 @@ export const useDragDrop = () => {
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData(
         "application/json",
-        JSON.stringify({ item, type })
+        JSON.stringify({ item, type }),
       );
     }
 
@@ -123,15 +123,15 @@ export const useDragDrop = () => {
   // Get drop zone at position
   const getDropZoneAtPosition = (y: number) => {
     return dragState.value.dropZones.find(
-      (zone) => y >= zone.y && y <= zone.y + zone.height
+      (zone) => y >= zone.y && y <= zone.y + zone.height,
     );
   };
 
   // Visual feedback helpers
   const getDragPreview = (item: any, type: "block" | "block-type") => {
     const preview = document.createElement("div");
-    preview.className =
-      "drag-preview p-2 bg-white border border-gray-300 rounded shadow-lg text-sm";
+    preview.className
+      = "drag-preview p-2 bg-white border border-gray-300 rounded shadow-lg text-sm";
     preview.style.position = "absolute";
     preview.style.pointerEvents = "none";
     preview.style.zIndex = "1000";

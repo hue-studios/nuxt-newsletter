@@ -57,20 +57,21 @@
                   class="w-4 h-4 mt-0.5 flex-shrink-0"
                 />
                 <div>
-                  <span class="font-medium"
-                    >{{ getFieldLabel(error.field) }}:</span
-                  >
+                  <span class="font-medium">{{ getFieldLabel(error.field) }}:</span>
                   {{ error.message }}
                 </div>
               </div>
             </div>
 
-            <div v-if="validationSummary.hasErrors" class="mt-4">
+            <div
+              v-if="validationSummary.hasErrors"
+              class="mt-4"
+            >
               <Button
                 variant="outline"
                 size="sm"
-                @click="validateAgain"
                 :disabled="isValidating"
+                @click="validateAgain"
               >
                 <Icon
                   name="lucide:refresh-cw"
@@ -132,7 +133,7 @@ const getFieldLabel = (field: string): string => {
   if (field.includes("blocks[")) {
     const match = field.match(/blocks\[(\d+)\]\.(.+)/);
     if (match) {
-      const blockIndex = parseInt(match[1]);
+      const blockIndex = Number.parseInt(match[1]);
       const blockField = match[2];
       return `Block ${blockIndex + 1} ${blockField.replace("_", " ")}`;
     }

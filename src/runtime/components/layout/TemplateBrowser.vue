@@ -4,7 +4,9 @@
     <div class="mb-6">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-xl font-semibold text-gray-900">Choose a Template</h2>
+          <h2 class="text-xl font-semibold text-gray-900">
+            Choose a Template
+          </h2>
           <p class="text-gray-600 mt-1">
             Start with a pre-designed template or create from scratch
           </p>
@@ -88,8 +90,11 @@
               :src="template.thumbnail_url"
               :alt="template.name"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform"
-            />
-            <div v-else class="flex items-center justify-center h-full">
+            >
+            <div
+              v-else
+              class="flex items-center justify-center h-full"
+            >
               <Icon
                 name="lucide:layout-template"
                 class="w-12 h-12 text-gray-400"
@@ -98,7 +103,10 @@
 
             <!-- Category Badge -->
             <div class="absolute top-2 left-2">
-              <Badge variant="secondary" class="text-xs">
+              <Badge
+                variant="secondary"
+                class="text-xs"
+              >
                 {{ getCategoryLabel(template.category) }}
               </Badge>
             </div>
@@ -143,13 +151,20 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="filteredTemplates.length === 0" class="text-center py-16">
+    <div
+      v-if="filteredTemplates.length === 0"
+      class="text-center py-16"
+    >
       <Icon
         name="lucide:search-x"
         class="w-16 h-16 text-gray-400 mx-auto mb-4"
       />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">No templates found</h3>
-      <p class="text-gray-600">Try adjusting your search or category filter</p>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">
+        No templates found
+      </h3>
+      <p class="text-gray-600">
+        Try adjusting your search or category filter
+      </p>
     </div>
   </div>
 </template>
@@ -197,9 +212,9 @@ const filteredTemplates = computed(() => {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(
       (t) =>
-        t.name.toLowerCase().includes(query) ||
-        t.description.toLowerCase().includes(query) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(query))
+        t.name.toLowerCase().includes(query)
+        || t.description.toLowerCase().includes(query)
+        || t.tags.some((tag) => tag.toLowerCase().includes(query)),
     );
   }
 

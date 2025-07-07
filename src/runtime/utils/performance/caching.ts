@@ -68,8 +68,8 @@ export class MemoryCache<T = any> {
   }
 
   getStats() {
-    const hitRate =
-      this.stats.hits / (this.stats.hits + this.stats.misses) || 0;
+    const hitRate
+      = this.stats.hits / (this.stats.hits + this.stats.misses) || 0;
     return {
       ...this.stats,
       hitRate: Math.round(hitRate * 100) / 100,
@@ -214,19 +214,17 @@ export function memoize<T extends (...args: any[]) => any>(
 }
 
 // Async memoization for promises
-export function memoizeAsync<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
-  keyGenerator?: (...args: Parameters<T>) => string,
-  ttl?: number
-): T {
+export function memoizeAsync<
+  T extends (...args: unknown[]) => Promise<unknown>
+>(fn: T, keyGenerator?: (...args: Parameters<T>) => string, ttl?: number): T {
   const cache = new MemoryCache(ttl);
-  const pending = new Map<string, Promise<any>>();
+  const pending = new Map<string, Promise<unknown>>();
 
   return (async (...args: Parameters<T>) => {
     const key = keyGenerator ? keyGenerator(...args) : JSON.stringify(args);
 
     // Check cache first
-    let result = cache.get(key);
+    const result = cache.get(key);
     if (result !== null) {
       return result;
     }

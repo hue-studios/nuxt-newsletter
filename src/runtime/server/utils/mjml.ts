@@ -340,7 +340,7 @@ export class MJMLService {
       function (date: string | Date, format?: string) {
         const d = typeof date === "string" ? new Date(date) : date;
 
-        if (!d || isNaN(d.getTime())) {
+        if (!d || Number.isNaN(d.getTime())) {
           return "";
         }
 

@@ -10,7 +10,7 @@ export const useAnalytics = () => {
       error.value = null;
 
       const response = await $fetch(
-        `/api/newsletter/analytics/${newsletterId}`
+        `/api/newsletter/analytics/${newsletterId}`,
       );
       return response;
     } catch (err: any) {
@@ -27,7 +27,7 @@ export const useAnalytics = () => {
       dateRange?: { start: string; end: string };
       category?: string;
       status?: string;
-    } = {}
+    } = {},
   ) => {
     try {
       isLoading.value = true;
@@ -88,23 +88,23 @@ export const useAnalytics = () => {
     }
 
     const totalSent = sentNewsletters.length;
-    const avgOpenRate =
-      sentNewsletters.reduce((sum, n) => sum + (n.open_rate || 0), 0) /
-      totalSent;
-    const avgClickRate =
-      sentNewsletters.reduce((sum, n) => sum + (n.click_rate || 0), 0) /
-      totalSent;
+    const avgOpenRate
+      = sentNewsletters.reduce((sum, n) => sum + (n.open_rate || 0), 0)
+        / totalSent;
+    const avgClickRate
+      = sentNewsletters.reduce((sum, n) => sum + (n.click_rate || 0), 0)
+        / totalSent;
     const totalOpens = sentNewsletters.reduce(
       (sum, n) => sum + (n.total_opens || 0),
-      0
+      0,
     );
     const totalClicks = sentNewsletters.reduce(
       (sum, n) => sum + (n.total_clicks || 0),
-      0
+      0,
     );
 
     const bestPerformer = sentNewsletters.reduce((best, current) =>
-      (current.open_rate || 0) > (best.open_rate || 0) ? current : best
+      (current.open_rate || 0) > (best.open_rate || 0) ? current : best,
     );
 
     // Calculate trends (last 30 days vs previous 30 days)
@@ -113,26 +113,26 @@ export const useAnalytics = () => {
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
     const recent = sentNewsletters.filter(
-      (n) => new Date(n.created_at) >= thirtyDaysAgo
+      (n) => new Date(n.created_at) >= thirtyDaysAgo,
     );
     const previous = sentNewsletters.filter(
       (n) =>
-        new Date(n.created_at) >= sixtyDaysAgo &&
-        new Date(n.created_at) < thirtyDaysAgo
+        new Date(n.created_at) >= sixtyDaysAgo
+          && new Date(n.created_at) < thirtyDaysAgo,
     );
 
-    const recentAvgOpen =
-      recent.length > 0
+    const recentAvgOpen
+      = recent.length > 0
         ? recent.reduce((sum, n) => sum + (n.open_rate || 0), 0) / recent.length
         : 0;
-    const previousAvgOpen =
-      previous.length > 0
-        ? previous.reduce((sum, n) => sum + (n.open_rate || 0), 0) /
-          previous.length
+    const previousAvgOpen
+      = previous.length > 0
+        ? previous.reduce((sum, n) => sum + (n.open_rate || 0), 0)
+        / previous.length
         : 0;
 
-    const openRateTrend =
-      previousAvgOpen > 0
+    const openRateTrend
+      = previousAvgOpen > 0
         ? ((recentAvgOpen - previousAvgOpen) / previousAvgOpen) * 100
         : 0;
 

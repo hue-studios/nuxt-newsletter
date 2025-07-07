@@ -63,7 +63,7 @@ export const useABTesting = () => {
         `/api/newsletter/ab-tests/${testId}/start`,
         {
           method: "POST",
-        }
+        },
       );
 
       const index = abTests.value.findIndex((t) => t.id === testId);
@@ -111,7 +111,7 @@ export const useABTesting = () => {
       error.value = null;
 
       const response = await $fetch(
-        `/api/newsletter/ab-tests/${testId}/results`
+        `/api/newsletter/ab-tests/${testId}/results`,
       );
       return response;
     } catch (err: any) {
@@ -133,7 +133,7 @@ export const useABTesting = () => {
         {
           method: "POST",
           body: { variant },
-        }
+        },
       );
 
       return response;
@@ -158,7 +158,7 @@ export const useABTesting = () => {
     // Simplified z-test calculation
     const pooledRate = (opensA + opensB) / (sentA + sentB);
     const standardError = Math.sqrt(
-      pooledRate * (1 - pooledRate) * (1 / sentA + 1 / sentB)
+      pooledRate * (1 - pooledRate) * (1 / sentA + 1 / sentB),
     );
 
     if (standardError === 0) return 0;

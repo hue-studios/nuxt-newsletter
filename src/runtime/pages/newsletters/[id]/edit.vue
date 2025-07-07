@@ -1,18 +1,26 @@
 <template>
   <div class="min-h-screen">
     <!-- Loading State -->
-    <div v-if="pending" class="flex items-center justify-center h-screen">
+    <div
+      v-if="pending"
+      class="flex items-center justify-center h-screen"
+    >
       <div class="text-center">
         <Icon
           name="lucide:loader-2"
           class="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4"
         />
-        <p class="text-gray-600">Loading newsletter...</p>
+        <p class="text-gray-600">
+          Loading newsletter...
+        </p>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="flex items-center justify-center h-screen">
+    <div
+      v-else-if="error"
+      class="flex items-center justify-center h-screen"
+    >
       <div class="text-center">
         <Icon
           name="lucide:alert-circle"
@@ -21,9 +29,14 @@
         <h2 class="text-lg font-semibold text-gray-900 mb-2">
           Error loading newsletter
         </h2>
-        <p class="text-gray-600 mb-4">{{ error.message }}</p>
+        <p class="text-gray-600 mb-4">
+          {{ error.message }}
+        </p>
         <Button @click="refresh()">
-          <Icon name="lucide:refresh-cw" class="w-4 h-4 mr-2" />
+          <Icon
+            name="lucide:refresh-cw"
+            class="w-4 h-4 mr-2"
+          />
           Try Again
         </Button>
       </div>
@@ -44,7 +57,7 @@ import type { Newsletter } from "~/types/newsletter";
 
 // Route params
 const route = useRoute();
-const newsletterId = computed(() => parseInt(route.params.id as string));
+const newsletterId = computed(() => Number.parseInt(route.params.id as string));
 
 // Composables
 const { fetchNewsletter } = useNewsletter();
@@ -60,7 +73,7 @@ const {
   () => fetchNewsletter(newsletterId.value),
   {
     server: false,
-  }
+  },
 );
 
 // Page metadata

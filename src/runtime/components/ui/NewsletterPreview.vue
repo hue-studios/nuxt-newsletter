@@ -3,7 +3,9 @@
   <div class="newsletter-preview">
     <!-- Preview Controls -->
     <div class="flex items-center justify-between mb-4">
-      <h3 class="font-medium text-gray-900">Live Preview</h3>
+      <h3 class="font-medium text-gray-900">
+        Live Preview
+      </h3>
 
       <div class="flex items-center space-x-2">
         <!-- Device Toggle -->
@@ -14,7 +16,10 @@
             :class="{ 'bg-blue-50 text-blue-600': device === 'desktop' }"
             @click="device = 'desktop'"
           >
-            <Icon name="lucide:monitor" class="w-4 h-4" />
+            <Icon
+              name="lucide:monitor"
+              class="w-4 h-4"
+            />
           </Button>
           <Button
             variant="ghost"
@@ -22,7 +27,10 @@
             :class="{ 'bg-blue-50 text-blue-600': device === 'tablet' }"
             @click="device = 'tablet'"
           >
-            <Icon name="lucide:tablet" class="w-4 h-4" />
+            <Icon
+              name="lucide:tablet"
+              class="w-4 h-4"
+            />
           </Button>
           <Button
             variant="ghost"
@@ -30,7 +38,10 @@
             :class="{ 'bg-blue-50 text-blue-600': device === 'mobile' }"
             @click="device = 'mobile'"
           >
-            <Icon name="lucide:smartphone" class="w-4 h-4" />
+            <Icon
+              name="lucide:smartphone"
+              class="w-4 h-4"
+            />
           </Button>
         </div>
 
@@ -40,10 +51,18 @@
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="generic">Generic</SelectItem>
-            <SelectItem value="gmail">Gmail</SelectItem>
-            <SelectItem value="outlook">Outlook</SelectItem>
-            <SelectItem value="apple">Apple Mail</SelectItem>
+            <SelectItem value="generic">
+              Generic
+            </SelectItem>
+            <SelectItem value="gmail">
+              Gmail
+            </SelectItem>
+            <SelectItem value="outlook">
+              Outlook
+            </SelectItem>
+            <SelectItem value="apple">
+              Apple Mail
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -51,8 +70,8 @@
         <Button
           variant="outline"
           size="sm"
-          @click="refreshPreview"
           :disabled="!newsletter.compiled_html"
+          @click="refreshPreview"
         >
           <Icon
             name="lucide:refresh-cw"
@@ -78,7 +97,10 @@
             <div
               class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center"
             >
-              <Icon name="lucide:mail" class="w-4 h-4 text-white" />
+              <Icon
+                name="lucide:mail"
+                class="w-4 h-4 text-white"
+              />
             </div>
             <div>
               <div class="font-medium text-gray-900">
@@ -111,10 +133,18 @@
           v-if="emailClient === 'gmail'"
           class="flex items-center space-x-4 mt-3 text-xs text-gray-500"
         >
-          <button class="hover:text-gray-700">Reply</button>
-          <button class="hover:text-gray-700">Forward</button>
-          <button class="hover:text-gray-700">Archive</button>
-          <button class="hover:text-gray-700">Delete</button>
+          <button class="hover:text-gray-700">
+            Reply
+          </button>
+          <button class="hover:text-gray-700">
+            Forward
+          </button>
+          <button class="hover:text-gray-700">
+            Archive
+          </button>
+          <button class="hover:text-gray-700">
+            Delete
+          </button>
         </div>
       </div>
 
@@ -122,22 +152,36 @@
       <div class="newsletter-content">
         <iframe
           v-if="newsletter.compiled_html"
+          ref="previewIframe"
           :srcdoc="processedHtml"
           class="w-full transition-all duration-300"
           :style="{ height: iframeHeight + 'px' }"
           @load="adjustIframeHeight"
-          ref="previewIframe"
-        ></iframe>
+        />
 
-        <div v-else class="p-8 text-center text-gray-500">
+        <div
+          v-else
+          class="p-8 text-center text-gray-500"
+        >
           <Icon
             name="lucide:eye-off"
             class="w-12 h-12 mx-auto mb-4 text-gray-400"
           />
-          <h4 class="font-medium mb-2">Preview not available</h4>
-          <p class="text-sm">Compile your newsletter to see the preview</p>
-          <Button variant="outline" class="mt-4" @click="$emit('compile')">
-            <Icon name="lucide:play" class="w-4 h-4 mr-2" />
+          <h4 class="font-medium mb-2">
+            Preview not available
+          </h4>
+          <p class="text-sm">
+            Compile your newsletter to see the preview
+          </p>
+          <Button
+            variant="outline"
+            class="mt-4"
+            @click="$emit('compile')"
+          >
+            <Icon
+              name="lucide:play"
+              class="w-4 h-4 mr-2"
+            />
             Compile Newsletter
           </Button>
         </div>
@@ -145,15 +189,26 @@
     </div>
 
     <!-- Preview Stats -->
-    <div v-if="newsletter.compiled_html" class="mt-4 p-4 bg-gray-50 rounded-lg">
+    <div
+      v-if="newsletter.compiled_html"
+      class="mt-4 p-4 bg-gray-50 rounded-lg"
+    >
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
         <div>
           <div class="text-lg font-bold text-gray-900">
             {{ emailSize.kb }}KB
           </div>
-          <div class="text-xs text-gray-600">Email Size</div>
-          <div v-if="emailSize.isLarge" class="text-xs text-red-600 mt-1">
-            <Icon name="lucide:alert-triangle" class="w-3 h-3 inline mr-1" />
+          <div class="text-xs text-gray-600">
+            Email Size
+          </div>
+          <div
+            v-if="emailSize.isLarge"
+            class="text-xs text-red-600 mt-1"
+          >
+            <Icon
+              name="lucide:alert-triangle"
+              class="w-3 h-3 inline mr-1"
+            />
             May be clipped
           </div>
         </div>
@@ -162,19 +217,27 @@
           <div class="text-lg font-bold text-gray-900">
             {{ readingTime }}min
           </div>
-          <div class="text-xs text-gray-600">Reading Time</div>
+          <div class="text-xs text-gray-600">
+            Reading Time
+          </div>
         </div>
 
         <div>
           <div class="text-lg font-bold text-gray-900">
             {{ newsletter.blocks?.length || 0 }}
           </div>
-          <div class="text-xs text-gray-600">Content Blocks</div>
+          <div class="text-xs text-gray-600">
+            Content Blocks
+          </div>
         </div>
 
         <div>
-          <div class="text-lg font-bold text-gray-900">{{ imageCount }}</div>
-          <div class="text-xs text-gray-600">Images</div>
+          <div class="text-lg font-bold text-gray-900">
+            {{ imageCount }}
+          </div>
+          <div class="text-xs text-gray-600">
+            Images
+          </div>
         </div>
       </div>
     </div>
@@ -184,30 +247,39 @@
       <Button
         variant="outline"
         size="sm"
-        @click="openInNewTab"
         :disabled="!newsletter.compiled_html"
+        @click="openInNewTab"
       >
-        <Icon name="lucide:external-link" class="w-4 h-4 mr-1" />
+        <Icon
+          name="lucide:external-link"
+          class="w-4 h-4 mr-1"
+        />
         Open in New Tab
       </Button>
 
       <Button
         variant="outline"
         size="sm"
-        @click="copyShareLink"
         :disabled="!newsletter.compiled_html"
+        @click="copyShareLink"
       >
-        <Icon name="lucide:share-2" class="w-4 h-4 mr-1" />
+        <Icon
+          name="lucide:share-2"
+          class="w-4 h-4 mr-1"
+        />
         Share Preview
       </Button>
 
       <Button
         variant="outline"
         size="sm"
-        @click="downloadHtml"
         :disabled="!newsletter.compiled_html"
+        @click="downloadHtml"
       >
-        <Icon name="lucide:download" class="w-4 h-4 mr-1" />
+        <Icon
+          name="lucide:download"
+          class="w-4 h-4 mr-1"
+        />
         Download HTML
       </Button>
     </div>
@@ -227,7 +299,10 @@
             Accessibility Issues Found
           </h4>
           <ul class="mt-2 text-sm text-yellow-700 space-y-1">
-            <li v-for="issue in accessibilityIssues" :key="issue">
+            <li
+              v-for="issue in accessibilityIssues"
+              :key="issue"
+            >
               • {{ issue }}
             </li>
           </ul>
@@ -270,7 +345,7 @@ const processedHtml = computed(() => {
   if (emailClient.value === "gmail") {
     html = html.replace(
       "<head>",
-      "<head><style>.gmail-hide { display: none !important; }</style>"
+      "<head><style>.gmail-hide { display: none !important; }</style>",
     );
   }
 
@@ -290,7 +365,7 @@ const readingTime = computed(() => {
 const imageCount = computed(() => {
   if (!props.newsletter.blocks) return 0;
   return props.newsletter.blocks.filter(
-    (block) => block.block_type.slug === "image" && block.image_url
+    (block) => block.block_type.slug === "image" && block.image_url,
   ).length;
 });
 
@@ -302,17 +377,17 @@ const accessibilityIssues = computed(() => {
   props.newsletter.blocks.forEach((block) => {
     // Check for images without alt text
     if (
-      block.block_type.slug === "image" &&
-      block.image_url &&
-      !block.image_alt_text
+      block.block_type.slug === "image"
+      && block.image_url
+      && !block.image_alt_text
     ) {
       issues.push("Image block missing alt text");
     }
 
     // Check for buttons without proper text
     if (
-      block.block_type.slug === "button" &&
-      (!block.button_text || block.button_text.length < 3)
+      block.block_type.slug === "button"
+      && (!block.button_text || block.button_text.length < 3)
     ) {
       issues.push("Button with insufficient descriptive text");
     }
@@ -324,8 +399,8 @@ const accessibilityIssues = computed(() => {
 
       // Very basic contrast check - in reality you'd use proper contrast calculation
       if (
-        (bgColor === "#ffffff" || bgColor === "#fff") &&
-        (textColor === "#ffffff" || textColor === "#fff")
+        (bgColor === "#ffffff" || bgColor === "#fff")
+        && (textColor === "#ffffff" || textColor === "#fff")
       ) {
         issues.push("Poor color contrast detected");
       }
@@ -446,7 +521,7 @@ watch(
       adjustIframeHeight();
     });
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // Watch device changes

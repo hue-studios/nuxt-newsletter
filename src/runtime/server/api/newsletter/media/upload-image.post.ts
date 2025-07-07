@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
 
     // Initialize Directus client
     const directus = createDirectus(config.public.directusUrl as string).with(
-      rest()
+      rest(),
     );
 
     // Upload file to Directus
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     formData.append(
       "file",
       new Blob([file.data], { type: file.type }),
-      file.filename
+      file.filename,
     );
 
     const uploadedFile = await directus.request(uploadFiles(formData));

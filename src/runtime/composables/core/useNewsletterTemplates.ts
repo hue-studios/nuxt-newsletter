@@ -70,7 +70,7 @@ export const useNewsletterTemplates = () => {
       featured?: boolean;
       limit?: number;
       search?: string;
-    } = {}
+    } = {},
   ) => {
     try {
       state.isLoading = true;
@@ -117,7 +117,7 @@ export const useNewsletterTemplates = () => {
   // Create newsletter from template
   const createFromTemplate = async (
     template: NewsletterTemplate,
-    overrides: Partial<CreateNewsletterData> = {}
+    overrides: Partial<CreateNewsletterData> = {},
   ) => {
     try {
       state.isCreating = true;
@@ -126,9 +126,9 @@ export const useNewsletterTemplates = () => {
       const newsletterData = {
         title: overrides.title || `${template.name} Newsletter`,
         subject_line:
-          overrides.subject_line ||
-          template.default_subject ||
-          `Newsletter from ${template.name}`,
+          overrides.subject_line
+          || template.default_subject
+          || `Newsletter from ${template.name}`,
         from_name: overrides.from_name || "Newsletter",
         from_email: overrides.from_email || "newsletter@example.com",
         category: overrides.category || template.category || defaultCategory,
@@ -155,7 +155,7 @@ export const useNewsletterTemplates = () => {
                 field_data: { ...templateBlock.field_data },
                 sort: index,
               },
-            })
+            }),
           );
 
         await Promise.all(blockPromises);
@@ -193,7 +193,7 @@ export const useNewsletterTemplates = () => {
   // Save newsletter as template
   const saveAsTemplate = async (
     newsletter: Newsletter,
-    templateData: Partial<NewsletterTemplate>
+    templateData: Partial<NewsletterTemplate>,
   ) => {
     try {
       state.isSaving = true;
@@ -233,7 +233,7 @@ export const useNewsletterTemplates = () => {
               field_data: { ...block.field_data },
               sort: block.sort,
             },
-          })
+          }),
         );
 
         await Promise.all(blockPromises);
@@ -280,7 +280,7 @@ export const useNewsletterTemplates = () => {
       // Remove from state
       state.templates = state.templates.filter((t) => t.id !== id);
       state.featuredTemplates = state.featuredTemplates.filter(
-        (t) => t.id !== id
+        (t) => t.id !== id,
       );
 
       // Clear selected template if it was deleted
@@ -339,7 +339,7 @@ export const useNewsletterTemplates = () => {
               field_data: { ...block.field_data },
               sort: block.sort,
             },
-          })
+          }),
         );
 
         await Promise.all(blockPromises);
