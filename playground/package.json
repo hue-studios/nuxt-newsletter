@@ -1,0 +1,10 @@
+{
+  "name": "nuxt-newsletter-playground",
+  "private": true,
+  "scripts": {
+    "build": "nuxi build",
+    "dev": "nuxi dev",
+    "generate": "nuxi generate",
+    "preview": "nuxi preview"
+  }
+}

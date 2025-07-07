@@ -35,10 +35,29 @@ export default defineNuxtModule<ModuleOptions>({
   setup(options, nuxt) {
     const resolver = createResolver(import.meta.url);
 
-    // Validate required options
-    if (!options.directusUrl) {
+    // Check if we're in development or stub mode
+    const isDev = nuxt.options.dev;
+    const isStub = process.argv.includes("--stub");
+    const isPrepare = process.argv.includes("prepare");
+
+    // Only validate required options in production builds
+    if (!isDev && !isStub && !isPrepare && !options.directusUrl) {
       throw new Error("Newsletter module requires directusUrl option");
     }
+
+    // Provide development defaults
+    if (!options.directusUrl) {
+      options.directusUrl = "http://localhost:8055";
+      console.log(
+        "🔧 Newsletter module: Using default directusUrl for development"
+      );
+    }
+
+    // Rest of your existing code continues here...
+    console.log(
+      "📧 Newsletter module loaded with directusUrl:",
+      options.directusUrl
+    );
 
     // Check for required dependencies - Updated for Tailwind CSS 4
     const requiredModules = ["shadcn-nuxt", "@nuxtjs/color-mode"];
@@ -53,7 +72,7 @@ export default defineNuxtModule<ModuleOptions>({
     });
 
     if (missingModules.length > 0) {
-      throw new Error(`
+      const errorMessage = `
 Newsletter module requires the following dependencies to be installed and configured:
 
 Missing modules: ${missingModules.join(", ")}
@@ -74,7 +93,17 @@ For Tailwind CSS 4 setup, ensure you have:
 - tailwind.config.js with module paths included
 
 For detailed setup instructions, see: https://github.com/hue-studios/nuxt-newsletter#setup
-      `);
+      `;
+
+      // Only throw error in production, warn in development
+      if (!isDev && !isStub && !isPrepare) {
+        throw new Error(errorMessage);
+      } else {
+        console.warn(`⚠️  ${errorMessage}`);
+        console.log(
+          "🔧 Newsletter module: Continuing in development mode without strict dependency validation"
+        );
+      }
     }
 
     // Check for Tailwind CSS 4 setup

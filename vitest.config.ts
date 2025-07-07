@@ -5,7 +5,6 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     coverage: {
-      provider: "c8",
       reporter: ["text", "json", "html"],
     },
   },
