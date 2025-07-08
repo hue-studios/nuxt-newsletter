@@ -6,26 +6,35 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
-    "moduleResolution": "bundler", // <-- CRITICAL CHANGE HERE
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    // Add these for better compatibility with modern Nuxt/Vite/ESM
     "target": "ESNext",
     "module": "ESNext",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "preserve",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "noEmit": true, // Typically true for Nuxt projects as Nuxt handles emission
-    "isolatedModules": true // Important for some bundlers/loaders
+    "noEmit": true,
+    "isolatedModules": true,
+    "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "#app": ["./.nuxt/types/app.d.ts"],
+      "#imports": ["./.nuxt/imports.d.ts"],
+      "~/*": ["./src/runtime/*"],
+      "@/*": ["./src/runtime/*"]
+    }
   },
   "include": [
     "src/**/*",
     "playground/**/*",
     "test/**/*",
-    "*.d.ts", // <-- Include root-level .d.ts files
-    "types/**/*" // <-- If you have a dedicated 'types' folder
+    "*.d.ts",
+    "types/**/*",
+    ".nuxt/types/app.d.ts",
+    ".nuxt/imports.d.ts"
   ],
-  "exclude": ["node_modules", "dist", ".nuxt", ".output"] // <-- Add .output if not already there
+  "exclude": ["node_modules", "dist", ".nuxt", ".output"]
 }

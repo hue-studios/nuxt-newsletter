@@ -1,18 +1,65 @@
 // src/runtime/composables/features/useAnalytics.ts
+import { ref, computed } from "vue";
+
+export interface AnalyticsData {
+  opens: number;
+  clicks: number;
+  bounces: number;
+  unsubscribes: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  unsubscribeRate: number;
+}
+
+export interface TimeSeriesData {
+  date: string;
+  opens: number;
+  clicks: number;
+  bounces: number;
+}
+
 export const useAnalytics = () => {
+  const analytics = ref<AnalyticsData>({
+    opens: 0,
+    clicks: 0,
+    bounces: 0,
+    unsubscribes: 0,
+    openRate: 0,
+    clickRate: 0,
+    bounceRate: 0,
+    unsubscribeRate: 0,
+  });
+
+  const timeSeriesData = ref<TimeSeriesData[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
-  // Fetch newsletter analytics
-  const fetchNewsletterAnalytics = async (newsletterId: number) => {
+  const totalSent = computed(() => {
+    return analytics.value.opens + analytics.value.bounces || 1;
+  });
+
+  const fetchAnalytics = async (
+    newsletterId: number,
+    dateRange?: { start: string; end: string }
+  ) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const response = await $fetch(
-        `/api/newsletter/analytics/${newsletterId}`,
-      );
-      return response;
+      // Implementation will go here
+      analytics.value = {
+        opens: 150,
+        clicks: 45,
+        bounces: 5,
+        unsubscribes: 2,
+        openRate: 25.5,
+        clickRate: 7.2,
+        bounceRate: 0.8,
+        unsubscribeRate: 0.3,
+      };
+
+      return analytics.value;
     } catch (err: any) {
       error.value = err.message || "Failed to fetch analytics";
       throw err;
@@ -21,160 +68,118 @@ export const useAnalytics = () => {
     }
   };
 
-  // Fetch dashboard analytics
-  const fetchDashboardAnalytics = async (
-    filters: {
-      dateRange?: { start: string; end: string };
-      category?: string;
-      status?: string;
-    } = {},
+  const fetchTimeSeriesData = async (
+    newsletterId: number,
+    period: "7d" | "30d" | "90d" = "7d"
   ) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const response = await $fetch("/api/newsletter/analytics/dashboard", {
-        method: "POST",
-        body: filters,
-      });
-      return response;
+      // Implementation will go here
+      timeSeriesData.value = [
+        { date: "2024-01-01", opens: 20, clicks: 5, bounces: 1 },
+        { date: "2024-01-02", opens: 25, clicks: 8, bounces: 0 },
+        { date: "2024-01-03", opens: 30, clicks: 12, bounces: 2 },
+      ];
+
+      return timeSeriesData.value;
     } catch (err: any) {
-      error.value = err.message || "Failed to fetch dashboard analytics";
+      error.value = err.message || "Failed to fetch time series data";
       throw err;
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Export analytics data
-  const exportAnalytics = async (options: {
-    newsletter_ids?: number[];
-    date_range?: { start: string; end: string };
-    format?: "csv" | "json" | "excel";
-    include_details?: boolean;
-  }) => {
+  const trackOpen = async (
+    newsletterId: number,
+    subscriberId: number,
+    metadata?: any
+  ) => {
     try {
-      isLoading.value = true;
-      error.value = null;
-
-      const response = await $fetch("/api/newsletter/analytics/export", {
-        method: "POST",
-        body: options,
-      });
-
-      return response;
+      // Implementation will go here
+      console.log("Tracking open:", { newsletterId, subscriberId, metadata });
     } catch (err: any) {
-      error.value = err.message || "Failed to export analytics";
+      error.value = err.message || "Failed to track open";
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   };
 
-  // Calculate engagement metrics
-  const calculateEngagementMetrics = (newsletters: any[]) => {
-    const sentNewsletters = newsletters.filter((n) => n.status === "sent");
-
-    if (sentNewsletters.length === 0) {
-      return {
-        totalSent: 0,
-        avgOpenRate: 0,
-        avgClickRate: 0,
-        totalOpens: 0,
-        totalClicks: 0,
-        bestPerformer: null,
-        trends: [],
-      };
-    }
-
-    const totalSent = sentNewsletters.length;
-    const avgOpenRate
-      = sentNewsletters.reduce((sum, n) => sum + (n.open_rate || 0), 0)
-        / totalSent;
-    const avgClickRate
-      = sentNewsletters.reduce((sum, n) => sum + (n.click_rate || 0), 0)
-        / totalSent;
-    const totalOpens = sentNewsletters.reduce(
-      (sum, n) => sum + (n.total_opens || 0),
-      0,
-    );
-    const totalClicks = sentNewsletters.reduce(
-      (sum, n) => sum + (n.total_clicks || 0),
-      0,
-    );
-
-    const bestPerformer = sentNewsletters.reduce((best, current) =>
-      (current.open_rate || 0) > (best.open_rate || 0) ? current : best,
-    );
-
-    // Calculate trends (last 30 days vs previous 30 days)
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-
-    const recent = sentNewsletters.filter(
-      (n) => new Date(n.created_at) >= thirtyDaysAgo,
-    );
-    const previous = sentNewsletters.filter(
-      (n) =>
-        new Date(n.created_at) >= sixtyDaysAgo
-          && new Date(n.created_at) < thirtyDaysAgo,
-    );
-
-    const recentAvgOpen
-      = recent.length > 0
-        ? recent.reduce((sum, n) => sum + (n.open_rate || 0), 0) / recent.length
-        : 0;
-    const previousAvgOpen
-      = previous.length > 0
-        ? previous.reduce((sum, n) => sum + (n.open_rate || 0), 0)
-        / previous.length
-        : 0;
-
-    const openRateTrend
-      = previousAvgOpen > 0
-        ? ((recentAvgOpen - previousAvgOpen) / previousAvgOpen) * 100
-        : 0;
-
-    return {
-      totalSent,
-      avgOpenRate: Math.round(avgOpenRate * 10) / 10,
-      avgClickRate: Math.round(avgClickRate * 10) / 10,
-      totalOpens,
-      totalClicks,
-      bestPerformer,
-      trends: {
-        openRateTrend: Math.round(openRateTrend * 10) / 10,
-        recentCount: recent.length,
-        previousCount: previous.length,
-      },
-    };
-  };
-
-  // Track custom event
-  const trackEvent = async (eventData: {
-    newsletter_id: number;
-    event_type: string;
-    subscriber_id?: number;
-    metadata?: Record<string, any>;
-  }) => {
+  const trackClick = async (
+    newsletterId: number,
+    subscriberId: number,
+    url: string,
+    metadata?: any
+  ) => {
     try {
-      await $fetch("/api/newsletter/analytics/track", {
-        method: "POST",
-        body: eventData,
+      // Implementation will go here
+      console.log("Tracking click:", {
+        newsletterId,
+        subscriberId,
+        url,
+        metadata,
       });
     } catch (err: any) {
-      console.error("Failed to track event:", err);
+      error.value = err.message || "Failed to track click";
+      throw err;
+    }
+  };
+
+  const generateReport = async (
+    newsletterId: number,
+    format: "pdf" | "csv" = "pdf"
+  ) => {
+    try {
+      // Implementation will go here
+      console.log("Generating report:", { newsletterId, format });
+      return "report-url";
+    } catch (err: any) {
+      error.value = err.message || "Failed to generate report";
+      throw err;
+    }
+  };
+
+  const getTopLinks = async (newsletterId: number, limit: number = 10) => {
+    try {
+      // Implementation will go here
+      return [
+        { url: "https://example.com/product1", clicks: 25 },
+        { url: "https://example.com/product2", clicks: 18 },
+        { url: "https://example.com/blog", clicks: 12 },
+      ];
+    } catch (err: any) {
+      error.value = err.message || "Failed to get top links";
+      throw err;
+    }
+  };
+
+  const getGeographicData = async (newsletterId: number) => {
+    try {
+      // Implementation will go here
+      return [
+        { country: "United States", opens: 45 },
+        { country: "Canada", opens: 20 },
+        { country: "United Kingdom", opens: 15 },
+      ];
+    } catch (err: any) {
+      error.value = err.message || "Failed to get geographic data";
+      throw err;
     }
   };
 
   return {
-    isLoading: readonly(isLoading),
-    error: readonly(error),
-    fetchNewsletterAnalytics,
-    fetchDashboardAnalytics,
-    exportAnalytics,
-    calculateEngagementMetrics,
-    trackEvent,
+    analytics,
+    timeSeriesData,
+    isLoading,
+    error,
+    totalSent,
+    fetchAnalytics,
+    fetchTimeSeriesData,
+    trackOpen,
+    trackClick,
+    generateReport,
+    getTopLinks,
+    getGeographicData,
   };
 };

@@ -1,4 +1,6 @@
 // src/runtime/types/module.d.ts
+import type { ModuleOptions } from "../../../module";
+
 declare module "@nuxt/schema" {
   interface NuxtConfig {
     newsletter?: ModuleOptions;
@@ -13,7 +15,17 @@ declare module "nuxt/dist/app" {
     $newsletter: {
       generateSlug: (title: string) => string;
       validateEmail: (email: string) => boolean;
-      // ... other utilities
     };
   }
 }
+
+declare module "#app" {
+  interface NuxtApp {
+    $newsletter: {
+      generateSlug: (title: string) => string;
+      validateEmail: (email: string) => boolean;
+    };
+  }
+}
+
+export {};

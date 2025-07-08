@@ -361,8 +361,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { toast } from "vue-sonner";
+// import { toast } from "vue-sonner";
 import type { ContentLibrary } from "../../types/newsletter";
+import { useDirectus } from "../../composables/utils/useDirectus";
 
 interface Props {
   onSelect?: (content: ContentLibrary) => void;
@@ -402,10 +403,7 @@ const {
   batchCreate,
   batchUpdate,
   batchDelete,
-  search,
-  count,
-  uploadFile,
-  getFileUrl,
+
   testConnection,
 } = useDirectus();
 
@@ -455,7 +453,7 @@ const fetchContent = async () => {
     contentItems.value = response as ContentLibrary[];
   } catch (error) {
     console.error("Failed to fetch content:", error);
-    toast.error("Failed to load content library");
+    // toast.error("Failed to load content library");
   } finally {
     isLoading.value = false;
   }
@@ -499,10 +497,10 @@ const createContent = async () => {
     tagsInput.value = "";
 
     showCreateDialog.value = false;
-    toast.success("Content added to library");
+    // toast.success("Content added to library");
   } catch (error) {
     console.error("Failed to create content:", error);
-    toast.error("Failed to add content");
+    // toast.error("Failed to add content");
   } finally {
     isCreating.value = false;
   }
@@ -537,10 +535,10 @@ const duplicateContent = async (content: ContentLibrary) => {
     const response = await batchCreate("content_library", [duplicated]);
 
     contentItems.value.unshift(response[0] as ContentLibrary);
-    toast.success("Content duplicated");
+    // toast.success("Content duplicated");
   } catch (error) {
     console.error("Failed to duplicate content:", error);
-    toast.error("Failed to duplicate content");
+    // toast.error("Failed to duplicate content");
   }
 };
 
@@ -550,10 +548,10 @@ const deleteContent = async (content: ContentLibrary) => {
     contentItems.value = contentItems.value.filter(
       (item) => item.id !== content.id
     );
-    toast.success("Content deleted");
+    // toast.success("Content deleted");
   } catch (error) {
     console.error("Failed to delete content:", error);
-    toast.error("Failed to delete content");
+    // toast.error("Failed to delete content");
   }
 };
 

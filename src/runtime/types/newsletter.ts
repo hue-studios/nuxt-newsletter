@@ -1,4 +1,4 @@
-// types/newsletter.ts
+// src/runtime/types/newsletter.ts
 export interface Newsletter {
   id: number;
   title: string;
@@ -176,7 +176,6 @@ export interface DragDropData {
   position?: { x: number; y: number };
 }
 
-// Utility types for the editor
 export interface EditorState {
   selectedBlock: NewsletterBlock | null;
   draggedBlock: NewsletterBlock | null;

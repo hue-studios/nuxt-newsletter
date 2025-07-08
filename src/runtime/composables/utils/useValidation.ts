@@ -1,296 +1,439 @@
+// src/runtime/composables/utils/useValidation.ts
+import { ref } from "vue";
+import type {
+  Newsletter,
+  NewsletterBlock,
+  ValidationError,
+} from "../../types/newsletter";
+
+const VALIDATION_PATTERNS = {
+  email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  url: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
+  hexColor: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/,
+  phone: /^\+?[\d\s\-\(\)]+$/,
+  slug: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+};
+
 export const useValidation = () => {
-  const errors = ref<Record<string, string[]>>({});
+  const errors = ref<ValidationError[]>([]);
   const isValidating = ref(false);
 
-  // Newsletter validation
-  const validateNewsletter = (newsletter: any): boolean => {
-    clearErrors();
-    isValidating.value = true;
-
-    try {
-      // Required fields
-      if (!newsletter.title?.trim()) {
-        addError("title", "Title is required");
-      }
-
-      if (!newsletter.subject_line?.trim()) {
-        addError("subject_line", "Subject line is required");
-      } else {
-        // Subject line best practices
-        if (newsletter.subject_line.length > 50) {
-          addError(
-            "subject_line",
-            "Subject line should be 50 characters or less for optimal display",
-          );
-        }
-
-        if (newsletter.subject_line.includes("!".repeat(3))) {
-          addError("subject_line", "Avoid excessive exclamation marks");
-        }
-
-        // Check for spam trigger words
-        const spamWords = [
-          "free",
-          "urgent",
-          "limited time",
-          "act now",
-          "click here",
-          "guaranteed",
-        ];
-        const hasSpamWords = spamWords.some((word) =>
-          newsletter.subject_line.toLowerCase().includes(word),
-        );
-        if (hasSpamWords) {
-          addError(
-            "subject_line",
-            "Subject line contains words that may trigger spam filters",
-          );
-        }
-      }
-
-      if (!newsletter.from_email?.trim()) {
-        addError("from_email", "From email is required");
-      } else if (!isValidEmail(newsletter.from_email)) {
-        addError("from_email", "Please enter a valid email address");
-      }
-
-      if (!newsletter.from_name?.trim()) {
-        addError("from_name", "From name is required");
-      }
-
-      // Preview text validation
-      if (newsletter.preview_text && newsletter.preview_text.length > 90) {
-        addError(
-          "preview_text",
-          "Preview text should be 90 characters or less",
-        );
-      }
-
-      // Content validation
-      if (!newsletter.blocks || newsletter.blocks.length === 0) {
-        addError("blocks", "Newsletter must have at least one content block");
-      } else {
-        validateBlocks(newsletter.blocks);
-      }
-
-      // Sending requirements
-      if (newsletter.status === "ready") {
-        if (!newsletter.mailing_list_id) {
-          addError(
-            "mailing_list_id",
-            "Please select a mailing list before sending",
-          );
-        }
-
-        if (!newsletter.compiled_html) {
-          addError(
-            "compiled_html",
-            "Newsletter must be compiled before sending",
-          );
-        }
-      }
-
-      return Object.keys(errors.value).length === 0;
-    } finally {
-      isValidating.value = false;
-    }
+  const validateEmail = (email: string): boolean => {
+    if (!email) return false;
+    return VALIDATION_PATTERNS.email.test(email.trim());
   };
 
-  // Block validation
-  const validateBlocks = (blocks: any[]) => {
-    blocks.forEach((block, index) => {
-      const fieldPrefix = `blocks.${index}`;
-
-      switch (block.block_type.slug) {
-        case "hero":
-          if (!block.title?.trim()) {
-            addError(`${fieldPrefix}.title`, "Hero block should have a title");
-          }
-          break;
-
-        case "text":
-          if (!block.text_content?.trim()) {
-            addError(
-              `${fieldPrefix}.text_content`,
-              "Text block cannot be empty",
-            );
-          }
-          break;
-
-        case "image":
-          if (!block.image_url?.trim()) {
-            addError(`${fieldPrefix}.image_url`, "Image block needs an image");
-          }
-          if (!block.image_alt_text?.trim()) {
-            addError(
-              `${fieldPrefix}.image_alt_text`,
-              "Image needs alt text for accessibility",
-            );
-          }
-          break;
-
-        case "button":
-          if (!block.button_text?.trim()) {
-            addError(`${fieldPrefix}.button_text`, "Button needs text");
-          }
-          if (!block.button_url?.trim()) {
-            addError(`${fieldPrefix}.button_url`, "Button needs a URL");
-          } else if (!isValidUrl(block.button_url)) {
-            addError(`${fieldPrefix}.button_url`, "Please enter a valid URL");
-          }
-          break;
-      }
-
-      // Color contrast validation
-      if (block.background_color && block.text_color) {
-        const contrast = calculateColorContrast(
-          block.background_color,
-          block.text_color,
-        );
-        if (contrast < 4.5) {
-          addError(
-            `${fieldPrefix}.colors`,
-            "Text may be hard to read due to low color contrast",
-          );
-        }
-      }
-    });
+  const validateUrl = (url: string): boolean => {
+    if (!url) return false;
+    return VALIDATION_PATTERNS.url.test(url.trim());
   };
 
-  // Subscriber validation
-  const validateSubscriber = (subscriber: any): boolean => {
-    clearErrors();
-    isValidating.value = true;
-
-    try {
-      if (!subscriber.email?.trim()) {
-        addError("email", "Email is required");
-      } else if (!isValidEmail(subscriber.email)) {
-        addError("email", "Please enter a valid email address");
-      }
-
-      if (!subscriber.name?.trim()) {
-        addError("name", "Name is required");
-      }
-
-      return Object.keys(errors.value).length === 0;
-    } finally {
-      isValidating.value = false;
-    }
+  const validateHexColor = (color: string): boolean => {
+    if (!color) return false;
+    return VALIDATION_PATTERNS.hexColor.test(color.trim());
   };
 
-  // Mailing list validation
-  const validateMailingList = (mailingList: any): boolean => {
-    clearErrors();
-    isValidating.value = true;
-
-    try {
-      if (!mailingList.name?.trim()) {
-        addError("name", "Mailing list name is required");
-      }
-
-      if (mailingList.name && mailingList.name.length > 100) {
-        addError("name", "Name should be 100 characters or less");
-      }
-
-      return Object.keys(errors.value).length === 0;
-    } finally {
-      isValidating.value = false;
-    }
+  const validateSlug = (slug: string): boolean => {
+    if (!slug) return false;
+    return VALIDATION_PATTERNS.slug.test(slug.trim());
   };
 
-  // Utility functions
-  const addError = (field: string, message: string) => {
-    if (!errors.value[field]) {
-      errors.value[field] = [];
+  const validateRequired = (
+    value: any,
+    fieldName: string
+  ): ValidationError | null => {
+    if (!value || (typeof value === "string" && !value.trim())) {
+      return {
+        field: fieldName,
+        message: `${fieldName} is required`,
+        severity: "error",
+      };
     }
-    if (!errors.value[field].includes(message)) {
-      errors.value[field].push(message);
-    }
+    return null;
   };
 
-  const clearErrors = (field?: string) => {
-    if (field) {
-      delete errors.value[field];
+  const validateLength = (
+    value: string,
+    fieldName: string,
+    min?: number,
+    max?: number
+  ): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    if (min && value.length < min) {
+      errors.push({
+        field: fieldName,
+        message: `${fieldName} must be at least ${min} characters`,
+        severity: "error",
+      });
+    }
+
+    if (max && value.length > max) {
+      errors.push({
+        field: fieldName,
+        message: `${fieldName} must be no more than ${max} characters`,
+        severity: max > 50 ? "warning" : "error",
+      });
+    }
+
+    return errors;
+  };
+
+  const validateNewsletter = (newsletter: Newsletter): ValidationError[] => {
+    const validationErrors: ValidationError[] = [];
+
+    // Required fields
+    const requiredError = validateRequired(newsletter.title, "title");
+    if (requiredError) validationErrors.push(requiredError);
+
+    const subjectError = validateRequired(
+      newsletter.subject_line,
+      "subject_line"
+    );
+    if (subjectError) validationErrors.push(subjectError);
+
+    const fromEmailError = validateRequired(
+      newsletter.from_email,
+      "from_email"
+    );
+    if (fromEmailError) validationErrors.push(fromEmailError);
+
+    const fromNameError = validateRequired(newsletter.from_name, "from_name");
+    if (fromNameError) validationErrors.push(fromNameError);
+
+    // Email validation
+    if (newsletter.from_email && !validateEmail(newsletter.from_email)) {
+      validationErrors.push({
+        field: "from_email",
+        message: "From email is not valid",
+        severity: "error",
+      });
+    }
+
+    if (newsletter.reply_to && !validateEmail(newsletter.reply_to)) {
+      validationErrors.push({
+        field: "reply_to",
+        message: "Reply to email is not valid",
+        severity: "error",
+      });
+    }
+
+    // Length validations
+    if (newsletter.title) {
+      validationErrors.push(
+        ...validateLength(newsletter.title, "title", 1, 100)
+      );
+    }
+
+    if (newsletter.subject_line) {
+      validationErrors.push(
+        ...validateLength(newsletter.subject_line, "subject_line", 1, 150)
+      );
+
+      // Subject line best practices
+      if (newsletter.subject_line.length > 50) {
+        validationErrors.push({
+          field: "subject_line",
+          message:
+            "Subject line is longer than 50 characters and may be truncated",
+          severity: "warning",
+        });
+      }
+
+      if (newsletter.subject_line.includes("!".repeat(3))) {
+        validationErrors.push({
+          field: "subject_line",
+          message:
+            "Avoid excessive exclamation marks to prevent spam filtering",
+          severity: "warning",
+        });
+      }
+    }
+
+    // Slug validation
+    if (newsletter.slug && !validateSlug(newsletter.slug)) {
+      validationErrors.push({
+        field: "slug",
+        message:
+          "Slug can only contain lowercase letters, numbers, and hyphens",
+        severity: "error",
+      });
+    }
+
+    // Content validation
+    if (!newsletter.blocks || newsletter.blocks.length === 0) {
+      validationErrors.push({
+        field: "blocks",
+        message: "Newsletter must have at least one content block",
+        severity: "error",
+      });
     } else {
-      errors.value = {};
+      // Validate individual blocks
+      newsletter.blocks.forEach((block, index) => {
+        const blockErrors = validateBlock(block, index);
+        validationErrors.push(...blockErrors);
+      });
     }
-  };
 
-  const hasErrors = (field?: string): boolean => {
-    if (field) {
-      return !!(errors.value[field] && errors.value[field].length > 0);
+    // Test emails validation
+    if (newsletter.test_emails && newsletter.test_emails.length > 0) {
+      newsletter.test_emails.forEach((email, index) => {
+        if (!validateEmail(email)) {
+          validationErrors.push({
+            field: `test_emails[${index}]`,
+            message: `Test email "${email}" is not valid`,
+            severity: "error",
+          });
+        }
+      });
     }
-    return Object.keys(errors.value).length > 0;
+
+    return validationErrors;
   };
 
-  const getErrors = (field?: string): string[] => {
-    if (field) {
-      return errors.value[field] || [];
+  const validateBlock = (
+    block: NewsletterBlock,
+    index?: number
+  ): ValidationError[] => {
+    const validationErrors: ValidationError[] = [];
+    const fieldPrefix = index !== undefined ? `blocks[${index}]` : "block";
+
+    // Block type validation
+    if (!block.block_type) {
+      validationErrors.push({
+        field: `${fieldPrefix}.block_type`,
+        message: "Block type is required",
+        severity: "error",
+      });
+      return validationErrors; // Can't validate further without block type
     }
-    return Object.values(errors.value).flat();
+
+    // Category-specific validation
+    switch (block.block_type.category) {
+      case "content":
+        if (!block.text_content?.trim()) {
+          validationErrors.push({
+            field: `${fieldPrefix}.text_content`,
+            message: "Content block requires text content",
+            severity: "error",
+          });
+        }
+        break;
+
+      case "media":
+        if (!block.image_url?.trim()) {
+          validationErrors.push({
+            field: `${fieldPrefix}.image_url`,
+            message: "Media block requires an image URL",
+            severity: "error",
+          });
+        } else if (!validateUrl(block.image_url)) {
+          validationErrors.push({
+            field: `${fieldPrefix}.image_url`,
+            message: "Image URL is not valid",
+            severity: "error",
+          });
+        }
+
+        if (!block.image_alt_text?.trim()) {
+          validationErrors.push({
+            field: `${fieldPrefix}.image_alt_text`,
+            message: "Image blocks should have alt text for accessibility",
+            severity: "warning",
+          });
+        }
+        break;
+
+      case "interactive":
+        if (!block.button_url?.trim()) {
+          validationErrors.push({
+            field: `${fieldPrefix}.button_url`,
+            message: "Interactive block requires a URL",
+            severity: "error",
+          });
+        } else if (!validateUrl(block.button_url)) {
+          validationErrors.push({
+            field: `${fieldPrefix}.button_url`,
+            message: "Button URL is not valid",
+            severity: "error",
+          });
+        }
+
+        if (!block.button_text?.trim()) {
+          validationErrors.push({
+            field: `${fieldPrefix}.button_text`,
+            message: "Interactive block requires button text",
+            severity: "error",
+          });
+        }
+        break;
+    }
+
+    // Color validation
+    if (block.background_color && !validateHexColor(block.background_color)) {
+      validationErrors.push({
+        field: `${fieldPrefix}.background_color`,
+        message: "Background color must be a valid hex color",
+        severity: "error",
+      });
+    }
+
+    if (block.text_color && !validateHexColor(block.text_color)) {
+      validationErrors.push({
+        field: `${fieldPrefix}.text_color`,
+        message: "Text color must be a valid hex color",
+        severity: "error",
+      });
+    }
+
+    return validationErrors;
   };
 
-  const getFirstError = (field: string): string | null => {
-    const fieldErrors = errors.value[field];
-    return fieldErrors && fieldErrors.length > 0 ? fieldErrors[0] : null;
+  const validateSubscriber = (subscriber: any): ValidationError[] => {
+    const validationErrors: ValidationError[] = [];
+
+    // Required fields
+    const emailError = validateRequired(subscriber.email, "email");
+    if (emailError) validationErrors.push(emailError);
+
+    const nameError = validateRequired(subscriber.name, "name");
+    if (nameError) validationErrors.push(nameError);
+
+    // Email validation
+    if (subscriber.email && !validateEmail(subscriber.email)) {
+      validationErrors.push({
+        field: "email",
+        message: "Email address is not valid",
+        severity: "error",
+      });
+    }
+
+    return validationErrors;
   };
 
-  // Email validation
-  const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  // URL validation
-  const isValidUrl = (url: string): boolean => {
+  const validateForm = async (data: any, rules: Record<string, any>) => {
     try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
+      isValidating.value = true;
+      errors.value = [];
+
+      const validationErrors: ValidationError[] = [];
+
+      for (const [field, fieldRules] of Object.entries(rules)) {
+        const value = data[field];
+
+        if (fieldRules.required && !value) {
+          validationErrors.push({
+            field,
+            message: `${field} is required`,
+            severity: "error",
+          });
+          continue;
+        }
+
+        if (!value) continue; // Skip validation if not required and empty
+
+        if (fieldRules.email && !validateEmail(value)) {
+          validationErrors.push({
+            field,
+            message: `${field} must be a valid email`,
+            severity: "error",
+          });
+        }
+
+        if (fieldRules.url && !validateUrl(value)) {
+          validationErrors.push({
+            field,
+            message: `${field} must be a valid URL`,
+            severity: "error",
+          });
+        }
+
+        if (fieldRules.minLength && value.length < fieldRules.minLength) {
+          validationErrors.push({
+            field,
+            message: `${field} must be at least ${fieldRules.minLength} characters`,
+            severity: "error",
+          });
+        }
+
+        if (fieldRules.maxLength && value.length > fieldRules.maxLength) {
+          validationErrors.push({
+            field,
+            message: `${field} must be no more than ${fieldRules.maxLength} characters`,
+            severity: "error",
+          });
+        }
+
+        if (fieldRules.pattern && !fieldRules.pattern.test(value)) {
+          validationErrors.push({
+            field,
+            message: fieldRules.patternMessage || `${field} format is invalid`,
+            severity: "error",
+          });
+        }
+      }
+
+      errors.value = validationErrors;
+      return {
+        isValid: validationErrors.length === 0,
+        errors: validationErrors,
+      };
+    } catch (err: any) {
+      const error = {
+        field: "general",
+        message: err.message || "Validation failed",
+        severity: "error" as const,
+      };
+      errors.value = [error];
+      return { isValid: false, errors: [error] };
+    } finally {
+      isValidating.value = false;
     }
   };
 
-  // Color contrast calculation
-  const calculateColorContrast = (bg: string, text: string): number => {
-    const getLuminance = (color: string) => {
-      const hex = color.replace("#", "");
-      const r = Number.parseInt(hex.substr(0, 2), 16) / 255;
-      const g = Number.parseInt(hex.substr(2, 2), 16) / 255;
-      const b = Number.parseInt(hex.substr(4, 2), 16) / 255;
+  const clearErrors = () => {
+    errors.value = [];
+  };
 
-      const toLinear = (c: number) =>
-        c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const getFieldErrors = (fieldName: string) => {
+    return errors.value.filter(
+      (error: { field: string }) => error.field === fieldName
+    );
+  };
 
-      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-    };
+  const hasFieldError = (fieldName: string) => {
+    return errors.value.some(
+      (error: { field: string }) => error.field === fieldName
+    );
+  };
 
-    try {
-      const bgLuminance = getLuminance(bg);
-      const textLuminance = getLuminance(text);
+  const hasErrors = () => {
+    return errors.value.length > 0;
+  };
 
-      const lighter = Math.max(bgLuminance, textLuminance);
-      const darker = Math.min(bgLuminance, textLuminance);
-
-      return (lighter + 0.05) / (darker + 0.05);
-    } catch {
-      return 7; // Assume good contrast if calculation fails
-    }
+  const hasErrorsOfSeverity = (severity: "error" | "warning") => {
+    return errors.value.some(
+      (error: { severity: string }) => error.severity === severity
+    );
   };
 
   return {
-    errors: readonly(errors),
-    isValidating: readonly(isValidating),
+    errors,
+    isValidating,
+    validateEmail,
+    validateUrl,
+    validateHexColor,
+    validateSlug,
+    validateRequired,
+    validateLength,
     validateNewsletter,
+    validateBlock,
     validateSubscriber,
-    validateMailingList,
-    addError,
+    validateForm,
     clearErrors,
+    getFieldErrors,
+    hasFieldError,
     hasErrors,
-    getErrors,
-    getFirstError,
-    isValidEmail,
-    isValidUrl,
+    hasErrorsOfSeverity,
   };
 };

@@ -1,3 +1,4 @@
+// playground/nuxt.config.ts
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
@@ -27,9 +28,11 @@ export default defineNuxtConfig({
     prefix: "",
     componentDir: "./components/ui",
   },
+
   vite: {
     plugins: [tailwindcss()],
   },
+
   build: {
     transpile: ["@sendgrid/mail", "gsap", "swiper"],
   },

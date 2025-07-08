@@ -1,3 +1,4 @@
+import { ref } from "vue";
 export const useSegmentation = () => {
   const segments = ref<any[]>([]);
   const isLoading = ref(false);
@@ -117,7 +118,7 @@ export const useSegmentation = () => {
       limit?: number;
       offset?: number;
       fields?: string[];
-    } = {},
+    } = {}
   ) => {
     try {
       isLoading.value = true;
@@ -127,7 +128,7 @@ export const useSegmentation = () => {
         `/api/newsletter/segments/${segmentId}/subscribers`,
         {
           query: options,
-        },
+        }
       );
 
       return response;
@@ -142,7 +143,7 @@ export const useSegmentation = () => {
   // Export segment
   const exportSegment = async (
     segmentId: number,
-    format: "csv" | "json" = "csv",
+    format: "csv" | "json" = "csv"
   ) => {
     try {
       isLoading.value = true;
@@ -153,7 +154,7 @@ export const useSegmentation = () => {
         {
           method: "POST",
           body: { format },
-        },
+        }
       );
 
       return response;

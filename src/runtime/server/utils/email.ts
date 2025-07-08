@@ -18,6 +18,7 @@ export interface EmailConfig {
 }
 
 export interface SendResult {
+  headers: any;
   messageId: string;
   status: string;
   recipients: number;
@@ -92,6 +93,7 @@ export class EmailService {
     }
 
     return {
+      headers: {},
       messageId: `newsletter-${newsletter.id}-${Date.now()}`,
       status: totalErrors > 0 ? "partial" : "success",
       recipients: totalSent,
@@ -119,7 +121,7 @@ export class EmailService {
       },
       subject: customSubject || `[TEST] ${newsletter.subject_line}`,
       html: this.processTestHtml(
-        newsletter.compiled_html,
+        newsletter.compiled_html as string,
         includeAnalytics,
         testIndicators
       ),
@@ -141,6 +143,7 @@ export class EmailService {
       const response = await sgMail.send(emailData);
 
       return {
+        headers: response[0].headers,
         messageId: response[0].headers?.["x-message-id"] || "unknown",
         status: "success",
         recipients: testEmails.length,

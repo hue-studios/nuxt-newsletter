@@ -88,7 +88,7 @@ export default defineEventHandler(async (event) => {
         test_emails: test_emails.join(", "),
         sent_at: new Date().toISOString(),
         sent_by: event.context.user?.id || null,
-        sendgrid_message_id: sendResult[0]?.headers?.["x-message-id"] || null,
+        sendgrid_message_id: sendResult?.headers?.["x-message-id"] || null,
         status: "sent",
       })
     );
@@ -109,14 +109,14 @@ export default defineEventHandler(async (event) => {
         newsletter_id,
         recipients: test_emails,
         sent_at: new Date().toISOString(),
-        message_ids: sendResult
-          .map((r: any) => r.headers?.["x-message-id"])
-          .filter(Boolean),
+        message_ids: [sendResult.messageId].filter(Boolean),
       },
     };
   } catch (error: any) {
     console.error("Test email sending error:", error);
+    const config = useRuntimeConfig();
 
+    const url = config.public.newsletter.directusUrl;
     // Log failed test send
     try {
       const body = await readBody(event);

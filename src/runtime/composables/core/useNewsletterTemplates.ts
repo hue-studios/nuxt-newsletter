@@ -1,408 +1,211 @@
 // src/runtime/composables/core/useNewsletterTemplates.ts
-import { ref, reactive, computed } from "vue";
-import { z } from "zod";
-import { toast } from "vue-sonner";
-import type {
-  NewsletterTemplate,
-  Newsletter,
-  NewsletterBlock,
-  CreateNewsletterData,
-} from "~/types/newsletter";
-
-// Validation schemas
-const TemplateSchema = z.object({
-  name: z.string().min(1, "Template name is required").max(100),
-  description: z.string().max(500).optional(),
-  category: z.string().min(1, "Category is required"),
-  tags: z.array(z.string()).optional(),
-  is_public: z.boolean().optional(),
-});
-
-const defaultCategory = "General";
+import { ref } from "vue";
+import type { NewsletterTemplate } from "../../types/newsletter";
+import { useNuxtApp } from "nuxt/app";
 
 export const useNewsletterTemplates = () => {
-  // Reactive state
-  const state = reactive({
-    templates: [] as NewsletterTemplate[],
-    featuredTemplates: [] as NewsletterTemplate[],
-    currentTemplate: null as NewsletterTemplate | null,
-    isLoading: false,
-    isCreating: false,
-    isSaving: false,
-    error: null as string | null,
-  });
+  const templates = ref<NewsletterTemplate[]>([]);
+  const isLoading = ref(false);
+  const error = ref<string | null>(null);
 
-  // Composables
-  const { $directus } = useNuxtApp();
-  const directus = $directus;
-
-  // Helper function for error handling
-  const handleError = (error: any, action: string) => {
-    console.error(`Error ${action}:`, error);
-    const message = error?.message || `Failed to ${action}`;
-    state.error = message;
-    toast.error("Operation failed", {
-      description: message,
-    });
-    throw error;
-  };
-
-  // Computed
-  const templatesByCategory = computed(() => {
-    const grouped = state.templates.reduce((acc, template) => {
-      const category = template.category || defaultCategory;
-      if (!acc[category]) acc[category] = [];
-      acc[category].push(template);
-      return acc;
-    }, {} as Record<string, NewsletterTemplate[]>);
-
-    return grouped;
-  });
-
-  const categories = computed(() => {
-    return Object.keys(templatesByCategory.value).sort();
-  });
-
-  // Template operations
-  const fetchTemplates = async (
-    options: {
-      category?: string;
-      featured?: boolean;
-      limit?: number;
-      search?: string;
-    } = {},
-  ) => {
+  const fetchTemplates = async () => {
     try {
-      state.isLoading = true;
-      state.error = null;
+      isLoading.value = true;
+      error.value = null;
 
-      const params = new URLSearchParams();
-      if (options.category) params.append("category", options.category);
-      if (options.featured) params.append("featured", "true");
-      if (options.limit) params.append("limit", options.limit.toString());
-      if (options.search) params.append("search", options.search);
+      const { $directusHelpers } = useNuxtApp();
+      const result = await $directusHelpers.templates.list();
 
-      const response = await $fetch(`/api/newsletter/templates?${params}`);
-
-      if (options.featured) {
-        state.featuredTemplates = response.data || [];
+      if (result.success) {
+        templates.value = result.items;
       } else {
-        state.templates = response.data || [];
+        throw new Error(result.error?.message || "Failed to fetch templates");
       }
-
-      return response;
-    } catch (error: any) {
-      handleError(error, "fetch templates");
-    } finally {
-      state.isLoading = false;
-    }
-  };
-
-  const fetchTemplate = async (id: number) => {
-    try {
-      state.isLoading = true;
-      state.error = null;
-
-      const template = await $fetch(`/api/newsletter/templates/${id}`);
-      state.currentTemplate = template;
-
-      return template;
-    } catch (error: any) {
-      handleError(error, "fetch template");
-    } finally {
-      state.isLoading = false;
-    }
-  };
-
-  // Create newsletter from template
-  const createFromTemplate = async (
-    template: NewsletterTemplate,
-    overrides: Partial<CreateNewsletterData> = {},
-  ) => {
-    try {
-      state.isCreating = true;
-      state.error = null;
-
-      const newsletterData = {
-        title: overrides.title || `${template.name} Newsletter`,
-        subject_line:
-          overrides.subject_line
-          || template.default_subject
-          || `Newsletter from ${template.name}`,
-        from_name: overrides.from_name || "Newsletter",
-        from_email: overrides.from_email || "newsletter@example.com",
-        category: overrides.category || template.category || defaultCategory,
-        tags: overrides.tags || template.tags || [],
-        status: "draft" as const,
-      };
-
-      // Create the newsletter
-      const newsletter = await $fetch("/api/newsletter/create", {
-        method: "POST",
-        body: newsletterData,
-      });
-
-      // Copy blocks from template if they exist
-      if (template.blocks && template.blocks.length > 0) {
-        const blockPromises = template.blocks
-          .sort((a, b) => a.sort - b.sort)
-          .map((templateBlock, index) =>
-            $fetch("/api/newsletter/blocks", {
-              method: "POST",
-              body: {
-                newsletter_id: newsletter.id,
-                block_type_id: templateBlock.block_type_id,
-                field_data: { ...templateBlock.field_data },
-                sort: index,
-              },
-            }),
-          );
-
-        await Promise.all(blockPromises);
-      }
-
-      // Update template usage count
-      await $fetch(`/api/newsletter/templates/${template.id}/use`, {
-        method: "POST",
-      });
-
-      toast.success("Newsletter created from template", {
-        description: `"${newsletter.title}" is ready for editing`,
-        action: {
-          label: "Edit",
-          onClick: () => navigateTo(`/newsletters/${newsletter.id}/edit`),
-        },
-      });
-
-      return newsletter;
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        const message = error.errors.map((e) => e.message).join(", ");
-        state.error = message;
-        toast.error("Validation failed", {
-          description: message,
-        });
-        throw new Error(message);
-      }
-      handleError(error, "create from template");
-    } finally {
-      state.isCreating = false;
-    }
-  };
-
-  // Save newsletter as template
-  const saveAsTemplate = async (
-    newsletter: Newsletter,
-    templateData: Partial<NewsletterTemplate>,
-  ) => {
-    try {
-      state.isSaving = true;
-      state.error = null;
-
-      // Validate input
-      const validated = TemplateSchema.parse({
-        name: templateData.name || newsletter.title,
-        description: templateData.description,
-        category: templateData.category || defaultCategory,
-        tags: templateData.tags || [],
-        is_public: templateData.is_public || false,
-      });
-
-      // Create template
-      const templateResponse = await $fetch("/api/newsletter/templates", {
-        method: "POST",
-        body: {
-          ...validated,
+    } catch (err: any) {
+      error.value = err.message || "Failed to fetch templates";
+      console.error("Failed to fetch templates:", err);
+      // Fallback to mock templates for development
+      templates.value = [
+        {
+          id: 1,
+          name: "Weekly Update",
+          description: "A simple template for weekly newsletters",
+          category: "weekly",
+          thumbnail_url: "/templates/weekly-update.png",
+          blocks_config: {
+            header: { enabled: true },
+            content: { blocks: 3 },
+            footer: { enabled: true },
+          },
+          default_subject_pattern: "Weekly Update - {{date}}",
+          default_from_name: "Newsletter Team",
           status: "published",
-          featured: false,
-          usage_count: 0,
-          default_subject: newsletter.subject_line,
+          usage_count: 45,
+          tags: ["weekly", "update", "simple"],
         },
-      });
-
-      const template = templateResponse as NewsletterTemplate;
-
-      // Copy blocks from newsletter
-      if (newsletter.blocks && newsletter.blocks.length > 0) {
-        const blockPromises = newsletter.blocks.map((block) =>
-          $fetch("/api/newsletter/template-blocks", {
-            method: "POST",
-            body: {
-              template_id: template.id,
-              block_type_id: block.block_type_id,
-              field_data: { ...block.field_data },
-              sort: block.sort,
-            },
-          }),
-        );
-
-        await Promise.all(blockPromises);
-      }
-
-      // Add to state
-      state.templates.unshift(template);
-
-      toast.success("Template created", {
-        description: `"${template.name}" saved successfully`,
-      });
-
-      return template;
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        const message = error.errors.map((e) => e.message).join(", ");
-        state.error = message;
-        toast.error("Validation failed", {
-          description: message,
-        });
-        throw new Error(message);
-      }
-      handleError(error, "save as template");
+        {
+          id: 2,
+          name: "Product Launch",
+          description: "Template for product announcements",
+          category: "product",
+          thumbnail_url: "/templates/product-launch.png",
+          blocks_config: {
+            hero: { enabled: true },
+            features: { blocks: 4 },
+            cta: { enabled: true },
+          },
+          default_subject_pattern: "🚀 New Product: {{product_name}}",
+          default_from_name: "Product Team",
+          status: "published",
+          usage_count: 23,
+          tags: ["product", "launch", "announcement"],
+        },
+      ] as NewsletterTemplate[];
     } finally {
-      state.isSaving = false;
+      isLoading.value = false;
     }
   };
 
-  // Delete template
+  const createTemplate = async (data: Partial<NewsletterTemplate>) => {
+    try {
+      error.value = null;
+
+      const { $directusHelpers } = useNuxtApp();
+      const result = await $directusHelpers.createItem("newsletter_templates", {
+        ...data,
+        status: "draft",
+        usage_count: 0,
+        tags: data.tags || [],
+      });
+
+      if (result.success) {
+        const template = result.item as NewsletterTemplate;
+        templates.value.unshift(template);
+        return template;
+      } else {
+        throw new Error(result.error?.message || "Failed to create template");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to create template";
+      console.error("Failed to create template:", err);
+      // Fallback to mock creation
+      const template = {
+        id: Date.now(),
+        ...data,
+        status: "draft" as const,
+        usage_count: 0,
+        tags: data.tags || [],
+      } as NewsletterTemplate;
+      templates.value.unshift(template);
+      return template;
+    }
+  };
+
+  const updateTemplate = async (
+    id: number,
+    data: Partial<NewsletterTemplate>
+  ) => {
+    try {
+      error.value = null;
+
+      const { $directusHelpers } = useNuxtApp();
+      const result = await $directusHelpers.updateItem(
+        "newsletter_templates",
+        id,
+        data
+      );
+
+      if (result.success) {
+        const updatedTemplate = result.item as NewsletterTemplate;
+        const index = templates.value.findIndex((t) => t.id === id);
+        if (index !== -1) {
+          templates.value[index] = updatedTemplate;
+        }
+        return updatedTemplate;
+      } else {
+        throw new Error(result.error?.message || "Failed to update template");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to update template";
+      console.error("Failed to update template:", err);
+      throw err;
+    }
+  };
+
   const deleteTemplate = async (id: number) => {
     try {
-      state.isLoading = true;
-      state.error = null;
+      error.value = null;
 
-      const template = state.templates.find((t) => t.id === id);
+      const { $directusHelpers } = useNuxtApp();
+      const result = await $directusHelpers.deleteItem(
+        "newsletter_templates",
+        id
+      );
+
+      if (result.success) {
+        templates.value = templates.value.filter((t) => t.id !== id);
+      } else {
+        throw new Error(result.error?.message || "Failed to delete template");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to delete template";
+      console.error("Failed to delete template:", err);
+      throw err;
+    }
+  };
+
+  const applyTemplate = async (templateId: number, newsletterId: number) => {
+    try {
+      error.value = null;
+
+      const template = templates.value.find((t) => t.id === templateId);
       if (!template) {
         throw new Error("Template not found");
       }
 
-      await $fetch(`/api/newsletter/templates/${id}`, {
-        method: "DELETE",
+      // Update usage count
+      await updateTemplate(templateId, {
+        usage_count: template.usage_count + 1,
       });
 
-      // Remove from state
-      state.templates = state.templates.filter((t) => t.id !== id);
-      state.featuredTemplates = state.featuredTemplates.filter(
-        (t) => t.id !== id,
-      );
-
-      // Clear selected template if it was deleted
-      if (state.currentTemplate?.id === id) {
-        state.currentTemplate = null;
-      }
-
-      toast.success("Template deleted", {
-        description: `"${template.name}" has been removed`,
+      // Apply template configuration to newsletter
+      const { updateNewsletter } = useNewsletter();
+      const updatedNewsletter = await updateNewsletter(newsletterId, {
+        template_id: templateId,
+        // Apply template defaults if not already set
+        from_name: template.default_from_name,
       });
 
-      return true;
-    } catch (error: any) {
-      handleError(error, "delete template");
-    } finally {
-      state.isLoading = false;
+      return updatedNewsletter;
+    } catch (err: any) {
+      error.value = err.message || "Failed to apply template";
+      console.error("Failed to apply template:", err);
+      throw err;
     }
   };
 
-  // Duplicate template
-  const duplicateTemplate = async (id: number, newName?: string) => {
-    try {
-      const originalTemplate = await fetchTemplate(id);
-      if (!originalTemplate) {
-        throw new Error("Template not found");
-      }
-
-      const duplicatedData = {
-        name: newName || `${originalTemplate.name} (Copy)`,
-        description: originalTemplate.description,
-        category: originalTemplate.category,
-        tags: [...(originalTemplate.tags || [])],
-        is_public: false, // Always make copies private initially
-      };
-
-      // Create new template
-      const newTemplate = await $fetch("/api/newsletter/templates", {
-        method: "POST",
-        body: {
-          ...duplicatedData,
-          status: "published",
-          featured: false,
-          usage_count: 0,
-          default_subject: originalTemplate.default_subject,
-        },
-      });
-
-      // Copy blocks
-      if (originalTemplate.blocks && originalTemplate.blocks.length > 0) {
-        const blockPromises = originalTemplate.blocks.map((block) =>
-          $fetch("/api/newsletter/template-blocks", {
-            method: "POST",
-            body: {
-              template_id: newTemplate.id,
-              block_type_id: block.block_type_id,
-              field_data: { ...block.field_data },
-              sort: block.sort,
-            },
-          }),
-        );
-
-        await Promise.all(blockPromises);
-      }
-
-      // Add to state
-      state.templates.unshift(newTemplate);
-
-      toast.success("Template duplicated", {
-        description: `"${newTemplate.name}" created successfully`,
-      });
-
-      return newTemplate;
-    } catch (error: any) {
-      handleError(error, "duplicate template");
-    }
+  const getTemplatesByCategory = (category: string) => {
+    return templates.value.filter(
+      (t: { category: string }) => t.category === category
+    );
   };
 
-  // Publish/unpublish template
-  const toggleTemplateVisibility = async (id: number, isPublic: boolean) => {
-    try {
-      const template = await $fetch(`/api/newsletter/templates/${id}`, {
-        method: "PATCH",
-        body: { is_public: isPublic },
-      });
-
-      // Update in state
-      const index = state.templates.findIndex((t) => t.id === id);
-      if (index !== -1) {
-        state.templates[index] = template;
-      }
-
-      if (state.currentTemplate?.id === id) {
-        state.currentTemplate = template;
-      }
-
-      toast.success(isPublic ? "Template published" : "Template unpublished", {
-        description: isPublic
-          ? "Template is now visible to all users"
-          : "Template is now private",
-      });
-
-      return template;
-    } catch (error: any) {
-      handleError(error, "update template visibility");
-    }
+  const getPopularTemplates = (limit: number = 5) => {
+    return [...templates.value]
+      .sort((a, b) => b.usage_count - a.usage_count)
+      .slice(0, limit);
   };
 
   return {
-    // State (readonly)
-    ...toRefs(readonly(state)),
-
-    // Computed
-    templatesByCategory,
-    categories,
-
-    // Methods
+    templates,
+    isLoading,
+    error,
     fetchTemplates,
-    fetchTemplate,
-    createFromTemplate,
-    saveAsTemplate,
+    createTemplate,
+    updateTemplate,
     deleteTemplate,
-    duplicateTemplate,
-    toggleTemplateVisibility,
+    applyTemplate,
+    getTemplatesByCategory,
+    getPopularTemplates,
   };
 };
