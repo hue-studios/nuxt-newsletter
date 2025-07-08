@@ -1,7 +1,6 @@
 // src/runtime/composables/core/useNewsletterBlocks.ts
 import { ref } from "vue";
 import type { NewsletterBlock, BlockType } from "../../types/newsletter";
-import { useNuxtApp } from "nuxt/app";
 
 export const useNewsletterBlocks = () => {
   const blockTypes = ref<BlockType[]>([]);

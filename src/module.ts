@@ -142,7 +142,7 @@ export default defineNuxtModule<ModuleOptions>({
     );
 
     // Add runtime config
-    nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
+    nuxt.options.runtimeConfig.public = defu(nuxt.options.runtimeConfig, {
       newsletter: {
         directusUrl: options.directusUrl,
         sendgridApiKey: options.sendgridApiKey,
@@ -169,9 +169,18 @@ export default defineNuxtModule<ModuleOptions>({
       const requiredModules = ["shadcn-nuxt", "@nuxtjs/color-mode"];
       const installedModules = nuxt.options.modules || [];
       const missingModules = requiredModules.filter((module) => {
-        return !installedModules.some((m) =>
-          typeof m === "string" ? m === module : m[0] === module
-        );
+        return !installedModules.some((m) => {
+          if (typeof m === "string") {
+            // Case 1: Module is a simple string (e.g., 'shadcn-nuxt')
+            return m === module;
+          } else if (Array.isArray(m)) {
+            // Case 2: Module is an array [name, options] (e.g., ['@nuxtjs/color-mode', {}])
+            return m[0] === module;
+          }
+          // If 'm' is neither a string nor an array (e.g., a direct NuxtModule object),
+          // it won't match the 'module' string, so we return false.
+          return false;
+        });
       });
 
       if (missingModules.length > 0) {
