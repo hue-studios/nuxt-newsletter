@@ -12,9 +12,9 @@ import {
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig();
 
-  const directus = createDirectus(config.public.newsletter.directusUrl).with(
-    rest()
-  );
+  const directus = createDirectus(
+    config.public?.newsletter?.directusUrl as string
+  ).with(rest());
 
   // Helper functions with proper Directus SDK usage
   const directusHelpers = {
@@ -50,7 +50,7 @@ export default defineNuxtPlugin(() => {
 
     deleteItem: async (collection: string, id: string | number) => {
       try {
-        await directus.request(deleteItems(collection, [id]));
+        await directus.request(deleteItems(collection, [id as any]));
         return { success: true };
       } catch (error: any) {
         return { success: false, error: { message: error.message } };
@@ -84,7 +84,7 @@ export default defineNuxtPlugin(() => {
 
     batchDelete: async (collection: string, ids: (string | number)[]) => {
       try {
-        await directus.request(deleteItems(collection, ids));
+        await directus.request(deleteItems(collection, ids as any));
         return { success: true };
       } catch (error: any) {
         return { success: false, error: { message: error.message } };
@@ -107,7 +107,7 @@ export default defineNuxtPlugin(() => {
         }
 
         const response = await fetch(
-          `${config.public.newsletter.directusUrl}/files`,
+          `${config.public?.newsletter?.directusUrl}/files`,
           {
             method: "POST",
             body: formData,
@@ -138,14 +138,14 @@ export default defineNuxtPlugin(() => {
     },
 
     getFileUrl: (fileId: string) => {
-      return `${config.public.newsletter.directusUrl}/assets/${fileId}`;
+      return `${config.public?.newsletter?.directusUrl}/assets/${fileId}`;
     },
 
     // Authentication
     login: async (email: string, password: string) => {
       try {
         const response = await fetch(
-          `${config.public.newsletter.directusUrl}/auth/login`,
+          `${config.public?.newsletter?.directusUrl}/auth/login`,
           {
             method: "POST",
             headers: {
@@ -168,7 +168,7 @@ export default defineNuxtPlugin(() => {
 
     logout: async () => {
       try {
-        await fetch(`${config.public.newsletter.directusUrl}/auth/logout`, {
+        await fetch(`${config.public?.newsletter?.directusUrl}/auth/logout`, {
           method: "POST",
         });
       } catch (error) {
@@ -179,7 +179,7 @@ export default defineNuxtPlugin(() => {
     refresh: async () => {
       try {
         const response = await fetch(
-          `${config.public.newsletter.directusUrl}/auth/refresh`,
+          `${config.public?.newsletter?.directusUrl}/auth/refresh`,
           {
             method: "POST",
           }
@@ -204,7 +204,11 @@ export default defineNuxtPlugin(() => {
         const result = await directusHelpers.readItems("newsletters", {
           filter: { id },
         });
-        if (result.success && result.data?.length > 0) {
+        if (
+          result.success &&
+          Array.isArray(result.data) &&
+          result.data.length > 0
+        ) {
           return { success: true, data: result.data[0] };
         }
         return result;
@@ -223,7 +227,11 @@ export default defineNuxtPlugin(() => {
         const result = await directusHelpers.readItems("block_types", {
           filter: { id },
         });
-        if (result.success && result.data?.length > 0) {
+        if (
+          result.success &&
+          Array.isArray(result.data) &&
+          result.data.length > 0
+        ) {
           return { success: true, data: result.data[0] };
         }
         return result;
@@ -236,7 +244,11 @@ export default defineNuxtPlugin(() => {
         const result = await directusHelpers.readItems("newsletter_templates", {
           filter: { id },
         });
-        if (result.success && result.data?.length > 0) {
+        if (
+          result.success &&
+          Array.isArray(result.data) &&
+          result.data.length > 0
+        ) {
           return { success: true, data: result.data[0] };
         }
         return result;

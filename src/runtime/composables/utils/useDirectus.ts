@@ -198,7 +198,7 @@ export const useDirectus = (): UseDirectusReturn => {
 
     getFileUrl: (fileId: string): string => {
       const config = useRuntimeConfig();
-      return `${config.public.newsletter.directusUrl}/assets/${fileId}`;
+      return `${config.public?.newsletter?.directusUrl}/assets/${fileId}`;
     },
 
     // Authentication

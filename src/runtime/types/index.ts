@@ -1,24 +1,16 @@
 export * from "./newsletter";
 
-// Ensure no duplicate declarations
-declare module "@nuxt/schema" {
-  interface RuntimeConfig {
-    newsletter?: {
-      sendgridApiKey?: string;
-      webhookSecret?: string;
-    };
-  }
-
-  interface PublicRuntimeConfig {
-    newsletter?: {
-      directusUrl: string;
-      enableAnalytics?: boolean;
-      enableWebhooks?: boolean;
+// NuxtApp augmentation for newsletter helpers
+declare module "#app" {
+  interface NuxtApp {
+    $newsletter: {
+      generateSlug: (title: string) => string;
+      validateEmail: (email: string) => boolean;
     };
   }
 }
 
-// Global type augmentation for Nuxt
+// Optional: Better DX for environment variables
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
@@ -28,3 +20,5 @@ declare global {
     }
   }
 }
+
+export {};
