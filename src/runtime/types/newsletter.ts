@@ -10,12 +10,17 @@ export interface Newsletter {
   from_email: string;
   category?: string;
   status?: "draft" | "scheduled" | "sent" | "paused";
+  preview_text?: string;
   html_content?: string;
+  compiled_html?: string;
   mjml_template?: string;
   sent_at?: string | Date;
   scheduled_at?: string | Date;
   open_rate?: number;
   click_rate?: number;
+
+  tags?: string[];
+  template?: NewsletterTemplate;
 
   // Use Directus system field names
   date_created?: string | Date; // ← Keep this
@@ -38,7 +43,7 @@ export interface NewsletterTemplate {
   id?: number;
   name: string;
   description?: string;
-  preview_image?: string;
+  thumbnail_url?: string;
   mjml_template: string;
   blocks?: NewsletterBlock[];
   tags?: string[];
@@ -195,10 +200,10 @@ export interface ValidationResult {
 
 // Composable return types
 export interface UseNewsletterReturn {
-  newsletters: Ref<Newsletter[]>;
-  currentNewsletter: Ref<Newsletter | null>;
-  isLoading: Ref<boolean>;
-  error: Ref<string | null>;
+  newsletters: Readonly<Ref<Newsletter[]>>;
+  currentNewsletter: Readonly<Ref<Newsletter | null>>;
+  isLoading: Readonly<Ref<boolean>>;
+  error: Readonly<Ref<string | null>>;
   fetchNewsletters: (params?: PaginationParams) => Promise<void>;
   fetchNewsletter: (id: number) => Promise<Newsletter | null>;
   createNewsletter: (data: Partial<Newsletter>) => Promise<Newsletter>;
@@ -312,14 +317,5 @@ declare module "#app" {
       TextPlugin?: any;
       DrawSVGPlugin?: any;
     };
-  }
-}
-
-declare module "@nuxt/schema" {
-  interface RuntimeConfig {
-    newsletter: NewsletterModuleConfig;
-  }
-  interface PublicRuntimeConfig {
-    newsletter: NewsletterModuleConfig;
   }
 }

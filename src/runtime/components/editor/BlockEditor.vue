@@ -265,7 +265,7 @@
     <!-- Actions -->
     <div class="border-t border-gray-200 pt-6">
       <div class="flex items-center space-x-2">
-        <Button variant="outline" size="sm" @click="$emit('duplicate')">
+        <Button variant="outline" size="sm" @click="$emit('duplicate', block)">
           <Icon name="lucide:copy" class="w-4 h-4 mr-1" />
           Duplicate
         </Button>
@@ -273,7 +273,7 @@
         <Button
           variant="outline"
           size="sm"
-          @click="$emit('delete')"
+          @click="$emit('delete', block.id)"
           class="text-red-600 hover:text-red-700"
         >
           <Icon name="lucide:trash-2" class="w-4 h-4 mr-1" />
@@ -298,6 +298,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   update: [block: any];
   delete: [blockId: number];
+  duplicate: [block: any]; // Add the missing duplicate event
 }>();
 
 const { getBlockFieldConfig } = useNewsletterBlocks();

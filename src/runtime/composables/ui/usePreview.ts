@@ -1,6 +1,7 @@
 // src/runtime/composables/ui/usePreview.ts
 import { useNuxtApp } from "nuxt/app";
 import { ref, readonly } from "vue";
+import { $fetch } from "ofetch";
 import type { Newsletter } from "../../types/newsletter";
 
 export const usePreview = () => {
@@ -13,7 +14,6 @@ export const usePreview = () => {
       isGenerating.value = true;
       error.value = null;
 
-      const { $fetch } = useNuxtApp();
       const result = await $fetch<{ html: string }>(
         "/api/newsletter/core/compile-mjml",
         {

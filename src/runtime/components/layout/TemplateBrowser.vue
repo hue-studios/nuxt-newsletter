@@ -23,8 +23,8 @@
       >
         <div class="template-preview">
           <img
-            v-if="template.preview_image"
-            :src="template.preview_image"
+            v-if="template.thumbnail_url"
+            :src="template.thumbnail_url"
             :alt="template.name"
           />
           <div v-else class="placeholder-preview">Preview</div>

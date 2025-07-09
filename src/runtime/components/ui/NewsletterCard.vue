@@ -20,7 +20,7 @@
 
         <!-- Status Badge -->
         <div class="absolute top-3 left-3">
-          <Badge :variant="getStatusVariant(newsletter.status)">
+          <Badge :variant="getStatusVariant(newsletter.status || 'draft')">
             {{ newsletter.status }}
           </Badge>
         </div>
@@ -118,7 +118,7 @@
 
         <!-- Meta Info -->
         <div class="flex items-center justify-between text-xs text-gray-500">
-          <span>{{ formatDate(newsletter.created_at) }}</span>
+          <span>{{ formatDate(newsletter.date_created) }}</span>
           <span>{{ newsletter.blocks?.length || 0 }} blocks</span>
         </div>
       </div>
@@ -134,9 +134,9 @@ interface Props {
 }
 
 interface Emits {
-  (e: "edit", id: number): void;
-  (e: "duplicate", id: number): void;
-  (e: "delete", id: number): void;
+  (e: "edit", id: number | undefined): void;
+  (e: "duplicate", id: number | undefined): void;
+  (e: "delete", id: number | undefined): void;
   (e: "send-test", newsletter: Newsletter): void;
 }
 
@@ -162,8 +162,13 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-const formatDate = (dateString?: string) => {
-  if (!dateString) return "No date";
+const formatDate = (date: string | Date | undefined): string => {
+  if (!date) return "";
+
+  // Convert Date object to string if needed
+  const dateString = date instanceof Date ? date.toISOString() : date;
+
+  // Your existing formatting logic here
   return new Date(dateString).toLocaleDateString();
 };
 </script>

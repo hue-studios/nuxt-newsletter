@@ -1,6 +1,7 @@
 // src/runtime/composables/core/useNewsletter.ts
 import { useNuxtApp } from "nuxt/app";
 import { ref, readonly } from "vue";
+import { $fetch } from "ofetch";
 import type {
   Newsletter,
   NewsletterBlock,
@@ -176,7 +177,6 @@ export const useNewsletter = (): UseNewsletterReturn => {
       isLoading.value = true;
       error.value = null;
 
-      const { $fetch } = useNuxtApp();
       const result = await $fetch<SendResult>("/api/newsletter/core/send", {
         method: "POST",
         body: { newsletter_id: id, ...options },
