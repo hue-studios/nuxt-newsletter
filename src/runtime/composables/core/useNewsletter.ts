@@ -1,6 +1,6 @@
 // src/runtime/composables/core/useNewsletter.ts
 import { useNuxtApp } from "nuxt/app";
-import { ref, readonly } from "vue";
+import { ref, readonly, shallowReadonly } from "vue";
 import { $fetch } from "ofetch";
 import type {
   Newsletter,
@@ -297,8 +297,8 @@ export const useNewsletter = (): UseNewsletterReturn => {
   };
 
   return {
-    newsletters: readonly(newsletters),
-    currentNewsletter: readonly(currentNewsletter),
+    newsletters: shallowReadonly(newsletters),
+    currentNewsletter: shallowReadonly(currentNewsletter),
     isLoading: readonly(isLoading),
     error: readonly(error),
     fetchNewsletters,
