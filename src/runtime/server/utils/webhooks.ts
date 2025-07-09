@@ -141,7 +141,7 @@ export class WebhookManager {
           timestamp: new Date(event.timestamp * 1000).toISOString(),
           source: event.source,
           data: JSON.stringify(event.data),
-          created_at: new Date().toISOString(),
+          date_created: new Date().toISOString(),
         })
       );
     } catch (error) {

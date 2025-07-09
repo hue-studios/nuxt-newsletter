@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
           "title",
           "subject_line",
           "status",
-          "created_at",
+          "date_created",
           "last_sent_at",
           "total_sent",
           "total_opens",
@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
         title: newsletter.title,
         subject_line: newsletter.subject_line,
         status: newsletter.status,
-        created_at: newsletter.created_at,
+        date_createdt: newsletter.date_created,
         last_sent_at: newsletter.last_sent_at,
       },
       statistics: analytics,
@@ -166,7 +166,7 @@ function buildTimeFilter(timeRange: string) {
   }
 
   return {
-    created_at: {
+    date_created: {
       _gte: startDate.toISOString(),
     },
   };
@@ -407,13 +407,13 @@ async function fetchTimeSeriesData(
   try {
     const events = await directus.request(
       (readItems as any)("newsletter_events", {
-        fields: ["created_at", "event_type", "count(*)"],
+        fields: ["date_created", "event_type", "count(*)"],
         filter: {
           newsletter_id: { _eq: newsletterId },
           ...timeFilter,
         },
-        groupBy: ["created_at::date", "event_type"],
-        sort: ["created_at"],
+        groupBy: ["date_created::date", "event_type"],
+        sort: ["date_created"],
       })
     );
 
@@ -421,7 +421,7 @@ async function fetchTimeSeriesData(
     const timeSeriesMap = new Map<string, any>();
 
     events.forEach((event: any) => {
-      const date = event.created_at?.split("T")[0] || "unknown";
+      const date = event.date_created?.split("T")[0] || "unknown";
 
       if (!timeSeriesMap.has(date)) {
         timeSeriesMap.set(date, {
@@ -505,13 +505,13 @@ async function fetchDetailedEvents(
           "user_agent",
           "ip_address",
           "ip_location",
-          "created_at",
+          "date_created",
         ],
         filter: {
           newsletter_id: { _eq: newsletterId },
           ...timeFilter,
         },
-        sort: ["-created_at"],
+        sort: ["-date_created"],
         limit: 1000, // Limit to prevent huge responses
       })
     );

@@ -208,7 +208,7 @@ async function processWebhookEvent(directus: any, webhookEvent: any) {
         response_status: response || status || null,
         attempt_number: attempt || null,
         metadata: JSON.stringify(additionalData),
-        created_at: new Date().toISOString(),
+        date_created: new Date().toISOString(),
       })
     );
 

@@ -3,7 +3,6 @@ import type { Ref } from "vue";
 
 // Base interfaces
 export interface Newsletter {
-  compiled_html: any;
   id?: number;
   title: string;
   subject_line: string;
@@ -17,12 +16,22 @@ export interface Newsletter {
   scheduled_at?: string | Date;
   open_rate?: number;
   click_rate?: number;
+
+  // Use Directus system field names
+  date_created?: string | Date; // ← Keep this
+  date_updated?: string | Date; // ← Keep this
+
+  // Add analytics properties
+  total_sent?: number;
+  total_opens?: number;
+  total_clicks?: number;
+  total_bounces?: number;
+  total_unsubscribes?: number;
+
   blocks?: NewsletterBlock[];
   segments?: NewsletterSegment[];
-  date_created?: string | Date;
-  date_updated?: string | Date;
-  created_by?: string | number;
-  updated_by?: string | number;
+  user_created?: string | number; // Also a Directus system field
+  user_updated?: string | number; // Also a Directus system field
 }
 
 export interface NewsletterTemplate {

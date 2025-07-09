@@ -89,7 +89,7 @@
                 {{ newsletter.subject_line }}
               </p>
               <p class="text-xs text-gray-500">
-                {{ formatDate(newsletter.created_at) }}
+                {{ formatDate(newsletter.date_created) }}
               </p>
             </div>
             <div class="text-right">
@@ -184,7 +184,7 @@ const chartData = computed(() => {
     .filter((n) => n.status === "sent")
     .slice(-12)
     .map((n) => ({
-      date: new Date(n.created_at!).toLocaleDateString(),
+      date: new Date(n.date_created!).toLocaleDateString(),
       opens: n.open_rate || 0,
       clicks: n.click_rate || 0,
       sent: n.total_opens || 0,
@@ -215,9 +215,13 @@ const bestTimes = ref([
   { period: "11:00 AM", hour: 11, rate: 19.5 },
 ]);
 
-// Methods
-const formatDate = (dateString?: string) => {
-  if (!dateString) return "No date";
+const formatDate = (date: string | Date | undefined): string => {
+  if (!date) return "";
+
+  // Convert Date object to string if needed
+  const dateString = date instanceof Date ? date.toISOString() : date;
+
+  // Your existing formatting logic here
   return new Date(dateString).toLocaleDateString();
 };
 </script>

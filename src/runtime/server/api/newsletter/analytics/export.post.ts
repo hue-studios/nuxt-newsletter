@@ -55,11 +55,11 @@ export default defineEventHandler(async (event) => {
     // Build time filter
     const timeFilter: any = {};
     if (date_range?.start) {
-      timeFilter.created_at = { _gte: date_range.start };
+      timeFilter.date_created = { _gte: date_range.start };
     }
     if (date_range?.end) {
-      timeFilter.created_at = {
-        ...timeFilter.created_at,
+      timeFilter.date_created = {
+        ...timeFilter.date_created,
         _lte: date_range.end,
       };
     }
@@ -178,7 +178,7 @@ async function fetchNewsletterAnalytics(
         "title",
         "subject_line",
         "status",
-        "created_at",
+        "date_created",
         "last_sent_at",
         "total_sent",
         "total_opens",
@@ -296,10 +296,10 @@ async function fetchDetailedEvents(directus: any, eventFilter: any) {
         "user_agent",
         "ip_address",
         "ip_location",
-        "created_at",
+        "date_created",
       ],
       filter: eventFilter,
-      sort: ["-created_at"],
+      sort: ["-date_created"],
       limit: 10000, // Limit for performance
     })
   );
