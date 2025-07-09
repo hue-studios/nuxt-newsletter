@@ -75,6 +75,7 @@ export interface BlockType {
   icon?: string;
   category: "content" | "media" | "interactive" | "layout";
   custom_fields?: BlockField[];
+  field_visibility_config?: string[]; // ADD THIS LINE
   date_created?: string | Date;
   date_updated?: string | Date;
 }

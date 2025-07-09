@@ -1,4 +1,5 @@
 // src/runtime/composables/core/useNewsletterBlocks.ts
+import { useNuxtApp } from "nuxt/app";
 import { ref } from "vue";
 import type { NewsletterBlock, BlockType } from "../../types/newsletter";
 
@@ -16,7 +17,7 @@ export const useNewsletterBlocks = () => {
       const result = await $directusHelpers.blockTypes.list();
 
       if (result.success) {
-        blockTypes.value = result.items;
+        blockTypes.value = result.data || [];
       } else {
         throw new Error(result.error?.message || "Failed to fetch block types");
       }
@@ -79,7 +80,7 @@ export const useNewsletterBlocks = () => {
       });
 
       if (result.success) {
-        return result.item as NewsletterBlock;
+        return result.data as NewsletterBlock;
       } else {
         throw new Error(result.error?.message || "Failed to create block");
       }
@@ -112,7 +113,7 @@ export const useNewsletterBlocks = () => {
       );
 
       if (result.success) {
-        return result.item as NewsletterBlock;
+        return result.data as NewsletterBlock;
       } else {
         throw new Error(result.error?.message || "Failed to update block");
       }
@@ -144,22 +145,17 @@ export const useNewsletterBlocks = () => {
     try {
       error.value = null;
 
-      const duplicateData = {
+      const duplicatedData = {
         ...block,
-        id: undefined, // Remove ID to create new block
-        sort: block.sort + 1, // Place after original
+        id: undefined,
+        sort: block.sort ? +1 : 0,
       };
 
-      return await createBlock(duplicateData);
+      return await createBlock(duplicatedData);
     } catch (err: any) {
       error.value = err.message || "Failed to duplicate block";
       console.error("Failed to duplicate block:", err);
-      // Fallback to mock duplication
-      return {
-        ...block,
-        id: Date.now(),
-        sort: block.sort + 1,
-      };
+      throw err;
     }
   };
 
@@ -169,7 +165,7 @@ export const useNewsletterBlocks = () => {
 
       // Update sort order for each block
       const updatePromises = blocks.map((block, index) =>
-        updateBlock(block.id, { sort: index })
+        updateBlock(block.id as number, { sort: index })
       );
 
       await Promise.all(updatePromises);
@@ -218,6 +214,115 @@ export const useNewsletterBlocks = () => {
     return errors;
   };
 
+  // ADD THIS MISSING METHOD:
+  const getBlockFieldConfig = (blockType: BlockType) => {
+    if (!blockType) return [];
+
+    // Define field configurations based on block type
+    const baseConfig = [
+      {
+        field: "title",
+        type: "text",
+        label: "Title",
+        placeholder: "Enter title...",
+        required: false,
+      },
+      {
+        field: "text_content",
+        type: "rich-text",
+        label: "Content",
+        placeholder: "Enter content...",
+        required: false,
+      },
+    ];
+
+    // Category-specific fields
+    const categoryFields: Record<string, any[]> = {
+      content: [
+        ...baseConfig,
+        {
+          field: "subtitle",
+          type: "text",
+          label: "Subtitle",
+          placeholder: "Enter subtitle...",
+          required: false,
+        },
+      ],
+      media: [
+        {
+          field: "image_url",
+          type: "file",
+          label: "Image",
+          placeholder: "Upload image or enter URL...",
+          required: true,
+        },
+        {
+          field: "image_alt_text",
+          type: "text",
+          label: "Alt Text",
+          placeholder: "Describe the image...",
+          required: false,
+        },
+        {
+          field: "title",
+          type: "text",
+          label: "Caption",
+          placeholder: "Image caption...",
+          required: false,
+        },
+      ],
+      interactive: [
+        {
+          field: "button_text",
+          type: "text",
+          label: "Button Text",
+          placeholder: "Click here",
+          required: true,
+        },
+        {
+          field: "button_url",
+          type: "url",
+          label: "Button URL",
+          placeholder: "https://example.com",
+          required: true,
+        },
+        {
+          field: "title",
+          type: "text",
+          label: "Title",
+          placeholder: "Enter title...",
+          required: false,
+        },
+        {
+          field: "text_content",
+          type: "textarea",
+          label: "Description",
+          placeholder: "Enter description...",
+          required: false,
+        },
+      ],
+      layout: [
+        {
+          field: "title",
+          type: "text",
+          label: "Section Title",
+          placeholder: "Enter section title...",
+          required: false,
+        },
+      ],
+    };
+
+    // Get fields for this block type's category
+    const fields = categoryFields[blockType.category] || baseConfig;
+
+    // Add any custom fields from block type configuration
+    if (blockType.custom_fields) {
+      fields.push(...blockType.custom_fields);
+    }
+
+    return fields;
+  };
+
   return {
     blockTypes,
     isLoading,
@@ -231,5 +336,6 @@ export const useNewsletterBlocks = () => {
     getBlockTypeBySlug,
     getBlocksByCategory,
     validateBlock,
+    getBlockFieldConfig, // ADD THIS TO THE RETURN
   };
 };

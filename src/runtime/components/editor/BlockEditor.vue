@@ -301,7 +301,8 @@ const emit = defineEmits<{
 }>();
 
 const { getBlockFieldConfig } = useNewsletterBlocks();
-const { uploadFile, getFileUrl } = useDirectus();
+const { directusHelpers } = useDirectus();
+const { uploadFile, getFileUrl } = directusHelpers;
 
 // Refs
 const fileInput = ref<HTMLInputElement>();
@@ -329,9 +330,18 @@ const handleFileUpload = async (event: Event) => {
   if (!file) return;
 
   try {
-    const uploadedFile = await uploadFile(file);
-    const fileUrl = getFileUrl(uploadedFile.id);
-    updateField("image_url", fileUrl);
+    const result = await uploadFile(file);
+
+    if (result.success && result.file) {
+      // The file URL is already complete in the upload result
+      updateField("image_url", result.file.url);
+
+      // OR if you need to use getFileUrl for some reason:
+      // const fileUrl = getFileUrl(result.file.id);
+      // updateField("image_url", fileUrl);
+    } else {
+      console.error("File upload failed:", result.error);
+    }
   } catch (error) {
     console.error("File upload failed:", error);
   }

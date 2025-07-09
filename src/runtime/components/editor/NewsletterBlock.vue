@@ -14,7 +14,7 @@
       :style="{ backgroundColor: block.background_color }"
     >
       <!-- Hero Block -->
-      <div v-if="block.block_type.slug === 'hero'" class="text-center p-8">
+      <div v-if="block.block_type?.slug === 'hero'" class="text-center p-8">
         <h1
           class="text-3xl font-bold mb-4"
           :style="{
@@ -46,7 +46,7 @@
 
       <!-- Text Block -->
       <div
-        v-else-if="block.block_type.slug === 'text'"
+        v-else-if="block.block_type?.slug === 'text'"
         class="prose max-w-none"
         :style="{
           padding: block.padding,
@@ -61,7 +61,7 @@
 
       <!-- Image Block -->
       <div
-        v-else-if="block.block_type.slug === 'image'"
+        v-else-if="block.block_type?.slug === 'image'"
         class="text-center"
         :style="{ padding: block.padding }"
       >
@@ -92,7 +92,7 @@
 
       <!-- Button Block -->
       <div
-        v-else-if="block.block_type.slug === 'button'"
+        v-else-if="block.block_type?.slug === 'button'"
         class="text-center"
         :style="{ padding: block.padding }"
       >
@@ -106,7 +106,7 @@
 
       <!-- Two Column Block -->
       <div
-        v-else-if="block.block_type.slug === 'two-column'"
+        v-else-if="block.block_type?.slug === 'two-column'"
         class="grid grid-cols-2 gap-6"
         :style="{ padding: block.padding }"
       >
@@ -142,7 +142,7 @@
 
       <!-- Divider Block -->
       <div
-        v-else-if="block.block_type.slug === 'divider'"
+        v-else-if="block.block_type?.slug === 'divider'"
         :style="{ padding: block.padding }"
       >
         <hr
@@ -157,7 +157,7 @@
         class="p-4 border-2 border-dashed border-gray-300 text-center text-gray-500"
       >
         <Icon name="lucide:help-circle" class="w-8 h-8 mx-auto mb-2" />
-        <p>Unknown block type: {{ block.block_type.slug }}</p>
+        <p>Unknown block type: {{ block.block_type?.slug }}</p>
       </div>
     </div>
 
@@ -172,7 +172,7 @@
       >
         <div class="flex items-center space-x-1">
           <Badge variant="secondary" class="text-xs">
-            {{ block.block_type.name }}
+            {{ block.block_type?.name }}
           </Badge>
           <span class="text-xs text-gray-500">#{{ block.sort }}</span>
         </div>
@@ -183,7 +183,7 @@
             v-if="index > 0"
             variant="outline"
             size="sm"
-            @click.stop="$emit('move-up', block.id)"
+            @click.stop="handleMoveUp"
           >
             <Icon name="lucide:chevron-up" class="w-3 h-3" />
           </Button>
@@ -193,7 +193,7 @@
             v-if="!isLast"
             variant="outline"
             size="sm"
-            @click.stop="$emit('move-down', block.id)"
+            @click.stop="handleMoveDown"
           >
             <Icon name="lucide:chevron-down" class="w-3 h-3" />
           </Button>
@@ -281,7 +281,7 @@
           <DialogTitle>Delete Block</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete this
-            {{ block.block_type.name.toLowerCase() }} block? This action cannot
+            {{ block.block_type?.name.toLowerCase() }} block? This action cannot
             be undone.
           </DialogDescription>
         </DialogHeader>
@@ -304,19 +304,16 @@ import { useNuxtApp } from "#app";
 import { computed, ref, watch } from "vue";
 import type { NewsletterBlock } from "../../types/newsletter";
 
-const props = defineProps<{
-  block: any;
-}>();
-
-// Fixed: Properly destructure from useNuxtApp
-const nuxtApp = useNuxtApp();
-
+// Define the proper props interface
 interface Props {
   block: NewsletterBlock;
   index: number;
   isSelected: boolean;
   isLast: boolean;
 }
+
+// FIX: Use the proper Props interface in defineProps
+const props = defineProps<Props>();
 
 interface Emits {
   (e: "select", block: NewsletterBlock): void;
@@ -335,7 +332,17 @@ const showDeleteDialog = ref(false);
 
 // Computed
 const visibleFields = computed(() => {
-  return props.block.block_type.field_visibility_config || [];
+  // Use field_visibility_config if available, otherwise fall back to a default set of fields
+  return (
+    props.block.block_type?.field_visibility_config || [
+      "title",
+      "text_content",
+      "button_text",
+      "button_url",
+      "image_url",
+      "image_alt_text",
+    ]
+  );
 });
 
 // Methods
@@ -344,7 +351,9 @@ const hasField = (fieldName: string) => {
 };
 
 const updateField = (field: string, value: any) => {
-  emit("update", props.block.id, { [field]: value });
+  if (props.block.id) {
+    emit("update", props.block.id, { [field]: value });
+  }
 };
 
 const getFontSize = (baseSize: number) => {
@@ -367,11 +376,25 @@ const confirmDelete = () => {
 };
 
 const deleteBlock = () => {
-  emit("delete", props.block.id);
-  showDeleteDialog.value = false;
+  if (props.block.id) {
+    emit("delete", props.block.id);
+    showDeleteDialog.value = false;
+  }
 };
 
-// Watch for selection changes
+const handleMoveUp = () => {
+  if (props.block.id) {
+    emit("move-up", props.block.id);
+  }
+};
+
+const handleMoveDown = () => {
+  if (props.block.id) {
+    emit("move-down", props.block.id);
+  }
+};
+
+// Watch for selection changes - now this will work since props.isSelected is properly defined
 watch(
   () => props.isSelected,
   (selected) => {
