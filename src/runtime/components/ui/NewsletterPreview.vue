@@ -296,7 +296,7 @@ const readingTime = computed(() => {
 const imageCount = computed(() => {
   if (!props.newsletter.blocks) return 0;
   return props.newsletter.blocks.filter(
-    (block) => block.block_type.slug === "image" && block.image_url
+    (block) => block.block_type?.slug === "image" && block.image_url
   ).length;
 });
 
@@ -308,7 +308,7 @@ const accessibilityIssues = computed(() => {
   props.newsletter.blocks.forEach((block) => {
     // Check for images without alt text
     if (
-      block.block_type.slug === "image" &&
+      block.block_type?.slug === "image" &&
       block.image_url &&
       !block.image_alt_text
     ) {
@@ -317,7 +317,7 @@ const accessibilityIssues = computed(() => {
 
     // Check for buttons without proper text
     if (
-      block.block_type.slug === "button" &&
+      block.block_type?.slug === "button" &&
       (!block.button_text || block.button_text.length < 3)
     ) {
       issues.push("Button with insufficient descriptive text");

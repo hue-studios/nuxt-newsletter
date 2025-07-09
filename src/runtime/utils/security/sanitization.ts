@@ -1,264 +1,275 @@
 // src/runtime/utils/security/sanitization.ts
-/**
- * HTML and content sanitization utilities
- */
 
-// DOMPurify-like sanitization for HTML content
+export interface SanitizationOptions {
+  allowHtml?: boolean;
+  allowedTags?: string[];
+  allowedAttributes?: string[];
+  maxLength?: number;
+}
+
+export function sanitizeInput(
+  input: string,
+  options: SanitizationOptions = {}
+): string {
+  if (!input || typeof input !== "string") {
+    return "";
+  }
+
+  let sanitized = input.trim();
+
+  // Apply length limit
+  if (options.maxLength && sanitized.length > options.maxLength) {
+    sanitized = sanitized.substring(0, options.maxLength);
+  }
+
+  // If HTML is not allowed, escape it completely
+  if (!options.allowHtml) {
+    return escapeHtml(sanitized);
+  }
+
+  // If HTML is allowed, sanitize based on allowed tags and attributes
+  return sanitizeHtml(sanitized, options);
+}
+
+export function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export function sanitizeHtml(
   html: string,
-  options: {
-    allowedTags?: string[];
-    allowedAttributes?: Record<string, string[]>;
-    removeScripts?: boolean;
-    removeIframes?: boolean;
-  } = {}
+  options: SanitizationOptions = {}
 ): string {
-  const {
-    allowedTags = [
-      "p",
-      "br",
-      "strong",
-      "b",
-      "em",
-      "i",
-      "u",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "ul",
-      "ol",
-      "li",
-      "a",
-      "img",
-      "div",
-      "span",
-      "blockquote",
-      "pre",
-      "code",
-    ],
-    allowedAttributes = {
-      a: ["href", "title", "target"],
-      img: ["src", "alt", "width", "height", "title"],
-      div: ["class"],
-      span: ["class"],
-      p: ["class"],
-      h1: ["class"],
-      h2: ["class"],
-      h3: ["class"],
-      h4: ["class"],
-      h5: ["class"],
-      h6: ["class"],
-    },
-    removeScripts = true,
-    removeIframes = true,
-  } = options;
+  const allowedTags = options.allowedTags || [
+    "p",
+    "br",
+    "strong",
+    "em",
+    "u",
+    "a",
+    "img",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "div",
+    "span",
+  ];
 
-  let sanitized = html;
+  const allowedAttributes = options.allowedAttributes || [
+    "href",
+    "src",
+    "alt",
+    "title",
+    "class",
+    "id",
+    "style",
+  ];
 
   // Remove script tags and their content
-  if (removeScripts) {
-    sanitized = sanitized.replace(
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      ""
-    );
-  }
-
-  // Remove iframe tags and their content
-  if (removeIframes) {
-    sanitized = sanitized.replace(
-      /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
-      ""
-    );
-  }
-
-  // Remove javascript: URLs
-  sanitized = sanitized.replace(/javascript:/gi, "");
-
-  // Remove event handlers
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
-
-  // Remove style attributes that could contain expressions
-  sanitized = sanitized.replace(
-    /\s*style\s*=\s*["'][^"']*expression[^"']*["']/gi,
+  html = html.replace(
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
     ""
   );
 
-  // Simple tag and attribute filtering
-  sanitized = sanitized.replace(
-    /<(\/?)(\w+)([^>]*)>/g,
-    (match, slash, tagName, attributes) => {
-      const tag = tagName.toLowerCase();
-
-      // Check if tag is allowed
-      if (!allowedTags.includes(tag)) {
-        return "";
-      }
-
-      // Filter attributes with a safer regex
-      if (attributes && allowedAttributes[tag]) {
-        const filteredAttrs = attributes.replace(
-          /\s*([\w-]+)\s*=\s*"([^"]*)"/g, // Simplified, non-backtracking regex
-          (attrMatch: string, attrName: string, attrValue: string) => {
-            if (allowedAttributes[tag]?.includes(attrName.toLowerCase())) {
-              // Additional validation for href attributes
-              if (attrName.toLowerCase() === "href") {
-                if (
-                  attrValue.startsWith("javascript:")
-                  || attrValue.startsWith("data:")
-                ) {
-                  return "";
-                }
-              }
-              return ` ${attrName}="${attrValue}"`;
-            }
-            return "";
-          }
-        );
-        return `<${slash}${tag}${filteredAttrs}>`;
-      }
-
-      return `<${slash}${tag}>`;
-    }
+  // Remove iframe tags
+  html = html.replace(
+    /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+    ""
   );
 
-  return sanitized;
-}
+  // Remove javascript: protocols
+  html = html.replace(/javascript:/gi, "");
 
-// Sanitize text content (remove HTML entirely)
-export function sanitizeText(text: string): string {
-  return text
-    .replace(/<[^>]*>/g, "") // Remove all HTML tags
-    .replace(/&[#\w]+;/g, "") // Remove HTML entities
-    .trim();
-}
+  // Remove event handlers
+  html = html.replace(/on\w+\s*=/gi, "");
 
-// Sanitize email content for newsletter compilation
-export function sanitizeNewsletterContent(content: string): string {
-  return sanitizeHtml(content, {
-    allowedTags: [
-      "p",
-      "br",
-      "strong",
-      "b",
-      "em",
-      "i",
-      "u",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "ul",
-      "ol",
-      "li",
-      "a",
-      "img",
-      "div",
-      "span",
-      "blockquote",
-      "table",
-      "tr",
-      "td",
-      "th",
-    ],
-    allowedAttributes: {
-      a: ["href", "title", "target", "style"],
-      img: ["src", "alt", "width", "height", "title", "style"],
-      div: ["class", "style"],
-      span: ["class", "style"],
-      p: ["class", "style"],
-      td: ["style", "colspan", "rowspan"],
-      th: ["style", "colspan", "rowspan"],
-      table: ["style", "width", "cellpadding", "cellspacing"],
-    },
+  // Remove data: protocols except for images
+  html = html.replace(/data:(?!image\/[a-z]+;base64,)/gi, "");
+
+  // Basic tag filtering (this is simplified - use a proper library in production)
+  const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g;
+  html = html.replace(tagRegex, (match, tagName) => {
+    if (!allowedTags.includes(tagName.toLowerCase())) {
+      return "";
+    }
+    return match;
   });
+
+  return html;
 }
 
-// Escape special characters for various contexts
-export function escapeHtml(text: string): string {
-  const escapeMap: Record<string, string> = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot;",
-    "'": "&#39;",
-  };
-  return text.replace(/[&<>"']/g, (char) => escapeMap[char]);
+export function sanitizeFilename(filename: string): string {
+  return filename
+    .replace(/[^a-zA-Z0-9.-]/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
 }
 
-export function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function sanitizeEmail(email: string): string {
+  return email
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-zA-Z0-9@._-]/g, "");
 }
 
-export function escapeCsv(text: string): string {
-  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
-    return "\"" + text.replace(/"/g, "\"\"") + "\"";
+export function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+
+    // Only allow http and https protocols
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "";
+    }
+
+    return parsed.toString();
+  } catch {
+    return "";
   }
-  return text;
 }
 
-// Content Security Policy helpers
-export function generateCSPNonce(): string {
-  const bytes = new Uint8Array(16);
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else {
-    // Fallback for Node.js
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = Math.floor(Math.random() * 256);
+export function validateCsrf(token: string, sessionToken: string): boolean {
+  return token === sessionToken;
+}
+
+export function generateCsrfToken(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+export function hashPassword(password: string): string {
+  // This is a placeholder - use proper password hashing like bcrypt in production
+  return btoa(password).split("").reverse().join("");
+}
+
+export function verifyPassword(password: string, hash: string): boolean {
+  // This is a placeholder - use proper password verification in production
+  return hashPassword(password) === hash;
+}
+
+export interface RateLimitConfig {
+  maxRequests: number;
+  windowMs: number;
+  skipSuccessfulRequests?: boolean;
+  skipFailedRequests?: boolean;
+}
+
+export class RateLimiter {
+  private requests: Map<string, number[]> = new Map();
+
+  constructor(private config: RateLimitConfig) {}
+
+  isAllowed(key: string): boolean {
+    const now = Date.now();
+    const windowStart = now - this.config.windowMs;
+
+    // Get existing requests for this key
+    let keyRequests = this.requests.get(key) || [];
+
+    // Filter out requests outside the current window
+    keyRequests = keyRequests.filter((time) => time > windowStart);
+
+    // Check if we're within the limit
+    if (keyRequests.length >= this.config.maxRequests) {
+      return false;
+    }
+
+    // Add current request
+    keyRequests.push(now);
+    this.requests.set(key, keyRequests);
+
+    return true;
+  }
+
+  reset(key: string): void {
+    this.requests.delete(key);
+  }
+
+  cleanup(): void {
+    const now = Date.now();
+
+    for (const [key, requests] of this.requests.entries()) {
+      const windowStart = now - this.config.windowMs;
+      const validRequests = requests.filter((time) => time > windowStart);
+
+      if (validRequests.length === 0) {
+        this.requests.delete(key);
+      } else {
+        this.requests.set(key, validRequests);
+      }
     }
   }
-  return btoa(String.fromCharCode(...bytes));
 }
 
-export function buildCSPHeader(
-  options: {
-    allowInlineStyles?: boolean;
-    allowInlineScripts?: boolean;
-    allowEval?: boolean;
-    allowedDomains?: string[];
-    nonce?: string;
-  } = {}
-): string {
-  const {
-    allowInlineStyles = false,
-    allowInlineScripts = false,
-    allowEval = false,
-    allowedDomains = [],
-    nonce,
-  } = options;
+export function getClientIp(event: any): string {
+  // Get client IP from various headers
+  const headers = event.node?.req?.headers || event.headers || {};
 
-  const directives: string[] = [];
+  return (
+    headers["x-forwarded-for"]?.split(",")[0] ||
+    headers["x-real-ip"] ||
+    headers["x-client-ip"] ||
+    event.node?.req?.connection?.remoteAddress ||
+    event.node?.req?.socket?.remoteAddress ||
+    "unknown"
+  );
+}
 
-  // Default src
-  directives.push("default-src 'self'");
+export function isValidOrigin(
+  origin: string,
+  allowedOrigins: string[]
+): boolean {
+  if (!origin) return false;
+  return allowedOrigins.includes(origin) || allowedOrigins.includes("*");
+}
 
-  // Script src
-  let scriptSrc = "'self'";
-  if (allowInlineScripts) scriptSrc += " 'unsafe-inline'";
-  if (allowEval) scriptSrc += " 'unsafe-eval'";
-  if (nonce) scriptSrc += ` 'nonce-${nonce}'`;
-  if (allowedDomains.length > 0) scriptSrc += ` ${allowedDomains.join(" ")}`;
-  directives.push(`script-src ${scriptSrc}`);
+export function sanitizeUserAgent(userAgent: string): string {
+  return userAgent.replace(/[<>]/g, "").substring(0, 500);
+}
 
-  // Style src
-  let styleSrc = "'self'";
-  if (allowInlineStyles) styleSrc += " 'unsafe-inline'";
-  if (nonce) styleSrc += ` 'nonce-${nonce}'`;
-  directives.push(`style-src ${styleSrc}`);
+export function detectSqlInjection(input: string): boolean {
+  const sqlPatterns = [
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION)\b)/i,
+    /(--|\/\*|\*\/)/,
+    /('|(\\')|(;))/,
+    /(\b(OR|AND)\s+\d+\s*=\s*\d+)/i,
+  ];
 
-  // Image src
-  directives.push("img-src 'self' data: https:");
+  return sqlPatterns.some((pattern) => pattern.test(input));
+}
 
-  // Font src
-  directives.push("font-src 'self' https:");
+export function detectXss(input: string): boolean {
+  const xssPatterns = [
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+    /javascript:/i,
+    /on\w+\s*=/i,
+    /<iframe/i,
+    /eval\s*\(/i,
+    /expression\s*\(/i,
+  ];
 
-  // Connect src
-  directives.push("connect-src 'self' https:");
+  return xssPatterns.some((pattern) => pattern.test(input));
+}
 
-  return directives.join("; ");
+export function detectPathTraversal(input: string): boolean {
+  const pathPatterns = [
+    /\.\.\//,
+    /\.\.\\/,
+    /%2e%2e%2f/i,
+    /%2e%2e%5c/i,
+    /\.\.%2f/i,
+    /\.\.%5c/i,
+  ];
+
+  return pathPatterns.some((pattern) => pattern.test(input));
 }

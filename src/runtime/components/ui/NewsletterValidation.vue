@@ -1,144 +1,90 @@
 <template>
-  <div
-    v-if="validationSummary.hasErrors || validationSummary.hasWarnings"
-    class="newsletter-validation"
-  >
-    <Card
-      :class="{
-        'border-red-200 bg-red-50': validationSummary.hasErrors,
-        'border-yellow-200 bg-yellow-50':
-          !validationSummary.hasErrors && validationSummary.hasWarnings,
-      }"
+  <div class="newsletter-validation">
+    <div v-if="isValidating" class="validation-loading">Validating...</div>
+
+    <div
+      v-if="validationSummary && !validationSummary.isValid"
+      class="validation-errors"
     >
-      <CardContent class="p-4">
-        <div class="flex items-start space-x-3">
-          <Icon
-            :name="
-              validationSummary.hasErrors
-                ? 'lucide:alert-circle'
-                : 'lucide:alert-triangle'
-            "
-            :class="{
-              'text-red-600': validationSummary.hasErrors,
-              'text-yellow-600':
-                !validationSummary.hasErrors && validationSummary.hasWarnings,
-            }"
-            class="w-5 h-5 mt-0.5"
-          />
+      <h3>Validation Issues ({{ validationSummary.totalErrors }})</h3>
 
-          <div class="flex-1">
-            <h4
-              class="font-medium"
-              :class="{
-                'text-red-900': validationSummary.hasErrors,
-                'text-yellow-900':
-                  !validationSummary.hasErrors && validationSummary.hasWarnings,
-              }"
+      <div v-if="validationSummary.criticalErrors > 0" class="critical-errors">
+        <h4>Critical Issues ({{ validationSummary.criticalErrors }})</h4>
+        <div
+          v-for="(
+            categoryErrors, category
+          ) in validationSummary.errorsByCategory"
+          :key="category"
+          class="error-category"
+        >
+          <h5>{{ category }}</h5>
+          <ul>
+            <li
+              v-for="error in categoryErrors.filter((e: any) => isCritical(e))"
+              :key="error.field"
+              class="error-item critical"
             >
-              {{ validationSummary.summary }}
-            </h4>
-
-            <div class="mt-3 space-y-2">
-              <div
-                v-for="error in errors"
-                :key="`${error.field}-${error.message}`"
-                class="flex items-start space-x-2 text-sm"
-                :class="{
-                  'text-red-800': error.severity === 'error',
-                  'text-yellow-800': error.severity === 'warning',
-                }"
-              >
-                <Icon
-                  :name="
-                    error.severity === 'error'
-                      ? 'lucide:x-circle'
-                      : 'lucide:info'
-                  "
-                  class="w-4 h-4 mt-0.5 flex-shrink-0"
-                />
-                <div>
-                  <span class="font-medium">{{ getFieldLabel(error.field) }}:</span>
-                  {{ error.message }}
-                </div>
-              </div>
-            </div>
-
-            <div
-              v-if="validationSummary.hasErrors"
-              class="mt-4"
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                :disabled="isValidating"
-                @click="validateAgain"
-              >
-                <Icon
-                  name="lucide:refresh-cw"
-                  class="w-4 h-4 mr-2"
-                  :class="{ 'animate-spin': isValidating }"
-                />
-                Check Again
-              </Button>
-            </div>
-          </div>
+              <strong>{{ error.field }}:</strong> {{ error.message }}
+            </li>
+          </ul>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div v-if="validationSummary.warningCount > 0" class="warnings">
+        <h4>Warnings ({{ validationSummary.warningCount }})</h4>
+        <div
+          v-for="(
+            categoryErrors, category
+          ) in validationSummary.errorsByCategory"
+          :key="category"
+          class="error-category"
+        >
+          <h5>{{ category }}</h5>
+          <ul>
+            <li
+              v-for="error in categoryErrors.filter((e: any) => !isCritical(e))"
+              :key="error.field"
+              class="error-item warning"
+            >
+              <strong>{{ error.field }}:</strong> {{ error.message }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-else-if="validationSummary && validationSummary.isValid"
+      class="validation-success"
+    >
+      ✅ Newsletter is ready to send!
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { ValidationError } from "~/utils/newsletter-validation";
-import { getValidationSummary } from "~/utils/newsletter-validation";
+import { ref, computed } from "vue";
+import type { ValidationError } from "../../types/newsletter";
+import { getValidationSummary } from "../../types/newsletter-validation";
 
-interface Props {
+const props = defineProps<{
   errors: ValidationError[];
-}
+}>();
 
-interface Emits {
-  (e: "validate"): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
+// Reactive state
 const isValidating = ref(false);
 
+// Computed properties
 const validationSummary = computed(() => getValidationSummary(props.errors));
 
-const validateAgain = async () => {
-  isValidating.value = true;
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    emit("validate");
-  } finally {
-    isValidating.value = false;
-  }
-};
-
-const getFieldLabel = (field: string): string => {
-  const fieldLabels: Record<string, string> = {
-    title: "Title",
-    subject_line: "Subject Line",
-    from_email: "From Email",
-    from_name: "From Name",
-    preview_text: "Preview Text",
-    blocks: "Content Blocks",
-    mailing_list_id: "Mailing List",
-    compiled_html: "Compilation",
-  };
-
-  // Handle block-specific fields
-  if (field.includes("blocks[")) {
-    const match = field.match(/blocks\[(\d+)\]\.(.+)/);
-    if (match) {
-      const blockIndex = Number.parseInt(match[1]);
-      const blockField = match[2];
-      return `Block ${blockIndex + 1} ${blockField.replace("_", " ")}`;
-    }
-  }
-
-  return fieldLabels[field] || field.replace("_", " ");
+// Methods
+const isCritical = (error: ValidationError): boolean => {
+  const criticalCodes = [
+    "REQUIRED_FIELD",
+    "REQUIRED_CONTENT",
+    "INVALID_EMAIL",
+    "NO_CONTENT",
+  ];
+  return criticalCodes.includes(error.code || "");
 };
 </script>

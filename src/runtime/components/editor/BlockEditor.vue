@@ -1,6 +1,6 @@
 <!-- components/BlockEditor.vue -->
 <template>
-  <div class="block-editor space-y-6">
+  <div class="block-editor">
     <!-- Block Type Info -->
     <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
       <Icon
@@ -285,21 +285,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { NewsletterBlock, BlockFieldConfig } from "../../types/newsletter";
+import { ref, computed, defineProps, defineEmits } from "vue";
+import { useNewsletterBlocks } from "../../composables/core/useNewsletterBlocks";
+import { useDirectus } from "../../composables/utils/useDirectus";
 
-interface Props {
-  block: NewsletterBlock;
-}
+// Props and existing logic
+const props = defineProps<{
+  block: any;
+  editable?: boolean;
+}>();
 
-interface Emits {
-  (e: "update", data: Partial<NewsletterBlock>): void;
-  (e: "duplicate"): void;
-  (e: "delete"): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const emit = defineEmits<{
+  update: [block: any];
+  delete: [blockId: number];
+}>();
 
 const { getBlockFieldConfig } = useNewsletterBlocks();
 const { uploadFile, getFileUrl } = useDirectus();

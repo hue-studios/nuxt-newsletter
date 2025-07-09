@@ -34,6 +34,6 @@ export default defineNuxtConfig({
   },
 
   build: {
-    transpile: ["@sendgrid/mail", "gsap", "swiper"],
+    transpile: ["@sendgrid/mail", "gsap", "gsap/Draggable", "gsap/ScrollTrigger"],
   },
 });

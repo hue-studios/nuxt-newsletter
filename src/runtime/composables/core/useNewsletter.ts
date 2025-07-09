@@ -1,68 +1,53 @@
 // src/runtime/composables/core/useNewsletter.ts
-import { ref, watch, readonly } from "vue";
-import { useNuxtApp, useDebounceFn } from "#imports";
+import { useNuxtApp } from "nuxt/app";
+import { ref, readonly } from "vue";
 import type {
   Newsletter,
   NewsletterBlock,
-  EditorState,
+  PaginationParams,
+  SendResult,
+  UseNewsletterReturn,
 } from "../../types/newsletter";
+import { useNewsletterBlocks } from "#imports";
 
-export const useNewsletter = () => {
+const newsletters = ref<Newsletter[]>([]);
+const currentNewsletter = ref<Newsletter | null>(null);
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+
+export const useNewsletter = (): UseNewsletterReturn => {
   const { $directusHelpers } = useNuxtApp();
 
-  // Newsletter state
-  const currentNewsletter = ref<Newsletter | null>(null);
-  const newsletters = ref<Newsletter[]>([]);
-  const isLoading = ref(false);
-  const error = ref<string | null>(null);
-
-  // Editor state
-  const editorState = ref<EditorState>({
-    selectedBlock: null,
-    draggedBlock: null,
-    isPreviewMode: false,
-    showTemplateLibrary: false,
-    showContentLibrary: false,
-    isCompiling: false,
-    isSaving: false,
-  });
-
-  // Fetch newsletters with enhanced error handling
-  const fetchNewsletters = async (options: any = {}) => {
+  const fetchNewsletters = async (params?: PaginationParams) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const result = await $directusHelpers.newsletters.list(options);
-
+      const result = await $directusHelpers.newsletters.list(params);
       if (result.success) {
-        newsletters.value = result.items as Newsletter[];
-        return newsletters.value;
+        newsletters.value = result.data || [];
       } else {
-        throw new Error(result.error || "Failed to fetch newsletters");
+        throw new Error(result.error?.message || "Failed to fetch newsletters");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to fetch newsletters";
       console.error("Failed to fetch newsletters:", err);
-      return [];
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Fetch single newsletter with full details
-  const fetchNewsletter = async (id: number) => {
+  const fetchNewsletter = async (id: number): Promise<Newsletter | null> => {
     try {
       isLoading.value = true;
       error.value = null;
 
       const result = await $directusHelpers.newsletters.get(id);
-
       if (result.success) {
-        currentNewsletter.value = result.item as Newsletter;
-        return currentNewsletter.value;
+        currentNewsletter.value = result.data || null;
+        return result.data || null;
       } else {
-        throw new Error(result.error || "Failed to fetch newsletter");
+        throw new Error(result.error?.message || "Failed to fetch newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to fetch newsletter";
@@ -73,32 +58,19 @@ export const useNewsletter = () => {
     }
   };
 
-  // Create newsletter
-  const createNewsletter = async (data: Partial<Newsletter>) => {
+  const createNewsletter = async (
+    data: Partial<Newsletter>
+  ): Promise<Newsletter> => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const result = await $directusHelpers.newsletters.create({
-        ...data,
-        status: "draft",
-        priority: "normal",
-        is_ab_test: false,
-        total_opens: 0,
-        approval_status: "pending",
-        test_emails: [],
-        tags: data.tags || [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-
-      if (result.success) {
-        const newsletter = result.item as Newsletter;
-        newsletters.value.unshift(newsletter);
-        currentNewsletter.value = newsletter;
-        return newsletter;
+      const result = await $directusHelpers.newsletters.create(data);
+      if (result.success && result.data) {
+        newsletters.value.unshift(result.data);
+        return result.data;
       } else {
-        throw new Error(result.error || "Failed to create newsletter");
+        throw new Error(result.error?.message || "Failed to create newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to create newsletter";
@@ -109,63 +81,59 @@ export const useNewsletter = () => {
     }
   };
 
-  // Update newsletter
-  const updateNewsletter = async (id: number, data: Partial<Newsletter>) => {
+  const updateNewsletter = async (
+    id: number,
+    data: Partial<Newsletter>
+  ): Promise<Newsletter> => {
     try {
-      editorState.value.isSaving = true;
+      isLoading.value = true;
       error.value = null;
 
       const result = await $directusHelpers.newsletters.update(id, data);
-
-      if (result.success) {
-        const updatedNewsletter = result.item as Newsletter;
-
-        // Update current newsletter if it's the one being edited
-        if (currentNewsletter.value?.id === id) {
-          currentNewsletter.value = {
-            ...currentNewsletter.value,
-            ...updatedNewsletter,
-          };
-        }
-
-        // Update in newsletters list
+      if (result.success && result.data) {
+        // Update in the list
         const index = newsletters.value.findIndex((n) => n.id === id);
         if (index !== -1) {
           newsletters.value[index] = {
             ...newsletters.value[index],
-            ...updatedNewsletter,
+            ...result.data,
           };
         }
 
-        return updatedNewsletter;
+        // Update current newsletter if it's the same
+        if (currentNewsletter.value?.id === id) {
+          currentNewsletter.value = {
+            ...currentNewsletter.value,
+            ...result.data,
+          };
+        }
+
+        return result.data;
       } else {
-        throw new Error(result.error || "Failed to update newsletter");
+        throw new Error(result.error?.message || "Failed to update newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to update newsletter";
       console.error("Failed to update newsletter:", err);
       throw err;
     } finally {
-      editorState.value.isSaving = false;
+      isLoading.value = false;
     }
   };
 
-  // Delete newsletter
-  const deleteNewsletter = async (id: number) => {
+  const deleteNewsletter = async (id: number): Promise<void> => {
     try {
       isLoading.value = true;
       error.value = null;
 
       const result = await $directusHelpers.newsletters.delete(id);
-
       if (result.success) {
         newsletters.value = newsletters.value.filter((n) => n.id !== id);
         if (currentNewsletter.value?.id === id) {
           currentNewsletter.value = null;
         }
-        return true;
       } else {
-        throw new Error(result.error || "Failed to delete newsletter");
+        throw new Error(result.error?.message || "Failed to delete newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to delete newsletter";
@@ -176,29 +144,85 @@ export const useNewsletter = () => {
     }
   };
 
-  // Block operations
+  const duplicateNewsletter = async (id: number): Promise<Newsletter> => {
+    try {
+      const original = await fetchNewsletter(id);
+      if (!original) {
+        throw new Error("Newsletter not found");
+      }
+
+      const duplicateData = {
+        ...original,
+        title: `${original.title} (Copy)`,
+        status: "draft" as const,
+        id: undefined,
+        date_created: undefined,
+        date_updated: undefined,
+      };
+
+      return await createNewsletter(duplicateData);
+    } catch (err: any) {
+      error.value = err.message || "Failed to duplicate newsletter";
+      console.error("Failed to duplicate newsletter:", err);
+      throw err;
+    }
+  };
+
+  const sendNewsletter = async (
+    id: number,
+    options?: any
+  ): Promise<SendResult> => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+
+      const { $fetch } = useNuxtApp();
+      const result = await $fetch<SendResult>("/api/newsletter/core/send", {
+        method: "POST",
+        body: { newsletter_id: id, ...options },
+      });
+
+      // Update newsletter status
+      await updateNewsletter(id, {
+        status: "sent",
+        sent_at: new Date(),
+      });
+
+      return result;
+    } catch (err: any) {
+      error.value = err.message || "Failed to send newsletter";
+      console.error("Failed to send newsletter:", err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const addBlock = async (
     newsletterId: number,
     blockData: Partial<NewsletterBlock>
-  ) => {
+  ): Promise<NewsletterBlock> => {
     try {
-      const result = await $directusHelpers.blocks.create({
+      error.value = null;
+
+      const { createBlock } = useNewsletterBlocks();
+      const block = await createBlock({
         ...blockData,
         newsletter_id: newsletterId,
-        sort: currentNewsletter.value?.blocks?.length || 0,
       });
 
-      if (result.success && currentNewsletter.value) {
+      // Update current newsletter if it matches
+      if (currentNewsletter.value?.id === newsletterId) {
         if (!currentNewsletter.value.blocks) {
           currentNewsletter.value.blocks = [];
         }
-        currentNewsletter.value.blocks.push(result.item as NewsletterBlock);
-        return result.item;
-      } else {
-        throw new Error(result.error || "Failed to add block");
+        currentNewsletter.value.blocks.push(block);
       }
+
+      return block;
     } catch (err: any) {
       error.value = err.message || "Failed to add block";
+      console.error("Failed to add block:", err);
       throw err;
     }
   };
@@ -206,125 +230,87 @@ export const useNewsletter = () => {
   const updateBlock = async (
     blockId: number,
     data: Partial<NewsletterBlock>
-  ) => {
+  ): Promise<NewsletterBlock> => {
     try {
-      const result = await $directusHelpers.blocks.update(blockId, data);
+      error.value = null;
 
-      if (result.success && currentNewsletter.value) {
-        const blockIndex = currentNewsletter.value.blocks?.findIndex(
+      const { updateBlock: updateBlockHelper } = useNewsletterBlocks();
+      const block = await updateBlockHelper(blockId, data);
+
+      // Update in current newsletter
+      if (currentNewsletter.value?.blocks) {
+        const blockIndex = currentNewsletter.value.blocks.findIndex(
           (b) => b.id === blockId
         );
-        if (blockIndex !== -1 && currentNewsletter.value.blocks) {
+        if (blockIndex !== -1) {
           currentNewsletter.value.blocks[blockIndex] = {
             ...currentNewsletter.value.blocks[blockIndex],
-            ...result.item,
+            ...block,
           };
         }
-        return result.item;
-      } else {
-        throw new Error(result.error || "Failed to update block");
       }
+
+      return block;
     } catch (err: any) {
       error.value = err.message || "Failed to update block";
+      console.error("Failed to update block:", err);
       throw err;
     }
   };
 
-  const deleteBlock = async (blockId: number) => {
+  const deleteBlock = async (blockId: number): Promise<void> => {
     try {
-      const result = await $directusHelpers.blocks.delete(blockId);
+      error.value = null;
 
-      if (result.success && currentNewsletter.value) {
-        currentNewsletter.value.blocks =
-          currentNewsletter.value.blocks?.filter((b) => b.id !== blockId) || [];
-        return true;
-      } else {
-        throw new Error(result.error || "Failed to delete block");
+      const { deleteBlock: deleteBlockHelper } = useNewsletterBlocks();
+      await deleteBlockHelper(blockId);
+
+      // Remove from current newsletter
+      if (currentNewsletter.value?.blocks) {
+        currentNewsletter.value.blocks = currentNewsletter.value.blocks.filter(
+          (b) => b.id !== blockId
+        );
       }
     } catch (err: any) {
       error.value = err.message || "Failed to delete block";
+      console.error("Failed to delete block:", err);
       throw err;
     }
   };
 
-  const reorderBlocks = async (blocks: NewsletterBlock[]) => {
+  const reorderBlocks = async (blocks: NewsletterBlock[]): Promise<void> => {
     try {
-      const blocksWithSort = blocks.map((block, index) => ({
-        id: block.id,
-        sort: index,
-      }));
+      error.value = null;
 
-      const result = await $directusHelpers.blocks.batchUpdate(blocksWithSort);
+      const { reorderBlocks: reorderBlocksHelper } = useNewsletterBlocks();
+      await reorderBlocksHelper(blocks);
 
-      if (result.success && currentNewsletter.value) {
+      // Update current newsletter blocks order
+      if (currentNewsletter.value) {
         currentNewsletter.value.blocks = blocks;
-        return true;
-      } else {
-        throw new Error(result.error || "Failed to reorder blocks");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to reorder blocks";
+      console.error("Failed to reorder blocks:", err);
       throw err;
     }
   };
 
-  // Editor state management
-  const selectBlock = (block: NewsletterBlock | null) => {
-    editorState.value.selectedBlock = block;
-  };
-
-  const togglePreview = () => {
-    editorState.value.isPreviewMode = !editorState.value.isPreviewMode;
-  };
-
-  const toggleTemplateLibrary = () => {
-    editorState.value.showTemplateLibrary =
-      !editorState.value.showTemplateLibrary;
-  };
-
-  const toggleContentLibrary = () => {
-    editorState.value.showContentLibrary =
-      !editorState.value.showContentLibrary;
-  };
-
-  // Auto-save functionality
-  const autoSave = useDebounceFn(async () => {
-    if (currentNewsletter.value) {
-      await updateNewsletter(currentNewsletter.value.id, {
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }, 2000);
-
-  // Watchers
-  watch(currentNewsletter, autoSave, { deep: true });
-
   return {
-    // State
-    currentNewsletter: readonly(currentNewsletter),
     newsletters: readonly(newsletters),
+    currentNewsletter: readonly(currentNewsletter),
     isLoading: readonly(isLoading),
     error: readonly(error),
-    editorState: readonly(editorState),
-
-    // Newsletter operations
     fetchNewsletters,
     fetchNewsletter,
     createNewsletter,
     updateNewsletter,
     deleteNewsletter,
-
-    // Block operations
+    duplicateNewsletter,
+    sendNewsletter,
     addBlock,
     updateBlock,
     deleteBlock,
     reorderBlocks,
-
-    // Editor state management
-    selectBlock,
-    togglePreview,
-    toggleTemplateLibrary,
-    toggleContentLibrary,
-    autoSave,
   };
 };

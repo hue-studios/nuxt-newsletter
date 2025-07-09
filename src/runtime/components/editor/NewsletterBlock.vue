@@ -1,7 +1,7 @@
 <!-- components/NewsletterBlock.vue -->
 <template>
   <div
-    class="newsletter-block group relative"
+    class="newsletter-block"
     :class="{
       'ring-2 ring-blue-500 ring-opacity-50': isSelected,
       'hover:ring-1 hover:ring-gray-300': !isSelected,
@@ -300,8 +300,16 @@
 </template>
 
 <script setup lang="ts">
+import { useNuxtApp } from "#app";
 import { computed, ref, watch } from "vue";
-import type { NewsletterBlock, BlockFieldConfig } from "../../types/newsletter";
+import type { NewsletterBlock } from "../../types/newsletter";
+
+const props = defineProps<{
+  block: any;
+}>();
+
+// Fixed: Properly destructure from useNuxtApp
+const nuxtApp = useNuxtApp();
 
 interface Props {
   block: NewsletterBlock;
@@ -319,7 +327,6 @@ interface Emits {
   (e: "move-down", blockId: number): void;
 }
 
-const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 // Local state
