@@ -7,11 +7,13 @@ import {
   addImports,
   addComponentsDir,
   createResolver,
+  addTypeTemplate,
 } from "@nuxt/kit";
 import { defu } from "defu";
 
 export interface ModuleOptions {
   directusUrl: string;
+  directusToken?: string;
   sendgridApiKey?: string;
   defaultFromEmail?: string;
   defaultFromName?: string;
@@ -36,10 +38,55 @@ export default defineNuxtModule<ModuleOptions>({
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url);
 
-    // Check if we're in development or stub mode
+    // Check environment flags
     const isDev = nuxt.options.dev;
     const isStub = process.argv.includes("--stub");
     const isPrepare = process.argv.includes("prepare");
+
+    // Add type template for better TypeScript support
+    addTypeTemplate({
+      filename: "types/newsletter.d.ts",
+      write: true,
+      getContents: () => /* typescript */ `
+        declare module '#app' {
+          interface NuxtApp {
+            $directus: any
+            $directusHelpers: any
+            $gsap: {
+              gsap: any
+              Draggable: any
+              ScrollTrigger: any
+              ScrollSmoother: any
+              MorphSVGPlugin: any
+            }
+            $newsletter: {
+              generateSlug: (title: string) => string
+              validateEmail: (email: string) => boolean
+            }
+          }
+        }
+        
+        declare module 'vue' {
+          interface ComponentCustomProperties {
+            $directus: any
+            $directusHelpers: any
+            $gsap: {
+              gsap: any
+              Draggable: any
+              ScrollTrigger: any
+              ScrollSmoother: any
+              MorphSVGPlugin: any
+            }
+            $newsletter: {
+              generateSlug: (title: string) => string
+              validateEmail: (email: string) => boolean
+            }
+          }
+        }
+        
+        export {}
+      `,
+    });
 
     // Add composables with proper structure
     const composableGroups = {
@@ -51,16 +98,17 @@ export default defineNuxtModule<ModuleOptions>({
 
     Object.entries(composableGroups).forEach(([folder, composables]) => {
       composables.forEach((composable) => {
+        const composablePath = resolver.resolve(
+          `./runtime/composables/${folder}/${composable}.ts`
+        );
         addImports({
           name: composable,
-          from: resolver.resolve(
-            `./runtime/composables/${folder}/${composable}`
-          ),
+          from: composablePath,
         });
       });
     });
 
-    // Add components properly
+    // Add components
     const components = [
       {
         name: "NewsletterEditor",
@@ -97,7 +145,6 @@ export default defineNuxtModule<ModuleOptions>({
         ),
         global: true,
       },
-      // Add other components from your current implementation
     ];
 
     components.forEach((component) => {
@@ -112,8 +159,9 @@ export default defineNuxtModule<ModuleOptions>({
       global: true,
     });
 
-    // Add plugins
+    // Add plugins in correct order
     addPlugin(resolver.resolve("./runtime/plugins/newsletter.client.ts"));
+    addPlugin(resolver.resolve("./runtime/plugins/directus.client.ts"));
     addPlugin(resolver.resolve("./runtime/plugins/gsap.client.ts"));
 
     // Add server handlers
@@ -129,11 +177,30 @@ export default defineNuxtModule<ModuleOptions>({
       ),
     });
 
-    // Add types
-    nuxt.hook("prepare:types", ({ references }) => {
-      references.push({
-        types: "@hue-studios/nuxt-newsletter",
-      });
+    addServerHandler({
+      route: "/api/newsletter/list",
+      handler: resolver.resolve("./runtime/server/api/newsletter/list.get.ts"),
+    });
+
+    addServerHandler({
+      route: "/api/newsletter/create",
+      handler: resolver.resolve(
+        "./runtime/server/api/newsletter/create.post.ts"
+      ),
+    });
+
+    addServerHandler({
+      route: "/api/newsletter/update",
+      handler: resolver.resolve(
+        "./runtime/server/api/newsletter/update.put.ts"
+      ),
+    });
+
+    addServerHandler({
+      route: "/api/newsletter/delete",
+      handler: resolver.resolve(
+        "./runtime/server/api/newsletter/delete.delete.ts"
+      ),
     });
 
     // Add CSS
@@ -142,9 +209,10 @@ export default defineNuxtModule<ModuleOptions>({
     );
 
     // Add runtime config
-    nuxt.options.runtimeConfig.public = defu(nuxt.options.runtimeConfig, {
+    nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
       newsletter: {
         directusUrl: options.directusUrl,
+        directusToken: options.directusToken,
         sendgridApiKey: options.sendgridApiKey,
         defaultFromEmail: options.defaultFromEmail,
         defaultFromName: options.defaultFromName,
@@ -164,23 +232,32 @@ export default defineNuxtModule<ModuleOptions>({
       }
     );
 
+    // Add transpile for GSAP
+    nuxt.options.build = nuxt.options.build || {};
+    nuxt.options.build.transpile = nuxt.options.build.transpile || [];
+    nuxt.options.build.transpile.push("gsap");
+
+    // Add GSAP to optimizeDeps (for Vite)
+    nuxt.options.vite = nuxt.options.vite || {};
+    nuxt.options.vite.optimizeDeps = nuxt.options.vite.optimizeDeps || {};
+    nuxt.options.vite.optimizeDeps.include =
+      nuxt.options.vite.optimizeDeps.include || [];
+    nuxt.options.vite.optimizeDeps.include.push(
+      "gsap",
+      "gsap/Draggable",
+      "gsap/ScrollTrigger",
+      "gsap/ScrollSmoother",
+      "gsap/MorphSVGPlugin"
+    );
+
     // Dependency checking (development warnings)
     if (isDev || isStub || isPrepare) {
       const requiredModules = ["shadcn-nuxt", "@nuxtjs/color-mode"];
       const installedModules = nuxt.options.modules || [];
       const missingModules = requiredModules.filter((module) => {
-        return !installedModules.some((m) => {
-          if (typeof m === "string") {
-            // Case 1: Module is a simple string (e.g., 'shadcn-nuxt')
-            return m === module;
-          } else if (Array.isArray(m)) {
-            // Case 2: Module is an array [name, options] (e.g., ['@nuxtjs/color-mode', {}])
-            return m[0] === module;
-          }
-          // If 'm' is neither a string nor an array (e.g., a direct NuxtModule object),
-          // it won't match the 'module' string, so we return false.
-          return false;
-        });
+        return !installedModules.some((m) =>
+          typeof m === "string" ? m === module : m[0] === module
+        );
       });
 
       if (missingModules.length > 0) {

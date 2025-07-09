@@ -1,7 +1,6 @@
 // src/runtime/composables/core/useNewsletter.ts
-import { useNuxtApp } from "nuxt/app";
-
-import { ref, computed } from "vue";
+import { ref, watch, readonly } from "vue";
+import { useNuxtApp, useDebounceFn } from "#imports";
 import type {
   Newsletter,
   NewsletterBlock,
@@ -9,6 +8,8 @@ import type {
 } from "../../types/newsletter";
 
 export const useNewsletter = () => {
+  const { $directusHelpers } = useNuxtApp();
+
   // Newsletter state
   const currentNewsletter = ref<Newsletter | null>(null);
   const newsletters = ref<Newsletter[]>([]);
@@ -26,55 +27,42 @@ export const useNewsletter = () => {
     isSaving: false,
   });
 
-  // Computed
-  const selectedNewsletter = computed(() => currentNewsletter.value);
-  const hasUnsavedChanges = computed(() => editorState.value.isSaving);
-  const canPreview = computed(
-    () =>
-      currentNewsletter.value &&
-      currentNewsletter.value.blocks &&
-      currentNewsletter.value.blocks.length > 0
-  );
-
-  // Methods
+  // Fetch newsletters with enhanced error handling
   const fetchNewsletters = async (options: any = {}) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const { $directusHelpers } = useNuxtApp();
       const result = await $directusHelpers.newsletters.list(options);
 
       if (result.success) {
-        newsletters.value = result.items;
+        newsletters.value = result.items as Newsletter[];
         return newsletters.value;
       } else {
-        throw new Error(result.error?.message || "Failed to fetch newsletters");
+        throw new Error(result.error || "Failed to fetch newsletters");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to fetch newsletters";
       console.error("Failed to fetch newsletters:", err);
-      // Fallback to mock data for development
-      newsletters.value = [];
-      return newsletters.value;
+      return [];
     } finally {
       isLoading.value = false;
     }
   };
 
+  // Fetch single newsletter with full details
   const fetchNewsletter = async (id: number) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const { $directusHelpers } = useNuxtApp();
       const result = await $directusHelpers.newsletters.get(id);
 
       if (result.success) {
-        currentNewsletter.value = result.item;
-        return result.item;
+        currentNewsletter.value = result.item as Newsletter;
+        return currentNewsletter.value;
       } else {
-        throw new Error(result.error?.message || "Failed to fetch newsletter");
+        throw new Error(result.error || "Failed to fetch newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to fetch newsletter";
@@ -85,12 +73,12 @@ export const useNewsletter = () => {
     }
   };
 
+  // Create newsletter
   const createNewsletter = async (data: Partial<Newsletter>) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const { $directusHelpers } = useNuxtApp();
       const result = await $directusHelpers.newsletters.create({
         ...data,
         status: "draft",
@@ -105,93 +93,69 @@ export const useNewsletter = () => {
       });
 
       if (result.success) {
-        const newsletter = result.item;
+        const newsletter = result.item as Newsletter;
         newsletters.value.unshift(newsletter);
         currentNewsletter.value = newsletter;
         return newsletter;
       } else {
-        throw new Error(result.error?.message || "Failed to create newsletter");
+        throw new Error(result.error || "Failed to create newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to create newsletter";
       console.error("Failed to create newsletter:", err);
-      // Fallback to mock creation for development
-      const newsletter = {
-        id: Date.now(),
-        ...data,
-        status: "draft" as const,
-        priority: "normal" as const,
-        is_ab_test: false,
-        total_opens: 0,
-        approval_status: "pending" as const,
-        test_emails: [],
-        tags: data.tags || [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as Newsletter;
-      newsletters.value.unshift(newsletter);
-      currentNewsletter.value = newsletter;
-      return newsletter;
+      throw err;
     } finally {
       isLoading.value = false;
     }
   };
 
+  // Update newsletter
   const updateNewsletter = async (id: number, data: Partial<Newsletter>) => {
     try {
-      isLoading.value = true;
+      editorState.value.isSaving = true;
       error.value = null;
 
-      const { $directusHelpers } = useNuxtApp();
-      const result = await $directusHelpers.newsletters.update(id, {
-        ...data,
-        updated_at: new Date().toISOString(),
-      });
+      const result = await $directusHelpers.newsletters.update(id, data);
 
       if (result.success) {
-        const updatedNewsletter = result.item;
+        const updatedNewsletter = result.item as Newsletter;
+
+        // Update current newsletter if it's the one being edited
+        if (currentNewsletter.value?.id === id) {
+          currentNewsletter.value = {
+            ...currentNewsletter.value,
+            ...updatedNewsletter,
+          };
+        }
+
+        // Update in newsletters list
         const index = newsletters.value.findIndex((n) => n.id === id);
         if (index !== -1) {
-          newsletters.value[index] = updatedNewsletter;
+          newsletters.value[index] = {
+            ...newsletters.value[index],
+            ...updatedNewsletter,
+          };
         }
-        if (currentNewsletter.value?.id === id) {
-          currentNewsletter.value = updatedNewsletter;
-        }
+
         return updatedNewsletter;
       } else {
-        throw new Error(result.error?.message || "Failed to update newsletter");
+        throw new Error(result.error || "Failed to update newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to update newsletter";
       console.error("Failed to update newsletter:", err);
-      // Fallback update for development
-      const index = newsletters.value.findIndex((n) => n.id === id);
-      if (index !== -1) {
-        newsletters.value[index] = {
-          ...newsletters.value[index],
-          ...data,
-          updated_at: new Date().toISOString(),
-        };
-      }
-      if (currentNewsletter.value?.id === id) {
-        currentNewsletter.value = {
-          ...currentNewsletter.value,
-          ...data,
-          updated_at: new Date().toISOString(),
-        };
-      }
-      return currentNewsletter.value;
+      throw err;
     } finally {
-      isLoading.value = false;
+      editorState.value.isSaving = false;
     }
   };
 
+  // Delete newsletter
   const deleteNewsletter = async (id: number) => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const { $directusHelpers } = useNuxtApp();
       const result = await $directusHelpers.newsletters.delete(id);
 
       if (result.success) {
@@ -199,37 +163,112 @@ export const useNewsletter = () => {
         if (currentNewsletter.value?.id === id) {
           currentNewsletter.value = null;
         }
+        return true;
       } else {
-        throw new Error(result.error?.message || "Failed to delete newsletter");
+        throw new Error(result.error || "Failed to delete newsletter");
       }
     } catch (err: any) {
       error.value = err.message || "Failed to delete newsletter";
       console.error("Failed to delete newsletter:", err);
-      // Fallback delete for development
-      newsletters.value = newsletters.value.filter((n) => n.id !== id);
-      if (currentNewsletter.value?.id === id) {
-        currentNewsletter.value = null;
-      }
+      throw err;
     } finally {
       isLoading.value = false;
     }
   };
 
-  const duplicateNewsletter = async (newsletter: Newsletter) => {
-    const duplicateData = {
-      title: `${newsletter.title} (Copy)`,
-      slug: `${newsletter.slug}-copy-${Date.now()}`,
-      subject_line: newsletter.subject_line,
-      from_name: newsletter.from_name,
-      from_email: newsletter.from_email,
-      category: newsletter.category,
-      tags: [...newsletter.tags],
-      blocks: newsletter.blocks || [],
-    };
+  // Block operations
+  const addBlock = async (
+    newsletterId: number,
+    blockData: Partial<NewsletterBlock>
+  ) => {
+    try {
+      const result = await $directusHelpers.blocks.create({
+        ...blockData,
+        newsletter_id: newsletterId,
+        sort: currentNewsletter.value?.blocks?.length || 0,
+      });
 
-    return await createNewsletter(duplicateData);
+      if (result.success && currentNewsletter.value) {
+        if (!currentNewsletter.value.blocks) {
+          currentNewsletter.value.blocks = [];
+        }
+        currentNewsletter.value.blocks.push(result.item as NewsletterBlock);
+        return result.item;
+      } else {
+        throw new Error(result.error || "Failed to add block");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to add block";
+      throw err;
+    }
   };
 
+  const updateBlock = async (
+    blockId: number,
+    data: Partial<NewsletterBlock>
+  ) => {
+    try {
+      const result = await $directusHelpers.blocks.update(blockId, data);
+
+      if (result.success && currentNewsletter.value) {
+        const blockIndex = currentNewsletter.value.blocks?.findIndex(
+          (b) => b.id === blockId
+        );
+        if (blockIndex !== -1 && currentNewsletter.value.blocks) {
+          currentNewsletter.value.blocks[blockIndex] = {
+            ...currentNewsletter.value.blocks[blockIndex],
+            ...result.item,
+          };
+        }
+        return result.item;
+      } else {
+        throw new Error(result.error || "Failed to update block");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to update block";
+      throw err;
+    }
+  };
+
+  const deleteBlock = async (blockId: number) => {
+    try {
+      const result = await $directusHelpers.blocks.delete(blockId);
+
+      if (result.success && currentNewsletter.value) {
+        currentNewsletter.value.blocks =
+          currentNewsletter.value.blocks?.filter((b) => b.id !== blockId) || [];
+        return true;
+      } else {
+        throw new Error(result.error || "Failed to delete block");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to delete block";
+      throw err;
+    }
+  };
+
+  const reorderBlocks = async (blocks: NewsletterBlock[]) => {
+    try {
+      const blocksWithSort = blocks.map((block, index) => ({
+        id: block.id,
+        sort: index,
+      }));
+
+      const result = await $directusHelpers.blocks.batchUpdate(blocksWithSort);
+
+      if (result.success && currentNewsletter.value) {
+        currentNewsletter.value.blocks = blocks;
+        return true;
+      } else {
+        throw new Error(result.error || "Failed to reorder blocks");
+      }
+    } catch (err: any) {
+      error.value = err.message || "Failed to reorder blocks";
+      throw err;
+    }
+  };
+
+  // Editor state management
   const selectBlock = (block: NewsletterBlock | null) => {
     editorState.value.selectedBlock = block;
   };
@@ -248,128 +287,44 @@ export const useNewsletter = () => {
       !editorState.value.showContentLibrary;
   };
 
-  const autoSave = async () => {
-    if (currentNewsletter.value && !editorState.value.isSaving) {
-      editorState.value.isSaving = true;
-      try {
-        await updateNewsletter(
-          currentNewsletter.value.id,
-          currentNewsletter.value
-        );
-      } finally {
-        editorState.value.isSaving = false;
-      }
-    }
-  };
-
-  const compileMJML = async (newsletter: Newsletter) => {
-    try {
-      editorState.value.isCompiling = true;
-
-      // Mock MJML compilation for now
-      const mjmlContent = `
-        <mjml>
-          <mj-head>
-            <mj-title>${newsletter.title}</mj-title>
-            <mj-preview>${newsletter.preview_text || ""}</mj-preview>
-          </mj-head>
-          <mj-body>
-            <mj-section>
-              <mj-column>
-                <mj-text>
-                  <h1>${newsletter.title}</h1>
-                  <p>Newsletter content would be compiled here...</p>
-                </mj-text>
-              </mj-column>
-            </mj-section>
-          </mj-body>
-        </mjml>
-      `;
-
-      return mjmlContent;
-    } finally {
-      editorState.value.isCompiling = false;
-    }
-  };
-
-  const sendTestEmail = async (newsletter: Newsletter, emails: string[]) => {
-    try {
-      error.value = null;
-
-      const response = await $fetch("/api/newsletter/test", {
-        method: "POST",
-        body: {
-          newsletter_id: newsletter.id,
-          test_emails: emails,
-          include_analytics: true,
-        },
+  // Auto-save functionality
+  const autoSave = useDebounceFn(async () => {
+    if (currentNewsletter.value) {
+      await updateNewsletter(currentNewsletter.value.id, {
+        updated_at: new Date().toISOString(),
       });
-
-      return response;
-    } catch (err: any) {
-      error.value = err.message || "Failed to send test email";
-      console.error("Failed to send test email:", err);
-      throw err;
     }
-  };
+  }, 2000);
 
-  const scheduleNewsletter = async (
-    newsletter: Newsletter,
-    sendDate: string
-  ) => {
-    try {
-      const updatedNewsletter = await updateNewsletter(newsletter.id, {
-        status: "scheduled",
-        scheduled_send_date: sendDate,
-      });
-      return updatedNewsletter;
-    } catch (err: any) {
-      error.value = err.message || "Failed to schedule newsletter";
-      throw err;
-    }
-  };
-
-  const cancelScheduled = async (newsletter: Newsletter) => {
-    try {
-      const updatedNewsletter = await updateNewsletter(newsletter.id, {
-        status: "draft",
-        scheduled_send_date: undefined,
-      });
-      return updatedNewsletter;
-    } catch (err: any) {
-      error.value = err.message || "Failed to cancel scheduled newsletter";
-      throw err;
-    }
-  };
+  // Watchers
+  watch(currentNewsletter, autoSave, { deep: true });
 
   return {
     // State
-    currentNewsletter,
-    newsletters,
-    isLoading,
-    error,
-    editorState,
+    currentNewsletter: readonly(currentNewsletter),
+    newsletters: readonly(newsletters),
+    isLoading: readonly(isLoading),
+    error: readonly(error),
+    editorState: readonly(editorState),
 
-    // Computed
-    selectedNewsletter,
-    hasUnsavedChanges,
-    canPreview,
-
-    // Methods
+    // Newsletter operations
     fetchNewsletters,
     fetchNewsletter,
     createNewsletter,
     updateNewsletter,
     deleteNewsletter,
-    duplicateNewsletter,
+
+    // Block operations
+    addBlock,
+    updateBlock,
+    deleteBlock,
+    reorderBlocks,
+
+    // Editor state management
     selectBlock,
     togglePreview,
     toggleTemplateLibrary,
     toggleContentLibrary,
     autoSave,
-    compileMJML,
-    sendTestEmail,
-    scheduleNewsletter,
-    cancelScheduled,
   };
 };

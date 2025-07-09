@@ -1,4 +1,5 @@
 // src/runtime/plugins/gsap.client.ts
+import { defineNuxtPlugin } from "#imports";
 import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -7,6 +8,7 @@ import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
 
 export default defineNuxtPlugin(() => {
   // Register GSAP plugins on client side only
+
   gsap.registerPlugin(Draggable, ScrollTrigger, ScrollSmoother, MorphSVGPlugin);
 
   // Make GSAP available globally for components that need it
@@ -22,20 +24,3 @@ export default defineNuxtPlugin(() => {
     },
   };
 });
-function defineNuxtPlugin(
-  arg0: () =>
-    | {
-        provide: {
-          gsap: {
-            gsap: typeof globalThis.gsap;
-            Draggable: typeof Draggable;
-            ScrollTrigger: typeof ScrollTrigger;
-            ScrollSmoother: typeof ScrollSmoother;
-            MorphSVGPlugin: gsap.plugins.MorphSVGPlugin;
-          };
-        };
-      }
-    | undefined
-) {
-  throw new Error("Function not implemented.");
-}
