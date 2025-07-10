@@ -1,4 +1,5 @@
 // src/runtime/plugins/directus.client.ts (fixed version)
+import { defineNuxtPlugin, useRuntimeConfig } from "#app";
 import {
   createDirectus,
   rest,

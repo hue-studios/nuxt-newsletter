@@ -30,8 +30,9 @@ export default defineEventHandler(async (event) => {
     const directus = getDirectusClient(event);
     const emailService = new EmailService({
       apiKey: config.newsletter.sendgridApiKey,
-      defaultFromEmail: config.newsletter.defaultFromEmail,
-      defaultFromName: config.newsletter.defaultFromName,
+      defaultFromEmail:
+        config.newsletter.defaultFromEmail || "G2T9K@example.com",
+      defaultFromName: config.newsletter.defaultFromName || "Nuxt Newsletter",
       webhookSecret: config.newsletter.webhookSecret,
     });
 

@@ -1,5 +1,5 @@
 // src/runtime/composables/core/useNewsletterBlocks.ts
-import { useNuxtApp } from "#imports";
+import { useNuxtApp } from "#app";
 import { ref } from "vue";
 import type { NewsletterBlock, BlockType } from "../../types/newsletter";
 

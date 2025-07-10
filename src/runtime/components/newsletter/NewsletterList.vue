@@ -55,7 +55,7 @@ const createNew = () => {
   emit("create");
 };
 
-const getUpdatedDate = (newsletter: Newsletter): string => {
+const getDisplayDate = (newsletter: Newsletter): string => {
   return (
     newsletter.updated_at ||
     newsletter.date_updated ||

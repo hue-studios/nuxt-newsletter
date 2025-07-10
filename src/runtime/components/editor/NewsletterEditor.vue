@@ -327,7 +327,7 @@ const duplicateBlock = async (block: NewsletterBlock) => {
 const moveBlockUp = (blockId: number) => {
   const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
   if (Number(index) > 0) {
-    const block = newsletter.value.blocks?.splice(index , 1)[0];
+    const block = newsletter.value.blocks?.splice(index, 1)[0];
     newsletter.value.blocks?.splice(index - 1, 0, block as NewsletterBlock);
     reorderBlocks(newsletter.value.blocks as Array<NewsletterBlock>);
     emit("update", newsletter.value);
@@ -337,8 +337,8 @@ const moveBlockUp = (blockId: number) => {
 const moveBlockDown = (blockId: number) => {
   const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
   if (index < newsletter.value.blocks?.length - 1) {
-    const block = newsletter.value.blocks.splice(index, 1)[0];
-    newsletter.value.blocks.?splice(index + 1, 0, block);
+    const block = newsletter.value.blocks?.splice(index, 1)[0];
+    newsletter.value.blocks?.splice(index + 1, 0, block);
     reorderBlocks(newsletter.value.blocks as Array<NewsletterBlock>);
     emit("update", newsletter.value);
   }

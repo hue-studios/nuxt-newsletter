@@ -82,7 +82,7 @@ export default defineNuxtModule<ModuleOptions>({
     // Add components properly
     const components = [
       {
-        name: "NewsletterEditor",
+        name: "Editor",
         filePath: resolver.resolve(
           "./runtime/components/editor/NewsletterEditor.vue"
         ),
@@ -90,7 +90,7 @@ export default defineNuxtModule<ModuleOptions>({
         global: true,
       },
       {
-        name: "NewsletterList",
+        name: "List",
         filePath: resolver.resolve(
           "./runtime/components/newsletter/NewsletterList.vue"
         ),
@@ -98,7 +98,7 @@ export default defineNuxtModule<ModuleOptions>({
         global: true,
       },
       {
-        name: "NewsletterAnalytics",
+        name: "Analytics",
         filePath: resolver.resolve(
           "./runtime/components/analytics/NewsletterAnalytics.vue"
         ),
@@ -114,19 +114,11 @@ export default defineNuxtModule<ModuleOptions>({
         global: true,
       },
       {
-        name: "NewsletterDashboard",
+        name: "Dashboard",
         filePath: resolver.resolve(
           "./runtime/components/layout/NewsletterDashboard.vue"
         ),
         priority: 1,
-        global: true,
-      },
-      {
-        name: "NewsletterSegmentBuilder",
-        filePath: resolver.resolve(
-          "./runtime/components/forms/NewsletterSegmentBuilder.vue"
-        ),
-        priority: 2,
         global: true,
       },
       {
@@ -146,8 +138,8 @@ export default defineNuxtModule<ModuleOptions>({
     // Add component directories
     addComponentsDir({
       path: resolver.resolve("./runtime/components"),
-      pathPrefix: false,
       prefix: "Newsletter",
+      pathPrefix: false,
       global: true,
     });
 
@@ -183,6 +175,10 @@ export default defineNuxtModule<ModuleOptions>({
         types: "@hue-studios/nuxt-newsletter",
       });
     });
+
+    nuxt.options.css.push(
+      resolver.resolve("./runtime/assets/css/newsletter.css")
+    );
 
     // Add CSS
     nuxt.options.css.push(

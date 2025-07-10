@@ -1,5 +1,5 @@
 // src/runtime/plugins/gsap.client.ts
-import { defineNuxtPlugin } from "#imports";
+import { defineNuxtPlugin } from "#app";
 import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
 import { ScrollTrigger } from "gsap/ScrollTrigger";

@@ -1,5 +1,5 @@
 // src/runtime/composables/ui/usePreview.ts
-import { useNuxtApp } from "#imports";
+import { useNuxtApp } from "#app";
 import { ref, readonly } from "vue";
 import { $fetch } from "ofetch";
 import type { Newsletter } from "../../types/newsletter";

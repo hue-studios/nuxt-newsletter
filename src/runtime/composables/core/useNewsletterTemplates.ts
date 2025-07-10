@@ -1,5 +1,5 @@
 // src/runtime/composables/core/useNewsletterTemplates.ts
-import { useNuxtApp } from "#imports";
+import { useNuxtApp } from "#app";
 import { ref, readonly } from "vue";
 import type { NewsletterTemplate, Newsletter } from "../../types/newsletter";
 import { useNewsletter } from "#imports";
