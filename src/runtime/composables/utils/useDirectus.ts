@@ -1,5 +1,5 @@
 // src/runtime/composables/utils/useDirectus.ts
-import { useNuxtApp, useRuntimeConfig } from "nuxt/app";
+import { useNuxtApp, useRuntimeConfig } from "#imports";
 import { ref, readonly } from "vue";
 import type {
   UseDirectusReturn,

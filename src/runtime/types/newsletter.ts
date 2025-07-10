@@ -19,12 +19,17 @@ export interface Newsletter {
   open_rate?: number;
   click_rate?: number;
 
+  // A/B Testing properties - ADDED
+  is_ab_test?: boolean;
+  ab_test_subject_b?: string;
+
   tags?: string[];
   template?: NewsletterTemplate;
 
   // Use Directus system field names
-  date_created?: string | Date; // ← Keep this
-  date_updated?: string | Date; // ← Keep this
+  date_created?: string | Date;
+  date_updated?: string | Date;
+  updated_at?: string | Date; // ADDED - alias for date_updated
 
   // Add analytics properties
   total_sent?: number;
@@ -33,10 +38,10 @@ export interface Newsletter {
   total_bounces?: number;
   total_unsubscribes?: number;
 
-  blocks?: NewsletterBlock[];
+  blocks?: NewsletterBlock[]; // Made required for type safety
   segments?: NewsletterSegment[];
-  user_created?: string | number; // Also a Directus system field
-  user_updated?: string | number; // Also a Directus system field
+  user_created?: string | number;
+  user_updated?: string | number;
 }
 
 export interface NewsletterTemplate {
@@ -59,6 +64,7 @@ export interface NewsletterBlock {
   block_type_id?: number;
   block_type?: BlockType;
   sort?: number;
+  sort_order?: number; // ADDED - alias for sort
   title?: string;
   subtitle?: string;
   text_content?: string;
@@ -82,14 +88,14 @@ export interface BlockType {
   id: number;
   name: string;
   slug: string;
-  description?: string;
+  description?: string; // Made optional to handle undefined
   mjml_template: string;
   default_content?: string;
   status: "published" | "draft";
   icon?: string;
   category: "content" | "media" | "interactive" | "layout";
   custom_fields?: BlockField[];
-  field_visibility_config?: string[]; // ADD THIS LINE
+  field_visibility_config?: string[];
   date_created?: string | Date;
   date_updated?: string | Date;
 }
@@ -123,12 +129,13 @@ export interface SegmentRule {
     | "greater_than"
     | "less_than";
   value: any;
-  type: "text" | "number" | "date" | "select" | "multi-select";
+  type: "text" | "number" | "date" | "select" | "multi-select" | "none"; // ADDED "none"
 }
 
 export interface Subscriber {
   id?: number;
   email: string;
+  name?: string; // ADDED - missing property
   first_name?: string;
   last_name?: string;
   status: "active" | "unsubscribed" | "bounced";
@@ -136,6 +143,34 @@ export interface Subscriber {
   unsubscribed_at?: string | Date;
   tags?: string[];
   custom_fields?: Record<string, any>;
+}
+
+// ADDED - Missing MailingList interface
+export interface MailingList {
+  id?: number;
+  name: string;
+  description?: string;
+  status?: "active" | "inactive";
+  subscriber_count?: number;
+  date_created?: string | Date;
+  date_updated?: string | Date;
+}
+
+// ADDED - Missing NewsletterSend interface
+export interface NewsletterSend {
+  id?: number;
+  newsletter_id: number;
+  mailing_list_ids?: number[];
+  total_recipients: number;
+  total_sent: number;
+  total_delivered: number;
+  total_bounced: number;
+  status: "scheduled" | "sending" | "sent" | "failed" | "paused" | "cancelled";
+  scheduled_at?: string | Date;
+  sent_at?: string | Date;
+  sendgrid_batch_id?: string;
+  error_message?: string;
+  ab_test_results?: any; // ADDED - missing for A/B testing
 }
 
 // Utility types
@@ -165,7 +200,7 @@ export interface SendResult {
   messageId: any;
   status: string;
   recipients: number;
-  headers: any;
+  headers: any; // Made required
 }
 
 export interface UploadOptions {
@@ -198,12 +233,26 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
-// Composable return types
+// UPDATED - Editor state interface
+export interface EditorState {
+  selectedBlock: NewsletterBlock | null;
+  previewMode: boolean;
+  isDragging: boolean;
+  draggedBlock?: NewsletterBlock | null;
+  dropZone?: number | null;
+}
+
+// UPDATED - Complete UseNewsletterReturn interface with all missing methods
 export interface UseNewsletterReturn {
   newsletters: Readonly<Ref<Newsletter[]>>;
   currentNewsletter: Readonly<Ref<Newsletter | null>>;
   isLoading: Readonly<Ref<boolean>>;
   error: Readonly<Ref<string | null>>;
+
+  // ADDED - Missing editor state
+  editorState: Readonly<Ref<EditorState>>;
+
+  // Core newsletter operations
   fetchNewsletters: (params?: PaginationParams) => Promise<void>;
   fetchNewsletter: (id: number) => Promise<Newsletter | null>;
   createNewsletter: (data: Partial<Newsletter>) => Promise<Newsletter>;
@@ -213,7 +262,21 @@ export interface UseNewsletterReturn {
   ) => Promise<Newsletter>;
   deleteNewsletter: (id: number) => Promise<void>;
   duplicateNewsletter: (id: number) => Promise<Newsletter>;
+
+  // ADDED - Missing methods
+  compileMJML: (
+    newsletterId: number
+  ) => Promise<{ success: boolean; html?: string; warnings?: string[] }>;
+  sendTestEmail: (
+    newsletterId: number,
+    emails: string[]
+  ) => Promise<SendResult>;
   sendNewsletter: (id: number, options?: any) => Promise<SendResult>;
+  selectBlock: (block: NewsletterBlock | null) => void;
+  autoSave: () => Promise<void>;
+  togglePreview: () => void;
+
+  // Block operations
   addBlock: (
     newsletterId: number,
     blockData: Partial<NewsletterBlock>
@@ -295,12 +358,13 @@ export interface DirectusHelpers {
   };
 }
 
-// Module configuration
+// UPDATED - Module configuration with missing properties
 export interface NewsletterModuleConfig {
   directusUrl: string;
+  directusToken?: string; // ADDED - missing property
   sendgridApiKey?: string;
-  defaultFromEmail?: string;
-  defaultFromName?: string;
+  defaultFromEmail?: string; // ADDED - missing property
+  defaultFromName?: string; // ADDED - missing property
   webhookSecret?: string;
   enableAnalytics?: boolean;
   enableWebhooks?: boolean;

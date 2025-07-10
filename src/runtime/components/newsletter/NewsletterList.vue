@@ -55,6 +55,15 @@ const createNew = () => {
   emit("create");
 };
 
+const getUpdatedDate = (newsletter: Newsletter): string => {
+  return (
+    newsletter.updated_at ||
+    newsletter.date_updated ||
+    newsletter.date_created ||
+    new Date().toISOString()
+  );
+};
+
 const formatDate = (date?: string) => {
   if (!date) return "";
   return new Date(date).toLocaleDateString();

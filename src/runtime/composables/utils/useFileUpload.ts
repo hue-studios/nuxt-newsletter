@@ -1,5 +1,5 @@
 // src/runtime/composables/utils/useFileUpload.ts
-import { useNuxtApp } from "nuxt/app";
+import { useNuxtApp } from "#imports";
 import { ref, readonly } from "vue";
 import type { UploadOptions, UploadResult } from "../../types/newsletter";
 

@@ -107,7 +107,7 @@
                     :block="block"
                     :index="index"
                     :is-selected="editorState.selectedBlock?.id === block.id"
-                    :is-last="index === newsletter.blocks.length - 1"
+                    :is-last="index === ensureBlocks(newsletter).length - 1"
                     @select="selectBlock"
                     @update="updateBlock"
                     @delete="deleteBlock"
@@ -119,7 +119,7 @@
 
                 <!-- Empty State -->
                 <div
-                  v-if="newsletter.blocks.length === 0"
+                  v-if="ensureBlocks(newsletter).length === 0"
                   class="text-center py-12 text-gray-500"
                 >
                   <Icon
@@ -212,19 +212,23 @@
 </template>
 
 <script setup lang="ts">
-import { gsap } from "gsap";
-import { Draggable } from "gsap/Draggable";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ref, onMounted, onUnmounted } from "vue";
 import type {
   Newsletter,
   NewsletterBlock,
   BlockType,
 } from "../../types/newsletter";
+import { useNewsletter } from "#imports";
+import { useNewsletterBlocks } from "#imports";
 
 // Register GSAP plugins
 if (import.meta.client) {
   gsap.registerPlugin(Draggable, ScrollTrigger);
 }
+
+const ensureBlocks = (newsletter: Newsletter): NewsletterBlock[] => {
+  return newsletter.blocks || [];
+};
 
 interface Props {
   newsletter: Newsletter;
@@ -278,23 +282,23 @@ const addBlock = async (blockType: BlockType, index?: number) => {
   const newBlock = await createBlock({
     block_type_id: blockType.id,
     newsletter_id: newsletter.value.id,
-    sort_order: index ?? newsletter.value.blocks.length,
+    sort_order: index ?? newsletter.value.blocks?.length,
     title: `New ${blockType.name}`,
     text_content: blockType.default_content || "",
   });
 
   if (newBlock) {
     if (index !== undefined) {
-      newsletter.value.blocks.splice(index, 0, newBlock);
+      newsletter.value.blocks?.splice(index, 0, newBlock);
     } else {
-      newsletter.value.blocks.push(newBlock);
+      newsletter.value.blocks?.push(newBlock);
     }
     emit("update", newsletter.value);
   }
 };
 
 const updateBlock = async (blockId: number, data: Partial<NewsletterBlock>) => {
-  const block = newsletter.value.blocks.find((b) => b.id === blockId);
+  const block = newsletter.value.blocks?.find((b) => b.id === blockId);
   if (!block) return;
 
   Object.assign(block, data);
@@ -303,10 +307,10 @@ const updateBlock = async (blockId: number, data: Partial<NewsletterBlock>) => {
 };
 
 const deleteBlock = async (blockId: number) => {
-  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
   if (index === -1) return;
 
-  newsletter.value.blocks.splice(index, 1);
+  newsletter.value.blocks?.splice(index, 1);
   await deleteBlockData(blockId);
   emit("update", newsletter.value);
 };
@@ -314,28 +318,28 @@ const deleteBlock = async (blockId: number) => {
 const duplicateBlock = async (block: NewsletterBlock) => {
   const newBlock = await duplicateBlockData(block);
   if (newBlock) {
-    const index = newsletter.value.blocks.findIndex((b) => b.id === block.id);
-    newsletter.value.blocks.splice(index + 1, 0, newBlock);
+    const index = newsletter.value.blocks?.findIndex((b) => b.id === block.id);
+    newsletter.value.blocks?.splice(index + 1, 0, newBlock);
     emit("update", newsletter.value);
   }
 };
 
 const moveBlockUp = (blockId: number) => {
-  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
-  if (index > 0) {
-    const block = newsletter.value.blocks.splice(index, 1)[0];
-    newsletter.value.blocks.splice(index - 1, 0, block);
-    reorderBlocks(newsletter.value.blocks);
+  const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
+  if (Number(index) > 0) {
+    const block = newsletter.value.blocks?.splice(index , 1)[0];
+    newsletter.value.blocks?.splice(index - 1, 0, block as NewsletterBlock);
+    reorderBlocks(newsletter.value.blocks as Array<NewsletterBlock>);
     emit("update", newsletter.value);
   }
 };
 
 const moveBlockDown = (blockId: number) => {
-  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
-  if (index < newsletter.value.blocks.length - 1) {
+  const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
+  if (index < newsletter.value.blocks?.length - 1) {
     const block = newsletter.value.blocks.splice(index, 1)[0];
-    newsletter.value.blocks.splice(index + 1, 0, block);
-    reorderBlocks(newsletter.value.blocks);
+    newsletter.value.blocks.?splice(index + 1, 0, block);
+    reorderBlocks(newsletter.value.blocks as Array<NewsletterBlock>);
     emit("update", newsletter.value);
   }
 };
@@ -383,7 +387,7 @@ const handleDrop = async (event: DragEvent) => {
     const { type, data: dragData } = JSON.parse(data);
 
     if (type === "block-type") {
-      const dropIndex = activeDropZone.value ?? newsletter.value.blocks.length;
+      const dropIndex = activeDropZone.value ?? newsletter.value.blocks?.length;
       await addBlock(dragData, dropIndex);
     }
   } catch (error) {

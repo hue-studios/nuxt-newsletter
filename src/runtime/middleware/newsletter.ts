@@ -1,4 +1,4 @@
-import { defineNuxtRouteMiddleware, createError } from "nuxt/app";
+import { defineNuxtRouteMiddleware, createError } from "#imports";
 export default defineNuxtRouteMiddleware((to) => {
   // Validate newsletter ID parameter
   if (to.params.id && !/^\d+$/.test(to.params.id as string)) {

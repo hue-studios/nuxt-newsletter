@@ -207,6 +207,21 @@ async function processBlock(
   }
 }
 
+const createAbsoluteUrl = (
+  baseUrl:
+    | string
+    | { replace?: (pattern: RegExp, replacement: string) => string },
+  path: string
+): string => {
+  if (typeof baseUrl === "string") {
+    return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  }
+  if (baseUrl && typeof baseUrl.replace === "function") {
+    return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  }
+  return path; // Fallback
+};
+
 // Register custom Handlebars helpers
 function registerHandlebarsHelpers() {
   // Safe string helper
@@ -223,7 +238,7 @@ function registerHandlebarsHelpers() {
       return path;
     }
 
-    return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+    return createAbsoluteUrl(baseUrl, path);
   });
 
   // Image helper with Directus asset URL

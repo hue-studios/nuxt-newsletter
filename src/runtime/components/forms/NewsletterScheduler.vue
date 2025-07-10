@@ -1,5 +1,5 @@
 <template>
-  <Dialog :open="open" @update:open="$emit('update:open', $event)">
+  <Dialog :open="dialogOpen" @update:open="$emit('update:open', $event)">
     <DialogContent class="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Schedule Newsletter</DialogTitle>
@@ -166,7 +166,7 @@
       </div>
 
       <DialogFooter>
-        <Button variant="outline" @click="open = false"> Cancel </Button>
+        <Button variant="outline" @click="dialogOpen = false"> Cancel </Button>
         <Button :disabled="!canSchedule" @click="scheduleNewsletter">
           <Icon name="lucide:clock" class="w-4 h-4 mr-2" />
           {{ scheduleType === "now" ? "Send Now" : "Schedule" }}
@@ -185,6 +185,8 @@ interface Props {
   mailingLists: MailingList[];
   open: boolean;
 }
+
+const dialogOpen = ref(false);
 
 interface Emits {
   (e: "update:open", value: boolean): void;
@@ -222,7 +224,7 @@ const minDate = computed(() => {
 
 const selectedMailingListInfo = computed(() => {
   return props.mailingLists.find(
-    (list) => list.id.toString() === selectedMailingList.value
+    (list) => list.id?.toString() === selectedMailingList.value
   );
 });
 
@@ -277,7 +279,7 @@ const scheduleNewsletter = () => {
 // Initialize with defaults
 onMounted(() => {
   if (props.mailingLists.length > 0) {
-    selectedMailingList.value = props.mailingLists[0].id.toString();
+    selectedMailingList.value = props.mailingLists[0].id?.toString() || "";
   }
 
   if (props.newsletter.ab_test_subject_b) {

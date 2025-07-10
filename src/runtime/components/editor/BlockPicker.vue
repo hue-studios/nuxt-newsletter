@@ -104,9 +104,13 @@ const filteredCategories = computed(() => {
     if (!searchQuery.value) return true;
 
     const query = searchQuery.value.toLowerCase();
+    const isDescriptionMatch = blockType.description
+      ? blockType.description.toLowerCase().includes(query)
+      : false;
+
     return (
       blockType.name.toLowerCase().includes(query) ||
-      blockType.description.toLowerCase().includes(query) ||
+      isDescriptionMatch ||
       blockType.category.toLowerCase().includes(query)
     );
   });

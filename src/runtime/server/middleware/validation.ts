@@ -1,10 +1,20 @@
 // src/runtime/server/middleware/validation.ts
+import {
+  defineEventHandler,
+  createError,
+  getHeader,
+  setHeader,
+  readBody,
+  getRouterParams,
+  getQuery,
+} from "h3";
 import { z } from "zod";
 import {
   sanitizeHtml,
-  sanitizeInput,
-  validateEmail,
-} from "../../../../utils/security/sanitization";
+  sanitizeUserInput,
+} from "../../utils/security/sanitization";
+
+import { validateEmail } from "../../utils/security/validation";
 
 // Common validation schemas
 export const commonSchemas = {
@@ -34,13 +44,13 @@ export const validationSchemas = {
       .string()
       .min(1, "Title is required")
       .max(200, "Title too long")
-      .transform(sanitizeInput),
+      .transform(sanitizeUserInput),
 
     subject_line: z
       .string()
       .min(1, "Subject line is required")
       .max(998, "Subject line too long") // RFC 2822 limit
-      .transform(sanitizeInput),
+      .transform(sanitizeUserInput),
 
     from_email: commonSchemas.email,
 
@@ -48,7 +58,7 @@ export const validationSchemas = {
       .string()
       .min(1, "From name is required")
       .max(100, "From name too long")
-      .transform(sanitizeInput),
+      .transform(sanitizeUserInput),
 
     category: z.enum([
       "company",
@@ -71,7 +81,7 @@ export const validationSchemas = {
       .string()
       .max(150)
       .optional()
-      .transform((val) => (val ? sanitizeInput(val) : val)),
+      .transform((val) => (val ? sanitizeUserInput(val) : val)),
 
     reply_to: z.string().email().optional(),
 
@@ -88,10 +98,10 @@ export const validationSchemas = {
         content.text_content = sanitizeHtml(content.text_content);
       }
       if (content.title) {
-        content.title = sanitizeInput(content.title);
+        content.title = sanitizeUserInput(content.title);
       }
       if (content.subtitle) {
-        content.subtitle = sanitizeInput(content.subtitle);
+        content.subtitle = sanitizeUserInput(content.subtitle);
       }
       return content;
     }),
@@ -121,11 +131,11 @@ export const validationSchemas = {
     name: z
       .string()
       .min(1, "Template name is required")
-      .transform(sanitizeInput),
+      .transform(sanitizeUserInput),
     description: z
       .string()
       .optional()
-      .transform((val) => (val ? sanitizeInput(val) : val)),
+      .transform((val) => (val ? sanitizeUserInput(val) : val)),
     mjml_template: z.string().min(1, "MJML template is required"),
     category: z.string().optional(),
     is_default: z.boolean().default(false),
@@ -137,11 +147,11 @@ export const validationSchemas = {
     first_name: z
       .string()
       .optional()
-      .transform((val) => (val ? sanitizeInput(val) : val)),
+      .transform((val) => (val ? sanitizeUserInput(val) : val)),
     last_name: z
       .string()
       .optional()
-      .transform((val) => (val ? sanitizeInput(val) : val)),
+      .transform((val) => (val ? sanitizeUserInput(val) : val)),
     status: z
       .enum(["active", "unsubscribed", "bounced", "complained"])
       .default("active"),
