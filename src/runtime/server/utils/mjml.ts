@@ -1,7 +1,8 @@
+// src/runtime/services/mjml.ts
 import { useRuntimeConfig } from "#imports";
 import mjml from "mjml";
-import Handlebars from "handlebars";
-import { sanitizeHtml } from "../../utils/security/sanitization";
+import Handlebars from "handlebars"; // Ensure Handlebars is imported directly
+import { sanitizeHtml } from "../../utils/security/sanitization"; // Ensure this import is correct
 
 export interface MJMLCompileOptions {
   validationLevel?: "strict" | "soft" | "skip";
@@ -175,12 +176,10 @@ export class MJMLService {
         <mj-title>${this.escapeHtml(title)}</mj-title>
         <mj-preview>${this.escapeHtml(previewText || subject)}</mj-preview>
         
-        <!-- Font imports -->
         <mj-raw>
           ${fontLinks}
         </mj-raw>
         
-        <!-- Default attributes -->
         <mj-attributes>
           <mj-all font-family="${styles.fontFamily}" />
           <mj-text font-size="16px" color="${
@@ -193,7 +192,6 @@ export class MJMLService {
           }" border-radius="6px" />
         </mj-attributes>
         
-        <!-- Custom styles -->
         <mj-style>
           .newsletter-wrapper { max-width: 600px; margin: 0 auto; }
           .text-center { text-align: center; }
@@ -207,7 +205,6 @@ export class MJMLService {
           .footer-link:hover { color: #6b7280; }
         </mj-style>
         
-        <!-- Media queries -->
         <mj-style inline="inline">
           @media only screen and (max-width: 600px) {
             .mobile-hide { display: none !important; }
@@ -255,7 +252,7 @@ export class MJMLService {
       return this.sanitizeBlockContent(compiledMjml);
     } catch (error: any) {
       console.error(`Error processing block ${block.id}:`, error);
-      return `<!-- Block ${block.id} error: ${error.message} -->`;
+      return ``;
     }
   }
 
@@ -294,7 +291,8 @@ export class MJMLService {
   private registerDefaultHelpers(): void {
     // Safe string helper
     this.handlebars.registerHelper("safe", function (value: any) {
-      return new this.handlebars.SafeString(value || "");
+      // Use Handlebars.SafeString directly as Handlebars is imported
+      return new Handlebars.SafeString(value || "");
     });
 
     // URL helper
@@ -302,13 +300,20 @@ export class MJMLService {
       "url",
       function (path: string, base?: string) {
         const config = useRuntimeConfig();
-        const baseUrl =
-          base || config.public.siteUrl || "http://localhost:3000";
+
+        // Ensure config.public.siteUrl is explicitly a string or undefined
+        const siteUrlFromConfig =
+          typeof config.public.siteUrl === "string"
+            ? config.public.siteUrl
+            : undefined;
+
+        const baseUrl = base || siteUrlFromConfig || "http://localhost:3000";
 
         if (path.startsWith("http")) {
           return path;
         }
 
+        // baseUrl is now guaranteed to be a string
         return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
       }
     );
@@ -319,7 +324,7 @@ export class MJMLService {
       function (fileId: string, transform?: any) {
         if (!fileId) return "";
 
-        const config = useRuntimeConfig();
+        const config = useRuntimeConfig(); // useRuntimeConfig is a global Nuxt function
         let url = `${config.public.newsletter.directusUrl}/assets/${fileId}`;
 
         if (transform) {
@@ -369,39 +374,39 @@ export class MJMLService {
       }
     );
 
-    // Conditional helpers
+    // Conditional helpers (adding 'this: any' to explicitly type the context)
     this.handlebars.registerHelper(
       "if_eq",
-      function (a: any, b: any, options: any) {
+      function (this: any, a: any, b: any, options: any) {
         return a === b ? options.fn(this) : options.inverse(this);
       }
     );
 
     this.handlebars.registerHelper(
       "if_ne",
-      function (a: any, b: any, options: any) {
+      function (this: any, a: any, b: any, options: any) {
         return a !== b ? options.fn(this) : options.inverse(this);
       }
     );
 
     this.handlebars.registerHelper(
       "if_gt",
-      function (a: any, b: any, options: any) {
+      function (this: any, a: any, b: any, options: any) {
         return a > b ? options.fn(this) : options.inverse(this);
       }
     );
 
     this.handlebars.registerHelper(
       "if_lt",
-      function (a: any, b: any, options: any) {
+      function (this: any, a: any, b: any, options: any) {
         return a < b ? options.fn(this) : options.inverse(this);
       }
     );
 
-    // Loop helpers
+    // Loop helpers (adding 'this: any' to explicitly type the context)
     this.handlebars.registerHelper(
       "each_with_index",
-      function (array: any[], options: any) {
+      function (this: any, array: any[], options: any) {
         let result = "";
 
         for (let i = 0; i < array.length; i++) {
@@ -456,7 +461,7 @@ export class MJMLService {
 
   // Register custom helper
   registerHelper(name: string, helper: Function): void {
-    this.handlebars.registerHelper(name, helper);
+    this.handlebars.registerHelper(name, helper as any);
   }
 
   // Register custom partial
@@ -466,9 +471,8 @@ export class MJMLService {
 
   // Sanitize block content
   private sanitizeBlockContent(content: string): string {
-    // Basic sanitization for MJML content
-    // You can customize this based on your security requirements
-    return content;
+    // Apply sanitization using the imported sanitizeHtml helper
+    return sanitizeHtml(content, "newsletter");
   }
 
   // HTML escape utility

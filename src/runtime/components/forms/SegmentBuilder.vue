@@ -372,10 +372,20 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { SegmentRule as NewsletterSegmentRule } from "../../types/newsletter";
-interface SegmentRule extends NewsletterSegmentRule {
+
+type InputType =
+  | "number"
+  | "select"
+  | "text"
+  | "date"
+  | "multi-select"
+  | "none";
+// Extend the NewsletterSegmentRule with component-specific properties
+type SegmentRule = NewsletterSegmentRule & {
   id: string;
   connector: "AND" | "OR";
-}
+  type?: InputType; // Added 'type' property
+};
 
 interface SegmentPreview {
   matchedCount: number;
@@ -400,6 +410,26 @@ interface Emits {
 
 const emit = defineEmits<Emits>();
 
+// Helper to determine initial input type based on field
+function getInitialInputTypeForField(field: string): InputType {
+  if (["status", "subscription_source"].includes(field)) {
+    return "select";
+  }
+  if (["engagement_score", "total_opens", "total_clicks"].includes(field)) {
+    return "number";
+  }
+  if (["subscribed_at", "last_email_opened", "last_activity"].includes(field)) {
+    return "date";
+  }
+  // If a field might result in a multi-select, explicitly add it here
+  // For example, if 'preferences' was a field and it should be multi-select:
+  // if (field === "preferences") {
+  //   return "multi-select";
+  // }
+  // Default to text or none if operator changes it
+  return "text";
+}
+
 // State
 const segmentName = ref("");
 const segmentRules = ref<SegmentRule[]>([
@@ -407,14 +437,15 @@ const segmentRules = ref<SegmentRule[]>([
     id: generateRuleId(),
     connector: "AND",
     field: "",
-    operator: "" as string,
-    value: "",
+    operator: "equals", // This will be set on field change
+    value: "", // This will be set on field change
+    type: "text", // Initial type, will be updated by onFieldChange
   },
 ]);
 const segmentPreview = ref<SegmentPreview | null>(null);
 const isCalculating = ref(false);
 
-// Field operators mapping
+// Field operators mapping (rest of your fieldOperators remains the same)
 const fieldOperators = {
   // Text fields
   email: [
@@ -448,6 +479,12 @@ const fieldOperators = {
     { value: "less_than", label: "less than" },
     { value: "equals", label: "equals" },
   ],
+  total_clicks: [
+    // Added this based on your getInputType logic
+    { value: "greater_than", label: "greater than" },
+    { value: "less_than", label: "less than" },
+    { value: "equals", label: "equals" },
+  ],
 
   // Date fields
   subscribed_at: [
@@ -462,9 +499,35 @@ const fieldOperators = {
     { value: "is_null", label: "never opened" },
     { value: "last_days", label: "in the last X days" },
   ],
+  last_activity: [
+    // Added this based on your getInputType logic
+    { value: "after", label: "after" },
+    { value: "before", label: "before" },
+    { value: "last_days", label: "in the last X days" },
+  ],
+  // Custom fields - assuming they are text by default
+  company: [
+    { value: "contains", label: "contains" },
+    { value: "equals", label: "equals" },
+    { value: "is_empty", label: "is empty" },
+  ],
+  job_title: [
+    { value: "contains", label: "contains" },
+    { value: "equals", label: "equals" },
+    { value: "is_empty", label: "is empty" },
+  ],
+  location: [
+    { value: "contains", label: "contains" },
+    { value: "equals", label: "equals" },
+    { value: "is_empty", label: "is empty" },
+  ],
+  subscription_source: [
+    { value: "equals", label: "is" },
+    { value: "not_equals", label: "is not" },
+  ],
 };
 
-// Field options
+// Field options (rest of your fieldOptions remains the same)
 const fieldOptions = {
   status: [
     { value: "active", label: "Active" },
@@ -501,8 +564,9 @@ function addRule() {
     id: generateRuleId(),
     connector: "AND",
     field: "",
-    operator: "",
-    value: "",
+    operator: "equals", // Default operator
+    value: "", // Default value
+    type: "text", // Default type
   });
 }
 
@@ -513,12 +577,28 @@ function removeRule(ruleId: string) {
 }
 
 function onFieldChange(rule: SegmentRule) {
-  rule.operator = "";
+  rule.operator = "equals"; // Assign a default valid operator
   rule.value = "";
+  // Update the type based on the selected field
+  rule.type = getInitialInputTypeForField(rule.field);
+
+  // If the new field implies a multi-select, initialize value as an array
+  if (rule.type === "multi-select") {
+    rule.value = [];
+  }
 }
 
 function onOperatorChange(rule: SegmentRule) {
+  // Reset value when operator changes, as value type might change (e.g., to "none")
   rule.value = "";
+
+  // Adjust input type based on the selected operator if necessary
+  if (["is_null", "is_empty"].includes(rule.operator)) {
+    rule.type = "none";
+  } else {
+    // Re-evaluate the type based on the field if the operator doesn't override it
+    rule.type = getInitialInputTypeForField(rule.field) || "text";
+  }
 }
 
 function getOperatorsForField(field: string) {
@@ -529,36 +609,21 @@ function getOptionsForField(field: string) {
   return fieldOptions[field as keyof typeof fieldOptions] || [];
 }
 
-// function getInputType(rule: SegmentRule) {
-//   if (["is_null", "is_empty"].includes(rule.operator)) {
-//     return "none";
-//   }
-
-//   if (["status", "subscription_source"].includes(rule.field)) {
-//     return "select";
-//   }
-
-//   if (
-//     ["engagement_score", "total_opens", "total_clicks"].includes(rule.field)
-//   ) {
-//     return "number";
-//   }
-
-//   if (
-//     ["subscribed_at", "last_email_opened", "last_activity"].includes(rule.field)
-//   ) {
-//     return "date";
-//   }
-
-//   return "text";
-// }
-
-const getInputType = (rule: SegmentRule): string => {
-  if (rule.type === "multi-select") {
-    return "multi-select";
+function getInputType(rule: SegmentRule) {
+  // If operator implies no value, set type to 'none'
+  if (["is_null", "is_empty"].includes(rule.operator)) {
+    return "none";
   }
-  return rule.type || "none";
-};
+
+  // If the rule already has a 'type' property set (e.g., from onFieldChange), use it.
+  // This allows for explicit type setting if needed, like for 'multi-select'.
+  if (rule.type) {
+    return rule.type;
+  }
+
+  // Fallback to determine type based on field if 'rule.type' is not set
+  return getInitialInputTypeForField(rule.field);
+}
 
 function getPlaceholder(rule: SegmentRule) {
   const placeholders: Record<string, string> = {
@@ -588,7 +653,7 @@ function toggleMultiValue(rule: SegmentRule, value: string, checked: boolean) {
   if (checked) {
     rule.value.push(value);
   } else {
-    rule.value = rule.value.filter((v) => v !== value);
+    rule.value = rule.value.filter((v: string) => v !== value);
   }
 }
 

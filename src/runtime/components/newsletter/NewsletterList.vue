@@ -76,6 +76,8 @@ const formatDate = (date: string | Date | undefined): string => {
 </script>
 
 <style scoped>
+@reference 'tailwindcss';
+
 .newsletter-list {
   @apply p-6;
 }

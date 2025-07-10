@@ -1,11 +1,36 @@
+// src/runtime/services/email.ts
 import { useRuntimeConfig } from "#imports";
 import sgMail from "@sendgrid/mail";
+// Import SendGrid's MailDataRequired type directly.
+// MailContent and Personalization types are not directly exported and will be defined locally.
+import type { MailDataRequired } from "@sendgrid/mail";
 import crypto from "node:crypto";
 import type {
   Newsletter,
   NewsletterSend,
   Subscriber,
 } from "../../types/newsletter";
+
+// Locally defined interface for MailContent, as it's not directly exported by @sendgrid/mail
+interface MailContent {
+  type: string; // e.g., 'text/plain', 'text/html'
+  value: string; // The actual content string
+}
+
+// Locally defined interface for Personalization, as it's not directly exported by @sendgrid/mail
+// This mirrors the structure expected within MailDataRequired's 'personalizations' array.
+// Ensuring 'to' is explicitly an array of objects where 'name' is always string.
+interface Personalization {
+  to: { email: string; name: string }[]; // 'to' is required and 'name' is always string
+  cc?: { email: string; name?: string }[];
+  bcc?: { email: string; name?: string }[];
+  subject?: string;
+  headers?: Record<string, string>;
+  substitutions?: Record<string, string>; // For legacy template engine or manual replacements
+  dynamicTemplateData?: Record<string, any>; // For dynamic templates with templateId
+  customArgs?: Record<string, string>; // Ensure all values are string
+  sendAt?: number;
+}
 
 export interface EmailConfig {
   apiKey: string;
@@ -17,55 +42,9 @@ export interface EmailConfig {
   enableOpenTracking?: boolean;
 }
 
-interface EmailData {
-  from: {
-    email: string;
-    name?: string;
-  };
-
-  // Either use 'to' for simple sends OR 'personalizations' for batch
-  to?: {
-    email: string;
-    name?: string;
-  }[];
-
-  subject?: string; // Optional when using personalizations
-  html?: string;
-  text?: string;
-  templateId?: string;
-
-  // Add personalizations for batch sending
-  personalizations?: {
-    to: { email: string; name?: string }[];
-    cc?: { email: string; name?: string }[];
-    bcc?: { email: string; name?: string }[];
-    subject?: string;
-    headers?: Record<string, string>;
-    substitutions?: Record<string, string>;
-    dynamic_template_data?: Record<string, any>;
-    custom_args?: Record<string, string>;
-    send_at?: number;
-  }[];
-
-  // Rest of the interface...
-  categories?: string[];
-  custom_args?: Record<string, string>;
-  tracking_settings?: {
-    click_tracking?: {
-      enable: boolean;
-      enable_text?: boolean; // Add this for your use case
-    };
-    open_tracking?: {
-      enable: boolean;
-      substitution_tag?: string; // Add this for your use case
-    };
-    subscription_tracking?: {
-      enable: boolean;
-      text?: string;
-      html?: string;
-    };
-  };
-}
+// *** IMPORTANT: The custom EmailData interface has been removed. ***
+// *** We are now directly using MailDataRequired from '@sendgrid/mail' ***
+// *** to ensure full type compatibility with the SendGrid library. ***
 
 export interface SendResult {
   headers: any;
@@ -163,29 +142,35 @@ export class EmailService {
       testIndicators = true,
     } = options;
 
-    // Prepare email data
-    const emailData = {
+    // Prepare email data using SendGrid's MailDataRequired type
+    const emailData: MailDataRequired = {
       from: {
         email: newsletter.from_email || this.config.defaultFromEmail,
         name: newsletter.from_name || this.config.defaultFromName,
       },
       subject: customSubject || `[TEST] ${newsletter.subject_line}`,
-      html: this.processTestHtml(
-        newsletter.compiled_html as string,
-        includeAnalytics,
-        testIndicators
-      ),
+      // Provide content as an array of MailContent objects, as required by MailDataRequired
+      content: [
+        {
+          type: "text/html",
+          value: this.processTestHtml(
+            newsletter.compiled_html as string,
+            includeAnalytics,
+            testIndicators
+          ),
+        },
+      ],
       to: testEmails.map((email) => ({ email: email.trim().toLowerCase() })),
       categories: ["newsletter-test"],
-      custom_args: {
-        newsletter_id: newsletter.id?.toString(),
+      customArgs: {
+        newsletter_id: newsletter.id?.toString() || "", // Ensure string
         is_test: "true",
         test_timestamp: new Date().toISOString(),
       },
-      tracking_settings: {
-        click_tracking: { enable: includeAnalytics },
-        open_tracking: { enable: includeAnalytics },
-        subscription_tracking: { enable: false },
+      trackingSettings: {
+        clickTracking: { enable: includeAnalytics },
+        openTracking: { enable: includeAnalytics },
+        subscriptionTracking: { enable: false },
       },
     };
 
@@ -213,47 +198,52 @@ export class EmailService {
     // Check rate limiting
     this.checkRateLimit("newsletter_send");
 
-    // Prepare personalizations
-    const personalizations = recipients.map((recipient) => ({
+    // Prepare personalizations using the locally defined Personalization type
+    const personalizations: Personalization[] = recipients.map((recipient) => ({
       to: [
         {
           email: recipient.email.toLowerCase(),
-          name: recipient.name || recipient.first_name || recipient.email,
+          // Ensure 'name' is always a string to match Personalization interface
+          name: recipient.name || recipient.first_name || recipient.email || "",
         },
       ],
+      // 'substitutions' is for SendGrid's legacy template engine or direct HTML string replacement.
       substitutions: this.getSubstitutions(newsletter, recipient, sendRecord),
-      custom_args: {
-        newsletter_id: newsletter.id?.toString(),
-        subscriber_id: recipient.id?.toString() || "",
-        send_record_id: sendRecord.id?.toString() || "",
+      customArgs: {
+        newsletter_id: newsletter.id?.toString() || "", // Ensure string
+        subscriber_id: recipient.id?.toString() || "", // Ensure string
+        send_record_id: sendRecord.id?.toString() || "", // Ensure string
         ...customArgs,
       },
     }));
 
-    // Prepare email data
-    const emailData: EmailData = {
+    // Prepare email data using SendGrid's MailDataRequired type
+    const emailData: MailDataRequired = {
       from: {
         email: newsletter.from_email || this.config.defaultFromEmail,
         name: newsletter.from_name || this.config.defaultFromName,
       },
       subject: newsletter.subject_line,
-      html: newsletter.compiled_html,
-      personalizations, // Now properly typed
-      tracking_settings: {
-        click_tracking: {
+      // Provide content as an array of MailContent objects, as required by MailDataRequired
+      content: [
+        { type: "text/html", value: newsletter.compiled_html as string },
+      ],
+      personalizations,
+      trackingSettings: {
+        clickTracking: {
           enable: this.config.enableClickTracking,
-          enable_text: true,
+          enableText: true,
         },
-        open_tracking: {
+        openTracking: {
           enable: this.config.enableOpenTracking,
-          substitution_tag: "{{open_tracking}}",
+          substitutionTag: "{{open_tracking}}",
         },
-        subscription_tracking: {
+        subscriptionTracking: {
           enable: false,
         },
       },
       categories: ["newsletter", newsletter.category || "general"],
-      custom_args: {
+      customArgs: {
         newsletter_id: newsletter.id?.toString() || "",
         send_record_id: sendRecord.id?.toString() || "",
         batch_timestamp: new Date().toISOString(),
@@ -351,7 +341,6 @@ export class EmailService {
       "{{sender_email}}": "test@example.com",
       "{{current_date}}": new Date().toLocaleDateString(),
       "{{current_year}}": new Date().getFullYear().toString(),
-      "{{open_tracking}}": "",
     };
 
     Object.entries(testSubstitutions).forEach(([tag, value]) => {
@@ -490,8 +479,8 @@ export class EmailService {
       categories?: string[];
     } = {}
   ): Promise<SendResult> {
-    // Build email data with conditional properties
-    const baseEmailData: EmailData = {
+    // Build the MailDataRequired object
+    const emailData: MailDataRequired = {
       from: options.from || {
         email: this.config.defaultFromEmail,
         name: this.config.defaultFromName,
@@ -499,24 +488,24 @@ export class EmailService {
       to: Array.isArray(to) ? to.map((email) => ({ email })) : [{ email: to }],
       subject,
       categories: options.categories || ["transactional"],
-      tracking_settings: {
-        click_tracking: { enable: false },
-        open_tracking: { enable: false },
-        subscription_tracking: { enable: false },
+      trackingSettings: {
+        clickTracking: { enable: false },
+        openTracking: { enable: false },
+        subscriptionTracking: { enable: false },
       },
+      // Directly assign the content array based on templateId to satisfy strict type
+      content: options.templateId
+        ? [{ type: "text/plain", value: "" }] // Placeholder for template emails
+        : [{ type: "text/html", value: html }], // Actual HTML for non-template emails
     };
 
-    // Add either html or template
-    const emailData: EmailData = options.templateId
-      ? {
-          ...baseEmailData,
-          templateId: options.templateId,
-          dynamic_template_data: options.templateData || {},
-        }
-      : {
-          ...baseEmailData,
-          html,
-        };
+    // Add template-specific properties if templateId is provided
+    if (options.templateId) {
+      emailData.templateId = options.templateId;
+      emailData.dynamicTemplateData = options.templateData || {};
+      // Note: subject might be overridden by the template's subject if set in SendGrid
+      // and not explicitly set in dynamicTemplateData.
+    }
 
     try {
       const response = await sgMail.send(emailData);
@@ -547,13 +536,15 @@ export function getEmailService(): EmailService {
 
     defaultEmailService = new EmailService({
       apiKey: config.newsletter?.sendgridApiKey || "",
+      // Corrected: Access from config.public.newsletter for these properties
       defaultFromEmail:
-        config.newsletter?.defaultFromEmail || "noreply@example.com",
-      defaultFromName: config.newsletter?.defaultFromName || "Nuxt Newsletter",
+        config.public.newsletter?.defaultFromEmail || "noreply@example.com",
+      defaultFromName:
+        config.public.newsletter?.defaultFromName || "Nuxt Newsletter",
       webhookSecret: config.newsletter?.webhookSecret,
-      enableTracking: config.newsletter?.enableAnalytics,
-      enableClickTracking: config.newsletter?.enableAnalytics,
-      enableOpenTracking: config.newsletter?.enableAnalytics,
+      enableTracking: config.public.newsletter?.enableAnalytics,
+      enableClickTracking: config.public.newsletter?.enableAnalytics,
+      enableOpenTracking: config.public.newsletter?.enableAnalytics,
     });
   }
 
@@ -586,12 +577,12 @@ export function createEmailTemplate(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${subject}</title>
         <style>
-            body { 
-                margin: 0; 
-                padding: 0; 
-                background-color: ${backgroundColor}; 
-                color: ${textColor}; 
-                font-family: Arial, sans-serif; 
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: ${backgroundColor};
+                color: ${textColor};
+                font-family: Arial, sans-serif;
             }
             a { color: ${linkColor}; }
             .preheader { display: none; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; }

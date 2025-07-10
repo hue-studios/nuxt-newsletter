@@ -43,7 +43,7 @@
     "eslint": "^9.29.0",
     "gsap": "^3.13.0",
     "lucide-vue-next": "^0.486.0",
-    "nuxt": "^3.17.5",
+    "nuxt": "^3.17.6",
     "nuxt-directus-next": "^0.0.15",
     "nuxt-echarts": "0.3.3",
     "nuxt-gtag": "^3.0.3",

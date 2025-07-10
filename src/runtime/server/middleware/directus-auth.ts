@@ -1,7 +1,6 @@
 import { defineEventHandler, createError, getHeader } from "h3";
 import { useRuntimeConfig } from "#imports";
 import { createDirectus, rest, staticToken, readMe } from "@directus/sdk";
-import { config } from "process";
 
 /**
  * Simplified authentication middleware that relies on Directus tokens

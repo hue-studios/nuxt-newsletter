@@ -148,7 +148,7 @@ export interface Subscriber {
 
 // ADDED - Missing MailingList interface
 export interface MailingList {
-  id?: number;
+  id: number;
   name: string;
   description?: string;
   status?: "active" | "inactive";

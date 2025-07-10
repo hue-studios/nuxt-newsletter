@@ -12,6 +12,13 @@ import { EmailService } from "../../../utils/email";
 import { validators, getValidatedData } from "../../../middleware/validation";
 import { getDirectusClient } from "../../../middleware/directus-auth";
 
+type SendResult = {
+  sent: number;
+  failed: number;
+  errors: string[];
+  ab_test_results?: any;
+};
+
 export default defineEventHandler(async (event) => {
   try {
     // Apply validation middleware
@@ -205,11 +212,10 @@ async function processSend(
   const startTime = new Date();
 
   try {
-    let results = {
+    let results: SendResult = {
       sent: 0,
       failed: 0,
       errors: [] as string[],
-      ab_test_results: null as any,
     };
 
     // Handle A/B testing

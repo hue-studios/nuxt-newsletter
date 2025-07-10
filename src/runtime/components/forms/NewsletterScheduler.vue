@@ -96,7 +96,7 @@
                 <SelectItem
                   v-for="list in mailingLists"
                   :key="list.id"
-                  :value="list.id?.toString()"
+                  :value="list.id.toString()"
                 >
                   {{ list.name }} ({{ list.subscriber_count }}
                   subscribers)

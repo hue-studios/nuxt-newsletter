@@ -1,4 +1,6 @@
 // src/module.ts
+import tailwindcss from "@tailwindcss/vite";
+
 import {
   defineNuxtModule,
   addPlugin,
@@ -8,12 +10,15 @@ import {
   addComponentsDir,
   createResolver,
   installModule,
+  checkNuxtCompatibility,
+  addVitePlugin,
 } from "@nuxt/kit";
 import { defu } from "defu";
 
 export interface ModuleOptions {
   directusUrl: string;
   sendgridApiKey?: string;
+  directusToken?: string;
   defaultFromEmail?: string;
   defaultFromName?: string;
   webhookSecret?: string;
@@ -37,6 +42,11 @@ export default defineNuxtModule<ModuleOptions>({
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url);
 
+    const issues = await checkNuxtCompatibility({ nuxt: "^3.17.0" }, nuxt);
+    if (issues.length) {
+      console.warn("⚠️ Nuxt compatibility issues found:\n" + issues.join("\n"));
+    }
+
     // Check if we're in development or stub mode
     const isDev = nuxt.options.dev;
     const isStub = process.argv.includes("--stub");
@@ -50,7 +60,7 @@ export default defineNuxtModule<ModuleOptions>({
       { name: "readonly", from: "vue" },
       { name: "onMounted", from: "vue" },
       { name: "onUnmounted", from: "vue" },
-      { name: "useNuxtApp", from: "#app" },
+      // { name: "useNuxtApp", from: "#app" },
       { name: "navigateTo", from: "#app/composables/router" },
       { name: "useDebounceFn", from: "@vueuse/core" },
     ]);
@@ -78,6 +88,8 @@ export default defineNuxtModule<ModuleOptions>({
         });
       });
     });
+
+    addVitePlugin(tailwindcss(), { dev: true }); // Only in dev mode
 
     // Add components properly
     const components = [
@@ -176,22 +188,23 @@ export default defineNuxtModule<ModuleOptions>({
       });
     });
 
-    nuxt.options.css.push(
-      resolver.resolve("./runtime/assets/css/newsletter.css")
-    );
-
-    // Add CSS
-    nuxt.options.css.push(
-      resolver.resolve("./runtime/assets/css/newsletter.css")
-    );
-
     // Add runtime config
-    nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
-      newsletter: {
+    nuxt.options.runtimeConfig.newsletter = defu(
+      nuxt.options.runtimeConfig.newsletter,
+      {
         sendgridApiKey: options.sendgridApiKey,
         webhookSecret: options.webhookSecret,
-      },
-      public: {
+        directusToken: options.directusToken, // ADD THIS LINE
+        defaultFromEmail: options.defaultFromEmail || "",
+        defaultFromName: options.defaultFromName || "",
+        enableAnalytics: options.enableAnalytics,
+        enableWebhooks: options.enableWebhooks,
+      }
+    );
+
+    nuxt.options.runtimeConfig.public = defu(
+      nuxt.options.runtimeConfig.public,
+      {
         newsletter: {
           directusUrl: options.directusUrl || "",
           defaultFromEmail: options.defaultFromEmail || "",
@@ -199,16 +212,8 @@ export default defineNuxtModule<ModuleOptions>({
           enableAnalytics: options.enableAnalytics,
           enableWebhooks: options.enableWebhooks,
         },
-      },
-    });
-
-    // Also add to private runtime config for server-side
-    nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
-      newsletter: {
-        sendgridApiKey: options.sendgridApiKey,
-        webhookSecret: options.webhookSecret,
-      },
-    });
+      }
+    );
 
     // Dependency checking (development warnings)
     if (isDev || isStub || isPrepare) {
