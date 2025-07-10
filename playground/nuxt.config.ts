@@ -5,6 +5,8 @@ export default defineNuxtConfig({
   typescript: {
     typeCheck: true,
   },
+  devtools: { enabled: true },
+  css: ["~/assets/css/app.css"],
   modules: [
     ["shadcn-nuxt", 
       {
@@ -13,18 +15,18 @@ export default defineNuxtConfig({
       },
     ], 
     "@nuxtjs/color-mode", 
-    ["../src/module", 
-      {
+    "../src/module", 
+  ],
+  newsletter: {
+    sendgridApiKey: process.env.SENDGRID_API_KEY || "test-key",
+    public: {
         directusUrl: process.env.DIRECTUS_URL || "http://localhost:8055",
-        sendgridApiKey: process.env.SENDGRID_API_KEY || "test-key",
         defaultFromEmail: "test@example.com",
         defaultFromName: "Test Newsletter",
         enableAnalytics: true,
         enableWebhooks: false,
+  }
       },
-    ],
-  ],
-  devtools: { enabled: true },
  
   compatibilityDate: "2024-11-01",
 

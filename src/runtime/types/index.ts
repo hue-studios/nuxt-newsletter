@@ -1,11 +1,19 @@
 export * from "./newsletter";
 
 // NuxtApp augmentation for newsletter helpers
-declare module "#app" {
-  interface NuxtApp {
-    $newsletter: {
-      generateSlug: (title: string) => string;
-      validateEmail: (email: string) => boolean;
+declare module "@nuxt/schema" {
+  interface RuntimeConfig {
+    newsletter: {
+      sendgridApiKey: string;
+      webhookSecret: string;
+      defaultFromEmail?: string;
+      defaultFromName?: string;
+      directusToken?: string;
+    };
+    public: {
+      newsletter: {
+        directusUrl: string;
+      };
     };
   }
 }

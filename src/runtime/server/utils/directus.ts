@@ -1,5 +1,5 @@
 import { createError } from "h3";
-import { useRuntimeConfig } from "#imports";
+import { useRuntimeConfig } from "#app";
 import { createDirectus, rest, staticToken, readMe } from "@directus/sdk";
 
 export async function createAuthenticatedDirectus(token: string) {

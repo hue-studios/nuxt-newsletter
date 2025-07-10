@@ -8,7 +8,7 @@
 
     <div v-if="isLoading" class="loading">Loading newsletters...</div>
 
-    <div v-else-if="newsletters.length === 0" class="empty">
+    <div v-else-if="newsletters?.length === 0" class="empty">
       <p>No newsletters found. Create your first newsletter!</p>
     </div>
 
@@ -31,7 +31,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import type { Newsletter } from "../../types/newsletter";
 
 interface Props {
@@ -55,19 +54,25 @@ const createNew = () => {
   emit("create");
 };
 
-const getDisplayDate = (newsletter: Newsletter): string => {
-  return (
-    newsletter.updated_at ||
-    newsletter.date_updated ||
-    newsletter.date_created ||
-    new Date().toISOString()
-  );
+const formatDate = (date: string | Date | undefined): string => {
+  if (!date) return "";
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  return dateObj.toLocaleDateString();
 };
 
-const formatDate = (date?: string) => {
-  if (!date) return "";
-  return new Date(date).toLocaleDateString();
-};
+// Line 59 - Fix getDisplayDate return type
+// const getDisplayDate = (newsletter: Newsletter): string => {
+//   const date =
+//     newsletter.updated_at ||
+//     newsletter.date_updated ||
+//     newsletter.date_created ||
+//     "";
+
+//   if (!date) return "Unknown";
+
+//   // Convert Date to string if needed
+//   return typeof date === "string" ? date : date.toISOString();
+// };
 </script>
 
 <style scoped>

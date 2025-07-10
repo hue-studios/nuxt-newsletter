@@ -371,12 +371,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-interface SegmentRule {
+import type { SegmentRule as NewsletterSegmentRule } from "../../types/newsletter";
+interface SegmentRule extends NewsletterSegmentRule {
   id: string;
   connector: "AND" | "OR";
-  field: string;
-  operator: string;
-  value: string | string[];
 }
 
 interface SegmentPreview {
@@ -409,7 +407,7 @@ const segmentRules = ref<SegmentRule[]>([
     id: generateRuleId(),
     connector: "AND",
     field: "",
-    operator: "",
+    operator: "" as string,
     value: "",
   },
 ]);

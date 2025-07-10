@@ -24,12 +24,10 @@
           <div class="flex items-center space-x-3">
             <Button variant="outline" @click="togglePreview">
               <Icon
-                :name="
-                  editorState.isPreviewMode ? 'lucide:edit-3' : 'lucide:eye'
-                "
+                :name="editorState.previewMode ? 'lucide:edit-3' : 'lucide:eye'"
                 class="w-4 h-4 mr-2"
               />
-              {{ editorState.isPreviewMode ? "Edit" : "Preview" }}
+              {{ editorState.previewMode ? "Edit" : "Preview" }}
             </Button>
 
             <Button variant="outline" @click="showSendTestDialog = true">
@@ -66,7 +64,10 @@
                 @dragstart="handleBlockTypeStart(blockType, $event)"
                 @dragend="handleDragEnd"
               >
-                <Icon :name="blockType.icon" class="w-4 h-4 mr-3" />
+                <Icon
+                  :name="blockType.icon || 'lucide:box'"
+                  class="w-4 h-4 mr-3"
+                />
                 <div class="text-left">
                   <div class="font-medium">
                     {{ blockType.name }}
@@ -307,40 +308,53 @@ const updateBlock = async (blockId: number, data: Partial<NewsletterBlock>) => {
 };
 
 const deleteBlock = async (blockId: number) => {
-  const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
-  if (index === -1) return;
+  if (!newsletter.value.blocks) return;
+  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  if (index === -1 || index === undefined) return;
 
-  newsletter.value.blocks?.splice(index, 1);
+  newsletter.value.blocks.splice(index, 1);
   await deleteBlockData(blockId);
   emit("update", newsletter.value);
 };
 
 const duplicateBlock = async (block: NewsletterBlock) => {
   const newBlock = await duplicateBlockData(block);
-  if (newBlock) {
-    const index = newsletter.value.blocks?.findIndex((b) => b.id === block.id);
-    newsletter.value.blocks?.splice(index + 1, 0, newBlock);
-    emit("update", newsletter.value);
+  if (newBlock && newsletter.value.blocks) {
+    const index = newsletter.value.blocks.findIndex((b) => b.id === block.id);
+    if (index !== -1 && index !== undefined) {
+      newsletter.value.blocks.splice(index + 1, 0, newBlock);
+      emit("update", newsletter.value);
+    }
   }
 };
 
 const moveBlockUp = (blockId: number) => {
-  const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
-  if (Number(index) > 0) {
-    const block = newsletter.value.blocks?.splice(index, 1)[0];
-    newsletter.value.blocks?.splice(index - 1, 0, block as NewsletterBlock);
-    reorderBlocks(newsletter.value.blocks as Array<NewsletterBlock>);
-    emit("update", newsletter.value);
+  if (!newsletter.value.blocks) return;
+  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  if (index !== undefined && index > 0) {
+    const [block] = newsletter.value.blocks.splice(index, 1);
+    if (block) {
+      newsletter.value.blocks.splice(index - 1, 0, block);
+      reorderBlocks(newsletter.value.blocks);
+      emit("update", newsletter.value);
+    }
   }
 };
 
 const moveBlockDown = (blockId: number) => {
-  const index = newsletter.value.blocks?.findIndex((b) => b.id === blockId);
-  if (index < newsletter.value.blocks?.length - 1) {
-    const block = newsletter.value.blocks?.splice(index, 1)[0];
-    newsletter.value.blocks?.splice(index + 1, 0, block);
-    reorderBlocks(newsletter.value.blocks as Array<NewsletterBlock>);
-    emit("update", newsletter.value);
+  if (!newsletter.value.blocks) return;
+  const index = newsletter.value.blocks.findIndex((b) => b.id === blockId);
+  if (
+    index !== undefined &&
+    newsletter.value.blocks &&
+    index < newsletter.value.blocks.length - 1
+  ) {
+    const [block] = newsletter.value.blocks.splice(index, 1);
+    if (block) {
+      newsletter.value.blocks.splice(index + 1, 0, block);
+      reorderBlocks(newsletter.value.blocks);
+      emit("update", newsletter.value);
+    }
   }
 };
 
@@ -437,7 +451,8 @@ const sendTestEmail = async () => {
     .filter((email) => email);
 
   try {
-    await sendTest(newsletter.value, emails);
+    // sendTest expects the full newsletter object
+    await sendTest(newsletter.value?.id as number, emails);
     showSendTestDialog.value = false;
     testEmails.value = "";
   } catch (error) {

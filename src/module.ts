@@ -186,20 +186,21 @@ export default defineNuxtModule<ModuleOptions>({
     );
 
     // Add runtime config
-    nuxt.options.runtimeConfig.public = defu(
-      nuxt.options.runtimeConfig.public,
-      {
+    nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
+      newsletter: {
+        sendgridApiKey: options.sendgridApiKey,
+        webhookSecret: options.webhookSecret,
+      },
+      public: {
         newsletter: {
-          directusUrl: options.directusUrl,
-          sendgridApiKey: options.sendgridApiKey,
-          defaultFromEmail: options.defaultFromEmail,
-          defaultFromName: options.defaultFromName,
-          webhookSecret: options.webhookSecret,
+          directusUrl: options.directusUrl || "",
+          defaultFromEmail: options.defaultFromEmail || "",
+          defaultFromName: options.defaultFromName || "",
           enableAnalytics: options.enableAnalytics,
           enableWebhooks: options.enableWebhooks,
         },
-      }
-    );
+      },
+    });
 
     // Also add to private runtime config for server-side
     nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {

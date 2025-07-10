@@ -1,6 +1,6 @@
 // src/runtime/composables/core/useNewsletter.ts
 import { useNuxtApp } from "#app";
-import { ref, readonly, shallowReadonly } from "vue";
+import { ref, readonly, shallowReadonly, type Ref } from "vue";
 import { $fetch } from "ofetch";
 import type {
   Newsletter,
@@ -353,7 +353,7 @@ export const useNewsletter = (): UseNewsletterReturn => {
     updateBlock,
     deleteBlock,
     reorderBlocks,
-    editorState: readonly(editorState),
+    editorState: readonly(editorState) as Readonly<Ref<EditorState>>,
     compileMJML,
     sendTestEmail,
     selectBlock,
