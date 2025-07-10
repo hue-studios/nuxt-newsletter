@@ -1,3 +1,3 @@
-export * from "./newsletter";
+export * from './newsletter'
 
-export {};
+export {}

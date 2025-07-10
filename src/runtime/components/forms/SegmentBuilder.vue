@@ -3,7 +3,9 @@
   <div class="segment-builder space-y-6">
     <!-- Header -->
     <div>
-      <h3 class="text-lg font-medium text-gray-900">Audience Segmentation</h3>
+      <h3 class="text-lg font-medium text-gray-900">
+        Audience Segmentation
+      </h3>
       <p class="text-sm text-gray-600 mt-1">
         Create custom audience segments based on subscriber data and behavior
       </p>
@@ -11,7 +13,10 @@
 
     <!-- Segment Name -->
     <div>
-      <Label for="segment-name" class="text-sm font-medium">Segment Name</Label>
+      <Label
+        for="segment-name"
+        class="text-sm font-medium"
+      >Segment Name</Label>
       <Input
         id="segment-name"
         v-model="segmentName"
@@ -23,8 +28,12 @@
     <!-- Segment Rules -->
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h4 class="font-medium text-gray-900">Conditions</h4>
-        <Badge variant="outline"> {{ segmentRules.length }} rules </Badge>
+        <h4 class="font-medium text-gray-900">
+          Conditions
+        </h4>
+        <Badge variant="outline">
+          {{ segmentRules.length }} rules
+        </Badge>
       </div>
 
       <div
@@ -36,21 +45,34 @@
         <div class="flex items-center justify-between">
           <!-- Connector -->
           <div class="flex items-center space-x-2">
-            <div v-if="index > 0" class="w-16">
+            <div
+              v-if="index > 0"
+              class="w-16"
+            >
               <Select v-model="rule.connector">
                 <SelectTrigger class="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AND"> AND </SelectItem>
-                  <SelectItem value="OR"> OR </SelectItem>
+                  <SelectItem value="AND">
+                    AND
+                  </SelectItem>
+                  <SelectItem value="OR">
+                    OR
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div v-else class="w-16 text-sm font-medium text-gray-700">
+            <div
+              v-else
+              class="w-16 text-sm font-medium text-gray-700"
+            >
               WHERE
             </div>
-            <Badge variant="secondary" class="text-xs">
+            <Badge
+              variant="secondary"
+              class="text-xs"
+            >
               Rule {{ index + 1 }}
             </Badge>
           </div>
@@ -62,7 +84,10 @@
             :disabled="segmentRules.length === 1"
             @click="removeRule(rule.id)"
           >
-            <Icon name="lucide:x" class="w-4 h-4" />
+            <Icon
+              name="lucide:x"
+              class="w-4 h-4"
+            />
           </Button>
         </div>
 
@@ -81,10 +106,18 @@
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Basic Info</SelectLabel>
-                  <SelectItem value="email"> Email </SelectItem>
-                  <SelectItem value="name"> Name </SelectItem>
-                  <SelectItem value="status"> Status </SelectItem>
-                  <SelectItem value="subscription_source"> Source </SelectItem>
+                  <SelectItem value="email">
+                    Email
+                  </SelectItem>
+                  <SelectItem value="name">
+                    Name
+                  </SelectItem>
+                  <SelectItem value="status">
+                    Status
+                  </SelectItem>
+                  <SelectItem value="subscription_source">
+                    Source
+                  </SelectItem>
                 </SelectGroup>
                 <SelectGroup>
                   <SelectLabel>Behavior</SelectLabel>
@@ -94,21 +127,33 @@
                   <SelectItem value="last_email_opened">
                     Last Email Opened
                   </SelectItem>
-                  <SelectItem value="total_opens"> Total Opens </SelectItem>
-                  <SelectItem value="total_clicks"> Total Clicks </SelectItem>
+                  <SelectItem value="total_opens">
+                    Total Opens
+                  </SelectItem>
+                  <SelectItem value="total_clicks">
+                    Total Clicks
+                  </SelectItem>
                 </SelectGroup>
                 <SelectGroup>
                   <SelectLabel>Dates</SelectLabel>
                   <SelectItem value="subscribed_at">
                     Subscribe Date
                   </SelectItem>
-                  <SelectItem value="last_activity"> Last Activity </SelectItem>
+                  <SelectItem value="last_activity">
+                    Last Activity
+                  </SelectItem>
                 </SelectGroup>
                 <SelectGroup>
                   <SelectLabel>Custom Fields</SelectLabel>
-                  <SelectItem value="company"> Company </SelectItem>
-                  <SelectItem value="job_title"> Job Title </SelectItem>
-                  <SelectItem value="location"> Location </SelectItem>
+                  <SelectItem value="company">
+                    Company
+                  </SelectItem>
+                  <SelectItem value="job_title">
+                    Job Title
+                  </SelectItem>
+                  <SelectItem value="location">
+                    Location
+                  </SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -198,7 +243,10 @@
                       toggleMultiValue(rule, option.value, $event)
                     "
                   />
-                  <Label :for="`${rule.id}-${option.value}`" class="text-sm">
+                  <Label
+                    :for="`${rule.id}-${option.value}`"
+                    class="text-sm"
+                  >
                     {{ option.label }}
                   </Label>
                 </div>
@@ -222,8 +270,15 @@
       </div>
 
       <!-- Add Rule Button -->
-      <Button variant="outline" class="w-full" @click="addRule">
-        <Icon name="lucide:plus" class="w-4 h-4 mr-2" />
+      <Button
+        variant="outline"
+        class="w-full"
+        @click="addRule"
+      >
+        <Icon
+          name="lucide:plus"
+          class="w-4 h-4 mr-2"
+        />
         Add Another Rule
       </Button>
     </div>
@@ -231,7 +286,9 @@
     <!-- Segment Preview -->
     <div class="bg-gray-50 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <h4 class="font-medium text-gray-900">Segment Preview</h4>
+        <h4 class="font-medium text-gray-900">
+          Segment Preview
+        </h4>
         <div class="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -253,32 +310,44 @@
             size="sm"
             @click="exportSegment"
           >
-            <Icon name="lucide:download" class="w-4 h-4 mr-1" />
+            <Icon
+              name="lucide:download"
+              class="w-4 h-4 mr-1"
+            />
             Export
           </Button>
         </div>
       </div>
 
-      <div v-if="segmentPreview" class="space-y-4">
+      <div
+        v-if="segmentPreview"
+        class="space-y-4"
+      >
         <!-- Stats -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="text-center">
             <div class="text-2xl font-bold text-blue-600">
               {{ segmentPreview.matchedCount.toLocaleString() }}
             </div>
-            <div class="text-sm text-gray-600">Matching Subscribers</div>
+            <div class="text-sm text-gray-600">
+              Matching Subscribers
+            </div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-green-600">
               {{ segmentPreview.percentage.toFixed(1) }}%
             </div>
-            <div class="text-sm text-gray-600">of Total Audience</div>
+            <div class="text-sm text-gray-600">
+              of Total Audience
+            </div>
           </div>
           <div class="text-center">
             <div class="text-2xl font-bold text-purple-600">
               {{ segmentPreview.avgEngagement.toFixed(1) }}
             </div>
-            <div class="text-sm text-gray-600">Avg. Engagement Score</div>
+            <div class="text-sm text-gray-600">
+              Avg. Engagement Score
+            </div>
           </div>
         </div>
 
@@ -296,7 +365,10 @@
               <div
                 class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center"
               >
-                <Icon name="lucide:user" class="w-3 h-3 text-blue-600" />
+                <Icon
+                  name="lucide:user"
+                  class="w-3 h-3 text-blue-600"
+                />
               </div>
               <div>
                 <div class="font-medium">
@@ -312,7 +384,9 @@
 
         <!-- Segment Health -->
         <div class="border-t pt-4">
-          <h5 class="text-sm font-medium text-gray-900 mb-2">Segment Health</h5>
+          <h5 class="text-sm font-medium text-gray-900 mb-2">
+            Segment Health
+          </h5>
           <div class="space-y-2">
             <div class="flex items-center justify-between text-sm">
               <span>Size</span>
@@ -332,7 +406,10 @@
         </div>
       </div>
 
-      <div v-else-if="!isCalculating" class="text-center text-gray-500 py-8">
+      <div
+        v-else-if="!isCalculating"
+        class="text-center text-gray-500 py-8"
+      >
         <Icon
           name="lucide:users"
           class="w-12 h-12 mx-auto mb-2 text-gray-400"
@@ -342,27 +419,40 @@
         </p>
       </div>
 
-      <div v-else class="text-center text-gray-500 py-8">
+      <div
+        v-else
+        class="text-center text-gray-500 py-8"
+      >
         <Icon
           name="lucide:loader-2"
           class="w-8 h-8 mx-auto mb-2 animate-spin"
         />
-        <p class="text-sm">Calculating segment...</p>
+        <p class="text-sm">
+          Calculating segment...
+        </p>
       </div>
     </div>
 
     <!-- Actions -->
     <div class="flex justify-end space-x-3">
-      <Button variant="outline" @click="$emit('cancel')"> Cancel </Button>
+      <Button
+        variant="outline"
+        @click="$emit('cancel')"
+      >
+        Cancel
+      </Button>
       <Button
         :disabled="
-          !segmentPreview ||
-          segmentPreview.matchedCount === 0 ||
-          !segmentName.trim()
+          !segmentPreview
+            || segmentPreview.matchedCount === 0
+            || !segmentName.trim()
         "
         @click="saveSegment"
       >
-        <Icon name="lucide:save" class="w-4 h-4 mr-2" />
+        <Icon
+          name="lucide:save"
+          class="w-4 h-4 mr-2"
+        />
         Save Segment
       </Button>
     </div>
@@ -370,56 +460,56 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { SegmentRule as NewsletterSegmentRule } from "../../types/newsletter";
+import { computed, ref } from 'vue'
+import type { SegmentRule as NewsletterSegmentRule } from '../../types/newsletter'
 
-type InputType =
-  | "number"
-  | "select"
-  | "text"
-  | "date"
-  | "multi-select"
-  | "none";
+type InputType
+  = | 'number'
+    | 'select'
+    | 'text'
+    | 'date'
+    | 'multi-select'
+    | 'none'
 // Extend the NewsletterSegmentRule with component-specific properties
 type SegmentRule = NewsletterSegmentRule & {
-  id: string;
-  connector: "AND" | "OR";
-  type?: InputType; // Added 'type' property
-};
+  id: string
+  connector: 'AND' | 'OR'
+  type?: InputType // Added 'type' property
+}
 
 interface SegmentPreview {
-  matchedCount: number;
-  totalCount: number;
-  percentage: number;
-  avgEngagement: number;
+  matchedCount: number
+  totalCount: number
+  percentage: number
+  avgEngagement: number
   sampleSubscribers: Array<{
-    id: number;
-    name: string;
-    email: string;
-    engagement_score: number;
-  }>;
+    id: number
+    name: string
+    email: string
+    engagement_score: number
+  }>
 }
 
 interface Emits {
   (
-    e: "save",
-    data: { name: string; rules: SegmentRule[]; preview: SegmentPreview }
-  ): void;
-  (e: "cancel"): void;
+    e: 'save',
+    data: { name: string, rules: SegmentRule[], preview: SegmentPreview }
+  ): void
+  (e: 'cancel'): void
 }
 
-const emit = defineEmits<Emits>();
+const emit = defineEmits<Emits>()
 
 // Helper to determine initial input type based on field
 function getInitialInputTypeForField(field: string): InputType {
-  if (["status", "subscription_source"].includes(field)) {
-    return "select";
+  if (['status', 'subscription_source'].includes(field)) {
+    return 'select'
   }
-  if (["engagement_score", "total_opens", "total_clicks"].includes(field)) {
-    return "number";
+  if (['engagement_score', 'total_opens', 'total_clicks'].includes(field)) {
+    return 'number'
   }
-  if (["subscribed_at", "last_email_opened", "last_activity"].includes(field)) {
-    return "date";
+  if (['subscribed_at', 'last_email_opened', 'last_activity'].includes(field)) {
+    return 'date'
   }
   // If a field might result in a multi-select, explicitly add it here
   // For example, if 'preferences' was a field and it should be multi-select:
@@ -427,260 +517,263 @@ function getInitialInputTypeForField(field: string): InputType {
   //   return "multi-select";
   // }
   // Default to text or none if operator changes it
-  return "text";
+  return 'text'
 }
 
 // State
-const segmentName = ref("");
+const segmentName = ref('')
 const segmentRules = ref<SegmentRule[]>([
   {
     id: generateRuleId(),
-    connector: "AND",
-    field: "",
-    operator: "equals", // This will be set on field change
-    value: "", // This will be set on field change
-    type: "text", // Initial type, will be updated by onFieldChange
+    connector: 'AND',
+    field: '',
+    operator: 'equals', // This will be set on field change
+    value: '', // This will be set on field change
+    type: 'text', // Initial type, will be updated by onFieldChange
   },
-]);
-const segmentPreview = ref<SegmentPreview | null>(null);
-const isCalculating = ref(false);
+])
+const segmentPreview = ref<SegmentPreview | null>(null)
+const isCalculating = ref(false)
 
 // Field operators mapping (rest of your fieldOperators remains the same)
 const fieldOperators = {
   // Text fields
   email: [
-    { value: "contains", label: "contains" },
-    { value: "not_contains", label: "does not contain" },
-    { value: "equals", label: "equals" },
-    { value: "not_equals", label: "does not equal" },
+    { value: 'contains', label: 'contains' },
+    { value: 'not_contains', label: 'does not contain' },
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'does not equal' },
   ],
   name: [
-    { value: "contains", label: "contains" },
-    { value: "not_contains", label: "does not contain" },
-    { value: "equals", label: "equals" },
-    { value: "is_empty", label: "is empty" },
+    { value: 'contains', label: 'contains' },
+    { value: 'not_contains', label: 'does not contain' },
+    { value: 'equals', label: 'equals' },
+    { value: 'is_empty', label: 'is empty' },
   ],
 
   // Status fields
   status: [
-    { value: "equals", label: "is" },
-    { value: "not_equals", label: "is not" },
+    { value: 'equals', label: 'is' },
+    { value: 'not_equals', label: 'is not' },
   ],
 
   // Numeric fields
   engagement_score: [
-    { value: "greater_than", label: "greater than" },
-    { value: "less_than", label: "less than" },
-    { value: "equals", label: "equals" },
-    { value: "between", label: "between" },
+    { value: 'greater_than', label: 'greater than' },
+    { value: 'less_than', label: 'less than' },
+    { value: 'equals', label: 'equals' },
+    { value: 'between', label: 'between' },
   ],
   total_opens: [
-    { value: "greater_than", label: "greater than" },
-    { value: "less_than", label: "less than" },
-    { value: "equals", label: "equals" },
+    { value: 'greater_than', label: 'greater than' },
+    { value: 'less_than', label: 'less than' },
+    { value: 'equals', label: 'equals' },
   ],
   total_clicks: [
     // Added this based on your getInputType logic
-    { value: "greater_than", label: "greater than" },
-    { value: "less_than", label: "less than" },
-    { value: "equals", label: "equals" },
+    { value: 'greater_than', label: 'greater than' },
+    { value: 'less_than', label: 'less than' },
+    { value: 'equals', label: 'equals' },
   ],
 
   // Date fields
   subscribed_at: [
-    { value: "after", label: "after" },
-    { value: "before", label: "before" },
-    { value: "between", label: "between" },
-    { value: "last_days", label: "in the last X days" },
+    { value: 'after', label: 'after' },
+    { value: 'before', label: 'before' },
+    { value: 'between', label: 'between' },
+    { value: 'last_days', label: 'in the last X days' },
   ],
   last_email_opened: [
-    { value: "after", label: "after" },
-    { value: "before", label: "before" },
-    { value: "is_null", label: "never opened" },
-    { value: "last_days", label: "in the last X days" },
+    { value: 'after', label: 'after' },
+    { value: 'before', label: 'before' },
+    { value: 'is_null', label: 'never opened' },
+    { value: 'last_days', label: 'in the last X days' },
   ],
   last_activity: [
     // Added this based on your getInputType logic
-    { value: "after", label: "after" },
-    { value: "before", label: "before" },
-    { value: "last_days", label: "in the last X days" },
+    { value: 'after', label: 'after' },
+    { value: 'before', label: 'before' },
+    { value: 'last_days', label: 'in the last X days' },
   ],
   // Custom fields - assuming they are text by default
   company: [
-    { value: "contains", label: "contains" },
-    { value: "equals", label: "equals" },
-    { value: "is_empty", label: "is empty" },
+    { value: 'contains', label: 'contains' },
+    { value: 'equals', label: 'equals' },
+    { value: 'is_empty', label: 'is empty' },
   ],
   job_title: [
-    { value: "contains", label: "contains" },
-    { value: "equals", label: "equals" },
-    { value: "is_empty", label: "is empty" },
+    { value: 'contains', label: 'contains' },
+    { value: 'equals', label: 'equals' },
+    { value: 'is_empty', label: 'is empty' },
   ],
   location: [
-    { value: "contains", label: "contains" },
-    { value: "equals", label: "equals" },
-    { value: "is_empty", label: "is empty" },
+    { value: 'contains', label: 'contains' },
+    { value: 'equals', label: 'equals' },
+    { value: 'is_empty', label: 'is empty' },
   ],
   subscription_source: [
-    { value: "equals", label: "is" },
-    { value: "not_equals", label: "is not" },
+    { value: 'equals', label: 'is' },
+    { value: 'not_equals', label: 'is not' },
   ],
-};
+}
 
 // Field options (rest of your fieldOptions remains the same)
 const fieldOptions = {
   status: [
-    { value: "active", label: "Active" },
-    { value: "unsubscribed", label: "Unsubscribed" },
-    { value: "bounced", label: "Bounced" },
-    { value: "pending", label: "Pending" },
+    { value: 'active', label: 'Active' },
+    { value: 'unsubscribed', label: 'Unsubscribed' },
+    { value: 'bounced', label: 'Bounced' },
+    { value: 'pending', label: 'Pending' },
   ],
   subscription_source: [
-    { value: "website", label: "Website" },
-    { value: "import", label: "Import" },
-    { value: "manual", label: "Manual" },
-    { value: "event", label: "Event" },
-    { value: "api", label: "API" },
+    { value: 'website', label: 'Website' },
+    { value: 'import', label: 'Import' },
+    { value: 'manual', label: 'Manual' },
+    { value: 'event', label: 'Event' },
+    { value: 'api', label: 'API' },
   ],
-};
+}
 
 // Computed
 const canCalculate = computed(() => {
   return segmentRules.value.every(
-    (rule: { field: any; operator: string; value: any }) =>
-      rule.field &&
-      rule.operator &&
-      (rule.value || ["is_null", "is_empty"].includes(rule.operator))
-  );
-});
+    (rule: { field: any, operator: string, value: any }) =>
+      rule.field
+      && rule.operator
+      && (rule.value || ['is_null', 'is_empty'].includes(rule.operator)),
+  )
+})
 
 // Methods
 function generateRuleId() {
-  return Math.random().toString(36).substr(2, 9);
+  return Math.random().toString(36).substr(2, 9)
 }
 
 function addRule() {
   segmentRules.value.push({
     id: generateRuleId(),
-    connector: "AND",
-    field: "",
-    operator: "equals", // Default operator
-    value: "", // Default value
-    type: "text", // Default type
-  });
+    connector: 'AND',
+    field: '',
+    operator: 'equals', // Default operator
+    value: '', // Default value
+    type: 'text', // Default type
+  })
 }
 
 function removeRule(ruleId: string) {
   segmentRules.value = segmentRules.value.filter(
-    (rule: { id: string }) => rule.id !== ruleId
-  );
+    (rule: { id: string }) => rule.id !== ruleId,
+  )
 }
 
 function onFieldChange(rule: SegmentRule) {
-  rule.operator = "equals"; // Assign a default valid operator
-  rule.value = "";
+  rule.operator = 'equals' // Assign a default valid operator
+  rule.value = ''
   // Update the type based on the selected field
-  rule.type = getInitialInputTypeForField(rule.field);
+  rule.type = getInitialInputTypeForField(rule.field)
 
   // If the new field implies a multi-select, initialize value as an array
-  if (rule.type === "multi-select") {
-    rule.value = [];
+  if (rule.type === 'multi-select') {
+    rule.value = []
   }
 }
 
 function onOperatorChange(rule: SegmentRule) {
   // Reset value when operator changes, as value type might change (e.g., to "none")
-  rule.value = "";
+  rule.value = ''
 
   // Adjust input type based on the selected operator if necessary
-  if (["is_null", "is_empty"].includes(rule.operator)) {
-    rule.type = "none";
-  } else {
+  if (['is_null', 'is_empty'].includes(rule.operator)) {
+    rule.type = 'none'
+  }
+  else {
     // Re-evaluate the type based on the field if the operator doesn't override it
-    rule.type = getInitialInputTypeForField(rule.field) || "text";
+    rule.type = getInitialInputTypeForField(rule.field) || 'text'
   }
 }
 
 function getOperatorsForField(field: string) {
-  return fieldOperators[field as keyof typeof fieldOperators] || [];
+  return fieldOperators[field as keyof typeof fieldOperators] || []
 }
 
 function getOptionsForField(field: string) {
-  return fieldOptions[field as keyof typeof fieldOptions] || [];
+  return fieldOptions[field as keyof typeof fieldOptions] || []
 }
 
 function getInputType(rule: SegmentRule) {
   // If operator implies no value, set type to 'none'
-  if (["is_null", "is_empty"].includes(rule.operator)) {
-    return "none";
+  if (['is_null', 'is_empty'].includes(rule.operator)) {
+    return 'none'
   }
 
   // If the rule already has a 'type' property set (e.g., from onFieldChange), use it.
   // This allows for explicit type setting if needed, like for 'multi-select'.
   if (rule.type) {
-    return rule.type;
+    return rule.type
   }
 
   // Fallback to determine type based on field if 'rule.type' is not set
-  return getInitialInputTypeForField(rule.field);
+  return getInitialInputTypeForField(rule.field)
 }
 
 function getPlaceholder(rule: SegmentRule) {
   const placeholders: Record<string, string> = {
-    email: "user@example.com",
-    name: "John Doe",
-    company: "Acme Corp",
-    engagement_score: "75",
-    total_opens: "10",
-    last_days: "30",
-  };
+    email: 'user@example.com',
+    name: 'John Doe',
+    company: 'Acme Corp',
+    engagement_score: '75',
+    total_opens: '10',
+    last_days: '30',
+  }
 
-  return placeholders[rule.field] || "Enter value...";
+  return placeholders[rule.field] || 'Enter value...'
 }
 
 function isValueSelected(rule: SegmentRule, value: string) {
   if (Array.isArray(rule.value)) {
-    return rule.value.includes(value);
+    return rule.value.includes(value)
   }
-  return rule.value === value;
+  return rule.value === value
 }
 
 function toggleMultiValue(rule: SegmentRule, value: string, checked: boolean) {
   if (!Array.isArray(rule.value)) {
-    rule.value = [];
+    rule.value = []
   }
 
   if (checked) {
-    rule.value.push(value);
-  } else {
-    rule.value = rule.value.filter((v: string) => v !== value);
+    rule.value.push(value)
+  }
+  else {
+    rule.value = rule.value.filter((v: string) => v !== value)
   }
 }
 
 function getRuleDescription(rule: SegmentRule) {
-  if (!rule.field || !rule.operator) return "Configure rule to see description";
+  if (!rule.field || !rule.operator) return 'Configure rule to see description'
 
-  const fieldName = rule.field.replace(/_/g, " ");
-  const operator =
-    getOperatorsForField(rule.field).find((op) => op.value === rule.operator)
-      ?.label || rule.operator;
+  const fieldName = rule.field.replace(/_/g, ' ')
+  const operator
+    = getOperatorsForField(rule.field).find(op => op.value === rule.operator)
+      ?.label || rule.operator
 
-  let valueText = rule.value;
+  let valueText = rule.value
   if (Array.isArray(rule.value)) {
-    valueText = rule.value.join(", ");
-  } else if (["is_null", "is_empty"].includes(rule.operator)) {
-    valueText = "";
+    valueText = rule.value.join(', ')
+  }
+  else if (['is_null', 'is_empty'].includes(rule.operator)) {
+    valueText = ''
   }
 
-  return `Subscribers whose ${fieldName} ${operator} ${valueText}`.trim();
+  return `Subscribers whose ${fieldName} ${operator} ${valueText}`.trim()
 }
 
 async function calculateSegment() {
-  isCalculating.value = true;
+  isCalculating.value = true
 
   try {
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1500))
 
     // Mock calculation result
     const mockResult: SegmentPreview = {
@@ -691,110 +784,112 @@ async function calculateSegment() {
       sampleSubscribers: [
         {
           id: 1,
-          name: "John Doe",
-          email: "john@example.com",
+          name: 'John Doe',
+          email: 'john@example.com',
           engagement_score: 85,
         },
         {
           id: 2,
-          name: "Jane Smith",
-          email: "jane@example.com",
+          name: 'Jane Smith',
+          email: 'jane@example.com',
           engagement_score: 92,
         },
         {
           id: 3,
-          name: "Bob Johnson",
-          email: "bob@example.com",
+          name: 'Bob Johnson',
+          email: 'bob@example.com',
           engagement_score: 78,
         },
         {
           id: 4,
-          name: "Alice Wilson",
-          email: "alice@example.com",
+          name: 'Alice Wilson',
+          email: 'alice@example.com',
           engagement_score: 88,
         },
         {
           id: 5,
-          name: "Charlie Brown",
-          email: "charlie@example.com",
+          name: 'Charlie Brown',
+          email: 'charlie@example.com',
           engagement_score: 76,
         },
         {
           id: 6,
-          name: "Diana Ross",
-          email: "diana@example.com",
+          name: 'Diana Ross',
+          email: 'diana@example.com',
           engagement_score: 95,
         },
       ],
-    };
+    }
 
-    mockResult.percentage =
-      (mockResult.matchedCount / mockResult.totalCount) * 100;
-    segmentPreview.value = mockResult;
-  } catch (error) {
-    console.error("Failed to calculate segment:", error);
-  } finally {
-    isCalculating.value = false;
+    mockResult.percentage
+      = (mockResult.matchedCount / mockResult.totalCount) * 100
+    segmentPreview.value = mockResult
+  }
+  catch (error) {
+    console.error('Failed to calculate segment:', error)
+  }
+  finally {
+    isCalculating.value = false
   }
 }
 
 function getSizeVariant(count: number) {
-  if (count < 100) return "destructive";
-  if (count < 500) return "secondary";
-  return "default";
+  if (count < 100) return 'destructive'
+  if (count < 500) return 'secondary'
+  return 'default'
 }
 
 function getSizeLabel(count: number) {
-  if (count < 100) return "Small";
-  if (count < 500) return "Medium";
-  if (count < 1000) return "Large";
-  return "Very Large";
+  if (count < 100) return 'Small'
+  if (count < 500) return 'Medium'
+  if (count < 1000) return 'Large'
+  return 'Very Large'
 }
 
 function getEngagementVariant(score: number) {
-  if (score < 50) return "destructive";
-  if (score < 75) return "secondary";
-  return "default";
+  if (score < 50) return 'destructive'
+  if (score < 75) return 'secondary'
+  return 'default'
 }
 
 function getEngagementLabel(score: number) {
-  if (score < 30) return "Low";
-  if (score < 50) return "Below Average";
-  if (score < 75) return "Average";
-  if (score < 90) return "Good";
-  return "Excellent";
+  if (score < 30) return 'Low'
+  if (score < 50) return 'Below Average'
+  if (score < 75) return 'Average'
+  if (score < 90) return 'Good'
+  return 'Excellent'
 }
 
 function exportSegment() {
-  if (!segmentPreview.value) return;
+  if (!segmentPreview.value) return
 
   const data = {
     name: segmentName.value,
     rules: segmentRules.value,
     preview: segmentPreview.value,
     exported_at: new Date().toISOString(),
-  };
+  }
 
   const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
+    type: 'application/json',
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
   a.download = `segment-${segmentName.value
-    .replace(/\s+/g, "-")
-    .toLowerCase()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+    .replace(/\s+/g, '-')
+    .toLowerCase()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function saveSegment() {
-  if (!segmentPreview.value || !segmentName.value.trim()) return;
+  if (!segmentPreview.value || !segmentName.value.trim()) return
 
-  emit("save", {
+  emit('save', {
     name: segmentName.value,
     rules: segmentRules.value,
     preview: segmentPreview.value,
-  });
+  })
 }
 </script>

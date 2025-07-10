@@ -1,5 +1,8 @@
 <template>
-  <Dialog :open="dialogOpen" @update:open="$emit('update:open', $event)">
+  <Dialog
+    :open="dialogOpen"
+    @update:open="$emit('update:open', $event)"
+  >
     <DialogContent class="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Schedule Newsletter</DialogTitle>
@@ -12,7 +15,10 @@
         <!-- Newsletter Info -->
         <div class="bg-gray-50 rounded-lg p-4">
           <div class="flex items-center space-x-3">
-            <Icon name="lucide:mail" class="w-5 h-5 text-gray-600" />
+            <Icon
+              name="lucide:mail"
+              class="w-5 h-5 text-gray-600"
+            />
             <div>
               <h4 class="font-medium text-gray-900">
                 {{ newsletter.title }}
@@ -28,14 +34,29 @@
         <div class="space-y-4">
           <div>
             <Label class="text-sm font-medium">Send Time</Label>
-            <RadioGroup v-model="scheduleType" class="mt-2">
+            <RadioGroup
+              v-model="scheduleType"
+              class="mt-2"
+            >
               <div class="flex items-center space-x-2">
-                <RadioGroupItem id="now" value="now" />
-                <Label for="now" class="text-sm">Send immediately</Label>
+                <RadioGroupItem
+                  id="now"
+                  value="now"
+                />
+                <Label
+                  for="now"
+                  class="text-sm"
+                >Send immediately</Label>
               </div>
               <div class="flex items-center space-x-2">
-                <RadioGroupItem id="schedule" value="schedule" />
-                <Label for="schedule" class="text-sm">Schedule for later</Label>
+                <RadioGroupItem
+                  id="schedule"
+                  value="schedule"
+                />
+                <Label
+                  for="schedule"
+                  class="text-sm"
+                >Schedule for later</Label>
               </div>
             </RadioGroup>
           </div>
@@ -46,7 +67,10 @@
             class="grid grid-cols-2 gap-4"
           >
             <div>
-              <Label for="send-date" class="text-sm">Date</Label>
+              <Label
+                for="send-date"
+                class="text-sm"
+              >Date</Label>
               <Input
                 id="send-date"
                 v-model="sendDate"
@@ -56,7 +80,10 @@
               />
             </div>
             <div>
-              <Label for="send-time" class="text-sm">Time</Label>
+              <Label
+                for="send-time"
+                class="text-sm"
+              >Time</Label>
               <Input
                 id="send-time"
                 v-model="sendTime"
@@ -68,7 +95,10 @@
 
           <!-- Timezone -->
           <div v-if="scheduleType === 'schedule'">
-            <Label for="timezone" class="text-sm">Timezone</Label>
+            <Label
+              for="timezone"
+              class="text-sm"
+            >Timezone</Label>
             <Select v-model="timezone">
               <SelectTrigger class="mt-1">
                 <SelectValue placeholder="Select timezone" />
@@ -87,7 +117,10 @@
 
           <!-- Mailing List -->
           <div>
-            <Label for="mailing-list" class="text-sm">Mailing List</Label>
+            <Label
+              for="mailing-list"
+              class="text-sm"
+            >Mailing List</Label>
             <Select v-model="selectedMailingList">
               <SelectTrigger class="mt-1">
                 <SelectValue placeholder="Select mailing list" />
@@ -106,15 +139,25 @@
           </div>
 
           <!-- A/B Testing -->
-          <div v-if="newsletter.is_ab_test" class="space-y-3">
+          <div
+            v-if="newsletter.is_ab_test"
+            class="space-y-3"
+          >
             <div class="flex items-center space-x-2">
-              <Checkbox id="enable-ab-test" v-model:checked="enableABTest" />
-              <Label for="enable-ab-test" class="text-sm"
-                >Enable A/B Testing</Label
-              >
+              <Checkbox
+                id="enable-ab-test"
+                v-model:checked="enableABTest"
+              />
+              <Label
+                for="enable-ab-test"
+                class="text-sm"
+              >Enable A/B Testing</Label>
             </div>
 
-            <div v-if="enableABTest" class="space-y-3 pl-6">
+            <div
+              v-if="enableABTest"
+              class="space-y-3 pl-6"
+            >
               <div>
                 <Label class="text-sm">Test Percentage</Label>
                 <Slider
@@ -144,17 +187,26 @@
           <!-- Preview -->
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-start space-x-3">
-              <Icon name="lucide:info" class="w-5 h-5 text-blue-600 mt-0.5" />
+              <Icon
+                name="lucide:info"
+                class="w-5 h-5 text-blue-600 mt-0.5"
+              />
               <div class="text-sm">
-                <p class="font-medium text-blue-900">Send Summary</p>
+                <p class="font-medium text-blue-900">
+                  Send Summary
+                </p>
                 <ul class="text-blue-800 mt-2 space-y-1">
                   <li>
                     • Recipients:
                     {{ selectedMailingListInfo?.subscriber_count || 0 }}
                     subscribers
                   </li>
-                  <li v-if="scheduleType === 'now'">• Send immediately</li>
-                  <li v-else>• Scheduled for: {{ formattedScheduleTime }}</li>
+                  <li v-if="scheduleType === 'now'">
+                    • Send immediately
+                  </li>
+                  <li v-else>
+                    • Scheduled for: {{ formattedScheduleTime }}
+                  </li>
                   <li v-if="enableABTest">
                     • A/B test with {{ abTestPercentage[0] }}% split
                   </li>
@@ -166,9 +218,20 @@
       </div>
 
       <DialogFooter>
-        <Button variant="outline" @click="dialogOpen = false"> Cancel </Button>
-        <Button :disabled="!canSchedule" @click="scheduleNewsletter">
-          <Icon name="lucide:clock" class="w-4 h-4 mr-2" />
+        <Button
+          variant="outline"
+          @click="dialogOpen = false"
+        >
+          Cancel
+        </Button>
+        <Button
+          :disabled="!canSchedule"
+          @click="scheduleNewsletter"
+        >
+          <Icon
+            name="lucide:clock"
+            class="w-4 h-4 mr-2"
+          />
           {{ scheduleType === "now" ? "Send Now" : "Schedule" }}
         </Button>
       </DialogFooter>
@@ -177,94 +240,94 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
-import type { Newsletter, MailingList } from "../../types/newsletter";
+import { computed, ref, onMounted } from 'vue'
+import type { Newsletter, MailingList } from '../../types/newsletter'
 
 interface Props {
-  newsletter: Newsletter;
-  mailingLists: MailingList[];
-  open: boolean;
+  newsletter: Newsletter
+  mailingLists: MailingList[]
+  open: boolean
 }
 
-const dialogOpen = ref(false);
+const dialogOpen = ref(false)
 
 interface Emits {
-  (e: "update:open", value: boolean): void;
-  (e: "schedule", data: ScheduleData): void;
+  (e: 'update:open', value: boolean): void
+  (e: 'schedule', data: ScheduleData): void
 }
 
 interface ScheduleData {
-  type: "immediate" | "scheduled";
-  scheduledDate?: string;
-  mailingListId: number;
+  type: 'immediate' | 'scheduled'
+  scheduledDate?: string
+  mailingListId: number
   abTest?: {
-    enabled: boolean;
-    percentage: number;
-    alternativeSubject?: string;
-  };
+    enabled: boolean
+    percentage: number
+    alternativeSubject?: string
+  }
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
 // State
-const scheduleType = ref<"now" | "schedule">("now");
-const sendDate = ref("");
-const sendTime = ref("09:00");
-const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
-const selectedMailingList = ref("");
-const enableABTest = ref(false);
-const abTestPercentage = ref([10]);
-const alternativeSubject = ref("");
+const scheduleType = ref<'now' | 'schedule'>('now')
+const sendDate = ref('')
+const sendTime = ref('09:00')
+const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone)
+const selectedMailingList = ref('')
+const enableABTest = ref(false)
+const abTestPercentage = ref([10])
+const alternativeSubject = ref('')
 
 // Computed
 const minDate = computed(() => {
-  return new Date().toISOString().split("T")[0];
-});
+  return new Date().toISOString().split('T')[0]
+})
 
 const getABTestSubject = (newsletter: Newsletter): string => {
-  return (newsletter as any).ab_test_subject_b || "";
-};
+  return (newsletter as any).ab_test_subject_b || ''
+}
 
 const hasABTest = (newsletter: Newsletter): boolean => {
-  return !!(newsletter as any).is_ab_test;
-};
+  return !!(newsletter as any).is_ab_test
+}
 
 const selectedMailingListInfo = computed(() => {
   return props.mailingLists.find(
-    (list) => list.id?.toString() === selectedMailingList.value
-  );
-});
+    list => list.id?.toString() === selectedMailingList.value,
+  )
+})
 
 const formattedScheduleTime = computed(() => {
-  if (!sendDate.value || !sendTime.value) return "";
+  if (!sendDate.value || !sendTime.value) return ''
 
-  const dateTime = new Date(`${sendDate.value}T${sendTime.value}`);
-  return dateTime.toLocaleString();
-});
+  const dateTime = new Date(`${sendDate.value}T${sendTime.value}`)
+  return dateTime.toLocaleString()
+})
 
 const canSchedule = computed(() => {
-  if (!selectedMailingList.value) return false;
-  if (scheduleType.value === "schedule" && (!sendDate.value || !sendTime.value))
-    return false;
-  return true;
-});
+  if (!selectedMailingList.value) return false
+  if (scheduleType.value === 'schedule' && (!sendDate.value || !sendTime.value))
+    return false
+  return true
+})
 
 const timezones = [
-  { value: "America/New_York", label: "Eastern Time (ET)" },
-  { value: "America/Chicago", label: "Central Time (CT)" },
-  { value: "America/Denver", label: "Mountain Time (MT)" },
-  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
-  { value: "Europe/London", label: "Greenwich Mean Time (GMT)" },
-  { value: "Europe/Paris", label: "Central European Time (CET)" },
-  { value: "Asia/Tokyo", label: "Japan Standard Time (JST)" },
-  { value: "Australia/Sydney", label: "Australian Eastern Time (AET)" },
-];
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'Europe/London', label: 'Greenwich Mean Time (GMT)' },
+  { value: 'Europe/Paris', label: 'Central European Time (CET)' },
+  { value: 'Asia/Tokyo', label: 'Japan Standard Time (JST)' },
+  { value: 'Australia/Sydney', label: 'Australian Eastern Time (AET)' },
+]
 
 // Methods
 const scheduleNewsletter = () => {
   const scheduleData: ScheduleData = {
-    type: scheduleType.value === "now" ? "immediate" : "scheduled",
+    type: scheduleType.value === 'now' ? 'immediate' : 'scheduled',
     mailingListId: Number.parseInt(selectedMailingList.value),
     abTest: enableABTest.value
       ? {
@@ -273,25 +336,25 @@ const scheduleNewsletter = () => {
           alternativeSubject: alternativeSubject.value,
         }
       : undefined,
-  };
-
-  if (scheduleType.value === "schedule") {
-    const scheduledDateTime = new Date(`${sendDate.value}T${sendTime.value}`);
-    scheduleData.scheduledDate = scheduledDateTime.toISOString();
   }
 
-  emit("schedule", scheduleData);
-  emit("update:open", false);
-};
+  if (scheduleType.value === 'schedule') {
+    const scheduledDateTime = new Date(`${sendDate.value}T${sendTime.value}`)
+    scheduleData.scheduledDate = scheduledDateTime.toISOString()
+  }
+
+  emit('schedule', scheduleData)
+  emit('update:open', false)
+}
 
 // Initialize with defaults
 onMounted(() => {
   if (props.mailingLists.length > 0) {
-    selectedMailingList.value = props.mailingLists[0].id?.toString() || "";
+    selectedMailingList.value = props.mailingLists[0].id?.toString() || ''
   }
 
   if (props.newsletter.ab_test_subject_b) {
-    alternativeSubject.value = props.newsletter.ab_test_subject_b;
+    alternativeSubject.value = props.newsletter.ab_test_subject_b
   }
-});
+})
 </script>

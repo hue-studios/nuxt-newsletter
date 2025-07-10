@@ -1,15 +1,15 @@
-import { defineEventHandler, createError, readBody, setHeader } from "h3";
-import { useRuntimeConfig } from "#imports";
-import { readItems, readItem } from "@directus/sdk";
-import { z } from "zod";
-import { getDirectusClient } from "../../../middleware/directus-auth";
+import { defineEventHandler, createError, readBody, setHeader } from 'h3'
+import { useRuntimeConfig } from '#imports'
+import { readItems, readItem } from '@directus/sdk'
+import { z } from 'zod'
+import { getDirectusClient } from '../../../middleware/directus-auth'
 
 const ExportSchema = z.object({
   newsletter_ids: z
     .array(z.number().positive())
-    .min(1, "At least one newsletter ID required")
+    .min(1, 'At least one newsletter ID required')
     .max(100),
-  format: z.enum(["csv", "json", "xlsx"]).default("csv"),
+  format: z.enum(['csv', 'json', 'xlsx']).default('csv'),
   date_range: z
     .object({
       start: z.string().datetime().optional(),
@@ -33,16 +33,16 @@ const ExportSchema = z.object({
       min_clicks: z.number().min(0).optional(),
     })
     .optional(),
-});
+})
 
 export default defineEventHandler(async (event) => {
   try {
-    const config = useRuntimeConfig();
-    const body = await readBody(event);
+    const config = useRuntimeConfig()
+    const body = await readBody(event)
 
     // Validate input
-    const { newsletter_ids, format, date_range, include, filters } =
-      ExportSchema.parse(body);
+    const { newsletter_ids, format, date_range, include, filters }
+      = ExportSchema.parse(body)
 
     // Check permissions (if user context exists)
     if (event.context.user) {
@@ -50,32 +50,32 @@ export default defineEventHandler(async (event) => {
       // e.g., check if user can access these newsletters
     }
 
-    const directus = getDirectusClient(event);
+    const directus = getDirectusClient(event)
 
     // Build time filter
-    const timeFilter: any = {};
+    const timeFilter: any = {}
     if (date_range?.start) {
-      timeFilter.date_created = { _gte: date_range.start };
+      timeFilter.date_created = { _gte: date_range.start }
     }
     if (date_range?.end) {
       timeFilter.date_created = {
         ...timeFilter.date_created,
         _lte: date_range.end,
-      };
+      }
     }
 
     // Prepare export data
     const exportData: any = {
       metadata: {
         generated_at: new Date().toISOString(),
-        generated_by: event.context.user?.email || "system",
+        generated_by: event.context.user?.email || 'system',
         newsletter_count: newsletter_ids.length,
         date_range,
         format,
         filters,
       },
       newsletters: [],
-    };
+    }
 
     // Fetch newsletter data
     for (const newsletterId of newsletter_ids) {
@@ -85,82 +85,84 @@ export default defineEventHandler(async (event) => {
           newsletterId,
           timeFilter,
           include,
-          filters
-        );
-        exportData.newsletters.push(newsletterData);
-      } catch (error: any) {
+          filters,
+        )
+        exportData.newsletters.push(newsletterData)
+      }
+      catch (error: any) {
         console.error(
           `Error fetching data for newsletter ${newsletterId}:`,
-          error
-        );
+          error,
+        )
         exportData.newsletters.push({
           id: newsletterId,
           error: error.message,
-        });
+        })
       }
     }
 
     // Generate export based on format
-    let responseData: any;
-    let contentType: string;
-    let filename: string;
+    let responseData: any
+    let contentType: string
+    let filename: string
 
     switch (format) {
-      case "json":
-        responseData = JSON.stringify(exportData, null, 2);
-        contentType = "application/json";
-        filename = `newsletter-analytics-${Date.now()}.json`;
-        break;
+      case 'json':
+        responseData = JSON.stringify(exportData, null, 2)
+        contentType = 'application/json'
+        filename = `newsletter-analytics-${Date.now()}.json`
+        break
 
-      case "csv":
-        responseData = generateCSV(exportData);
-        contentType = "text/csv";
-        filename = `newsletter-analytics-${Date.now()}.csv`;
-        break;
+      case 'csv':
+        responseData = generateCSV(exportData)
+        contentType = 'text/csv'
+        filename = `newsletter-analytics-${Date.now()}.csv`
+        break
 
-      case "xlsx":
-        responseData = await generateExcel(exportData);
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        filename = `newsletter-analytics-${Date.now()}.xlsx`;
-        break;
+      case 'xlsx':
+        responseData = await generateExcel(exportData)
+        contentType
+          = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        filename = `newsletter-analytics-${Date.now()}.xlsx`
+        break
 
       default:
-        throw new Error("Unsupported export format");
+        throw new Error('Unsupported export format')
     }
 
     // Set response headers
-    setHeader(event, "Content-Type", contentType);
+    setHeader(event, 'Content-Type', contentType)
     setHeader(
       event,
-      "Content-Disposition",
-      `attachment; filename="${filename}"`
-    );
-    setHeader(event, "Cache-Control", "no-cache");
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    )
+    setHeader(event, 'Cache-Control', 'no-cache')
 
-    return responseData;
-  } catch (error: any) {
-    console.error("Analytics export error:", error);
+    return responseData
+  }
+  catch (error: any) {
+    console.error('Analytics export error:', error)
 
     if (error instanceof z.ZodError) {
       throw createError({
         statusCode: 422,
-        statusMessage: "Validation failed",
+        statusMessage: 'Validation failed',
         data: { errors: error.errors },
-      });
+      })
     }
 
     if (error.statusCode) {
-      throw error;
+      throw error
     }
 
     throw createError({
       statusCode: 500,
-      statusMessage: "Export failed",
+      statusMessage: 'Export failed',
       data: { error: error.message },
-    });
+    })
   }
-});
+})
 
 // Fetch comprehensive analytics for a newsletter
 async function fetchNewsletterAnalytics(
@@ -168,43 +170,43 @@ async function fetchNewsletterAnalytics(
   newsletterId: number,
   timeFilter: any,
   include: any,
-  filters: any
+  filters: any,
 ) {
   // Fetch newsletter basic info
   const newsletter = await directus.request(
-    (readItem as any)("newsletters", newsletterId, {
+    (readItem as any)('newsletters', newsletterId, {
       fields: [
-        "id",
-        "title",
-        "subject_line",
-        "status",
-        "date_created",
-        "last_sent_at",
-        "total_sent",
-        "total_opens",
-        "total_clicks",
-        "total_bounces",
-        "total_unsubscribes",
+        'id',
+        'title',
+        'subject_line',
+        'status',
+        'date_created',
+        'last_sent_at',
+        'total_sent',
+        'total_opens',
+        'total_clicks',
+        'total_bounces',
+        'total_unsubscribes',
       ],
-    })
-  );
+    }),
+  )
 
   if (!newsletter) {
-    throw new Error(`Newsletter ${newsletterId} not found`);
+    throw new Error(`Newsletter ${newsletterId} not found`)
   }
 
   const result: any = {
     newsletter: newsletter,
-  };
+  }
 
   // Build event filter
   const eventFilter: any = {
     newsletter_id: { _eq: newsletterId },
     ...timeFilter,
-  };
+  }
 
   if (filters?.event_types?.length) {
-    eventFilter.event_type = { _in: filters.event_types };
+    eventFilter.event_type = { _in: filters.event_types }
   }
 
   // Fetch summary statistics
@@ -212,13 +214,13 @@ async function fetchNewsletterAnalytics(
     result.summary = await fetchSummaryStats(
       directus,
       newsletterId,
-      eventFilter
-    );
+      eventFilter,
+    )
   }
 
   // Fetch detailed events
   if (include.events) {
-    result.events = await fetchDetailedEvents(directus, eventFilter);
+    result.events = await fetchDetailedEvents(directus, eventFilter)
   }
 
   // Fetch subscriber data
@@ -226,43 +228,43 @@ async function fetchNewsletterAnalytics(
     result.subscribers = await fetchSubscriberStats(
       directus,
       newsletterId,
-      timeFilter
-    );
+      timeFilter,
+    )
   }
 
   // Fetch top links
   if (include.links) {
-    result.links = await fetchTopLinks(directus, eventFilter);
+    result.links = await fetchTopLinks(directus, eventFilter)
   }
 
   // Fetch device statistics
   if (include.devices) {
-    result.devices = await fetchDeviceStats(directus, eventFilter);
+    result.devices = await fetchDeviceStats(directus, eventFilter)
   }
 
   // Fetch location statistics
   if (include.locations) {
-    result.locations = await fetchLocationStats(directus, eventFilter);
+    result.locations = await fetchLocationStats(directus, eventFilter)
   }
 
-  return result;
+  return result
 }
 
 // Fetch summary statistics
 async function fetchSummaryStats(
   directus: any,
   newsletterId: number,
-  eventFilter: any
+  eventFilter: any,
 ) {
   const eventStats = await directus.request(
-    (readItems as any)("newsletter_events", {
+    (readItems as any)('newsletter_events', {
       aggregate: {
-        count: "*",
+        count: '*',
       },
-      groupBy: ["event_type"],
+      groupBy: ['event_type'],
       filter: eventFilter,
-    })
-  );
+    }),
+  )
 
   const stats: any = {
     total_events: 0,
@@ -272,44 +274,44 @@ async function fetchSummaryStats(
     unsubscribes: 0,
     complaints: 0,
     delivered: 0,
-  };
+  }
 
   eventStats.forEach((stat: any) => {
-    const count = stat.count || 0;
-    stats.total_events += count;
-    stats[stat.event_type] = count;
-  });
+    const count = stat.count || 0
+    stats.total_events += count
+    stats[stat.event_type] = count
+  })
 
-  return stats;
+  return stats
 }
 
 // Fetch detailed events
 async function fetchDetailedEvents(directus: any, eventFilter: any) {
   return await directus.request(
-    (readItems as any)("newsletter_events", {
+    (readItems as any)('newsletter_events', {
       fields: [
-        "id",
-        "event_type",
-        "email",
-        "timestamp",
-        "url",
-        "user_agent",
-        "ip_address",
-        "ip_location",
-        "date_created",
+        'id',
+        'event_type',
+        'email',
+        'timestamp',
+        'url',
+        'user_agent',
+        'ip_address',
+        'ip_location',
+        'date_created',
       ],
       filter: eventFilter,
-      sort: ["-date_created"],
+      sort: ['-date_created'],
       limit: 10000, // Limit for performance
-    })
-  );
+    }),
+  )
 }
 
 // Fetch subscriber statistics
 async function fetchSubscriberStats(
   directus: any,
   newsletterId: number,
-  timeFilter: any
+  timeFilter: any,
 ) {
   // This would depend on your specific subscriber tracking implementation
   return {
@@ -317,109 +319,109 @@ async function fetchSubscriberStats(
     new_subscribers: 0,
     unsubscribed: 0,
     // Add more subscriber metrics as needed
-  };
+  }
 }
 
 // Fetch top clicked links
 async function fetchTopLinks(directus: any, eventFilter: any) {
   return await directus.request(
-    (readItems as any)("newsletter_events", {
-      fields: ["url", "count(*)"],
+    (readItems as any)('newsletter_events', {
+      fields: ['url', 'count(*)'],
       filter: {
         ...eventFilter,
-        event_type: { _eq: "click" },
+        event_type: { _eq: 'click' },
         url: { _nnull: true },
       },
-      groupBy: ["url"],
-      sort: ["-count"],
+      groupBy: ['url'],
+      sort: ['-count'],
       limit: 50,
-    })
-  );
+    }),
+  )
 }
 
 // Fetch device statistics
 async function fetchDeviceStats(directus: any, eventFilter: any) {
   return await directus.request(
-    (readItems as any)("newsletter_events", {
-      fields: ["user_agent", "count(*)"],
+    (readItems as any)('newsletter_events', {
+      fields: ['user_agent', 'count(*)'],
       filter: {
         ...eventFilter,
-        event_type: { _eq: "open" },
+        event_type: { _eq: 'open' },
         user_agent: { _nnull: true },
       },
-      groupBy: ["user_agent"],
-      sort: ["-count"],
+      groupBy: ['user_agent'],
+      sort: ['-count'],
       limit: 20,
-    })
-  );
+    }),
+  )
 }
 
 // Fetch location statistics
 async function fetchLocationStats(directus: any, eventFilter: any) {
   return await directus.request(
-    (readItems as any)("newsletter_events", {
-      fields: ["ip_location", "count(*)"],
+    (readItems as any)('newsletter_events', {
+      fields: ['ip_location', 'count(*)'],
       filter: {
         ...eventFilter,
-        event_type: { _eq: "open" },
+        event_type: { _eq: 'open' },
         ip_location: { _nnull: true },
       },
-      groupBy: ["ip_location"],
-      sort: ["-count"],
+      groupBy: ['ip_location'],
+      sort: ['-count'],
       limit: 20,
-    })
-  );
+    }),
+  )
 }
 
 // Generate CSV format
 function generateCSV(exportData: any): string {
-  const lines: string[] = [];
+  const lines: string[] = []
 
   // Add metadata header
-  lines.push("Newsletter Analytics Export");
-  lines.push(`Generated: ${exportData.metadata.generated_at}`);
-  lines.push("Format: CSV");
-  lines.push("");
+  lines.push('Newsletter Analytics Export')
+  lines.push(`Generated: ${exportData.metadata.generated_at}`)
+  lines.push('Format: CSV')
+  lines.push('')
 
   // Newsletter summary
   lines.push(
-    "Newsletter,Title,Subject Line,Status,Total Sent,Opens,Clicks,Bounces,Unsubscribes"
-  );
+    'Newsletter,Title,Subject Line,Status,Total Sent,Opens,Clicks,Bounces,Unsubscribes',
+  )
 
   exportData.newsletters.forEach((newsletter: any) => {
     if (newsletter.error) {
-      lines.push(`${newsletter.id},ERROR,${newsletter.error},,,,,,`);
-      return;
+      lines.push(`${newsletter.id},ERROR,${newsletter.error},,,,,,`)
+      return
     }
 
-    const n = newsletter.newsletter;
-    const s = newsletter.summary || {};
+    const n = newsletter.newsletter
+    const s = newsletter.summary || {}
 
     lines.push(
       [
         n.id,
-        `"${n.title || ""}"`,
-        `"${n.subject_line || ""}"`,
+        `"${n.title || ''}"`,
+        `"${n.subject_line || ''}"`,
         n.status,
         n.total_sent || 0,
         s.opens || 0,
         s.clicks || 0,
         s.bounces || 0,
         s.unsubscribes || 0,
-      ].join(",")
-    );
-  });
+      ].join(','),
+    )
+  })
 
   // Add detailed events if included
   const hasEvents = exportData.newsletters.some(
-    (n: any) => n.events?.length > 0
-  );
+    (n: any) => n.events?.length > 0,
+  )
   if (hasEvents) {
-    lines.push("");
-    lines.push("Detailed Events");
+    lines.push('')
+    lines.push('Detailed Events')
     lines.push(
-      "Newsletter ID,Event Type,Email,Timestamp,URL,User Agent,IP Location"
-    );
+      'Newsletter ID,Event Type,Email,Timestamp,URL,User Agent,IP Location',
+    )
 
     exportData.newsletters.forEach((newsletter: any) => {
       if (newsletter.events) {
@@ -430,17 +432,17 @@ function generateCSV(exportData: any): string {
               event.event_type,
               event.email,
               event.timestamp,
-              `"${event.url || ""}"`,
-              `"${event.user_agent || ""}"`,
-              `"${event.ip_location || ""}"`,
-            ].join(",")
-          );
-        });
+              `"${event.url || ''}"`,
+              `"${event.user_agent || ''}"`,
+              `"${event.ip_location || ''}"`,
+            ].join(','),
+          )
+        })
       }
-    });
+    })
   }
 
-  return lines.join("\n");
+  return lines.join('\n')
 }
 
 // Generate Excel format (requires xlsx library)
@@ -450,8 +452,8 @@ async function generateExcel(exportData: any): Promise<Buffer> {
     // const XLSX = require('xlsx');
 
     // For now, return CSV as fallback
-    const csvData = generateCSV(exportData);
-    return Buffer.from(csvData, "utf8");
+    const csvData = generateCSV(exportData)
+    return Buffer.from(csvData, 'utf8')
 
     // Example XLSX implementation:
     /*
@@ -493,10 +495,11 @@ async function generateExcel(exportData: any): Promise<Buffer> {
 
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     */
-  } catch (error) {
-    console.error("Excel generation error:", error);
+  }
+  catch (error) {
+    console.error('Excel generation error:', error)
     // Fallback to CSV
-    const csvData = generateCSV(exportData);
-    return Buffer.from(csvData, "utf8");
+    const csvData = generateCSV(exportData)
+    return Buffer.from(csvData, 'utf8')
   }
 }

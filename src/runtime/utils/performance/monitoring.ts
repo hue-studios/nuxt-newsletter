@@ -4,23 +4,23 @@
  */
 
 export interface PerformanceMetric {
-  name: string;
-  value: number;
-  unit: string;
-  timestamp: number;
-  tags?: Record<string, string>;
+  name: string
+  value: number
+  unit: string
+  timestamp: number
+  tags?: Record<string, string>
 }
 
 export class PerformanceMonitor {
-  private metrics: PerformanceMetric[] = [];
-  private timers = new Map<string, number>();
+  private metrics: PerformanceMetric[] = []
+  private timers = new Map<string, number>()
 
   // Record a metric
   record(
     name: string,
     value: number,
-    unit: string = "ms",
-    tags?: Record<string, string>
+    unit: string = 'ms',
+    tags?: Record<string, string>,
   ): void {
     this.metrics.push({
       name,
@@ -28,43 +28,44 @@ export class PerformanceMonitor {
       unit,
       timestamp: Date.now(),
       tags,
-    });
+    })
 
     // Keep only last 1000 metrics
     if (this.metrics.length > 1000) {
-      this.metrics = this.metrics.slice(-1000);
+      this.metrics = this.metrics.slice(-1000)
     }
   }
 
   // Start a timer
   startTimer(name: string): void {
-    this.timers.set(name, performance.now());
+    this.timers.set(name, performance.now())
   }
 
   // End a timer and record the metric
   endTimer(name: string, tags?: Record<string, string>): number {
-    const startTime = this.timers.get(name);
+    const startTime = this.timers.get(name)
     if (!startTime) {
-      console.warn(`Timer "${name}" was not started`);
-      return 0;
+      console.warn(`Timer "${name}" was not started`)
+      return 0
     }
 
-    const duration = performance.now() - startTime;
-    this.timers.delete(name);
-    this.record(name, duration, "ms", tags);
-    return duration;
+    const duration = performance.now() - startTime
+    this.timers.delete(name)
+    this.record(name, duration, 'ms', tags)
+    return duration
   }
 
   // Measure a function execution
   measure<T>(name: string, fn: () => T, tags?: Record<string, string>): T {
-    this.startTimer(name);
+    this.startTimer(name)
     try {
-      const result = fn();
-      this.endTimer(name, tags);
-      return result;
-    } catch (error) {
-      this.endTimer(name, { ...tags, error: "true" });
-      throw error;
+      const result = fn()
+      this.endTimer(name, tags)
+      return result
+    }
+    catch (error) {
+      this.endTimer(name, { ...tags, error: 'true' })
+      throw error
     }
   }
 
@@ -72,66 +73,67 @@ export class PerformanceMonitor {
   async measureAsync<T>(
     name: string,
     fn: () => Promise<T>,
-    tags?: Record<string, string>
+    tags?: Record<string, string>,
   ): Promise<T> {
-    this.startTimer(name);
+    this.startTimer(name)
     try {
-      const result = await fn();
-      this.endTimer(name, tags);
-      return result;
-    } catch (error) {
-      this.endTimer(name, { ...tags, error: "true" });
-      throw error;
+      const result = await fn()
+      this.endTimer(name, tags)
+      return result
+    }
+    catch (error) {
+      this.endTimer(name, { ...tags, error: 'true' })
+      throw error
     }
   }
 
   // Get metrics summary
-  getSummary(timeRange?: { start: number; end: number }): Record<
+  getSummary(timeRange?: { start: number, end: number }): Record<
     string,
     {
-      count: number;
-      min: number;
-      max: number;
-      avg: number;
-      p50: number;
-      p95: number;
-      p99: number;
+      count: number
+      min: number
+      max: number
+      avg: number
+      p50: number
+      p95: number
+      p99: number
     }
   > {
-    let filteredMetrics = this.metrics;
+    let filteredMetrics = this.metrics
 
     if (timeRange) {
       filteredMetrics = this.metrics.filter(
-        (m) => m.timestamp >= timeRange.start && m.timestamp <= timeRange.end
-      );
+        m => m.timestamp >= timeRange.start && m.timestamp <= timeRange.end,
+      )
     }
 
     const summary: Record<
       string,
       {
-        count: number;
-        min: number;
-        max: number;
-        avg: number;
-        p50: number;
-        p95: number;
-        p99: number;
+        count: number
+        min: number
+        max: number
+        avg: number
+        p50: number
+        p95: number
+        p99: number
       }
-    > = {};
+    > = {}
 
     // Group by metric name
     const grouped = filteredMetrics.reduce((acc, metric) => {
       if (!acc[metric.name]) {
-        acc[metric.name] = [];
+        acc[metric.name] = []
       }
-      acc[metric.name].push(metric.value);
-      return acc;
-    }, {} as Record<string, number[]>);
+      acc[metric.name].push(metric.value)
+      return acc
+    }, {} as Record<string, number[]>)
 
     // Calculate statistics
     Object.entries(grouped).forEach(([name, values]) => {
-      const sorted = values.sort((a, b) => a - b);
-      const len = values.length;
+      const sorted = values.sort((a, b) => a - b)
+      const len = values.length
 
       summary[name] = {
         count: len,
@@ -141,112 +143,112 @@ export class PerformanceMonitor {
         p50: sorted[Math.floor(len * 0.5)],
         p95: sorted[Math.floor(len * 0.95)],
         p99: sorted[Math.floor(len * 0.99)],
-      };
-    });
+      }
+    })
 
-    return summary;
+    return summary
   }
 
   // Export metrics
-  exportMetrics(format: "json" | "csv" = "json"): string {
-    if (format === "csv") {
-      const headers = ["name", "value", "unit", "timestamp", "tags"];
-      const rows = this.metrics.map((m) => [
+  exportMetrics(format: 'json' | 'csv' = 'json'): string {
+    if (format === 'csv') {
+      const headers = ['name', 'value', 'unit', 'timestamp', 'tags']
+      const rows = this.metrics.map(m => [
         m.name,
         m.value.toString(),
         m.unit,
         m.timestamp.toString(),
         JSON.stringify(m.tags || {}),
-      ]);
+      ])
 
-      return [headers, ...rows].map((row) => row.join(",")).join("\n");
+      return [headers, ...rows].map(row => row.join(',')).join('\n')
     }
 
-    return JSON.stringify(this.metrics, null, 2);
+    return JSON.stringify(this.metrics, null, 2)
   }
 
   // Clear metrics
   clear(): void {
-    this.metrics = [];
-    this.timers.clear();
+    this.metrics = []
+    this.timers.clear()
   }
 }
 
 // Global performance monitor instance
-export const performanceMonitor = new PerformanceMonitor();
+export const performanceMonitor = new PerformanceMonitor()
 
 // Newsletter-specific performance tracking
 export function trackNewsletterPerformance() {
   // Track MJML compilation time
-  const originalCompile = (window as any).mjml?.compile;
+  const originalCompile = (window as any).mjml?.compile
   if (originalCompile) {
     (window as any).mjml.compile = function (...args: unknown[]) {
-      return performanceMonitor.measure("mjml_compile", () =>
-        originalCompile.apply(this, args)
-      );
-    };
+      return performanceMonitor.measure('mjml_compile', () =>
+        originalCompile.apply(this, args),
+      )
+    }
   }
 
   // Track API request times
-  const originalFetch = window.fetch;
+  const originalFetch = window.fetch
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
-    const url = typeof input === "string" ? input : input.toString();
-    const isNewsletterAPI = url.includes("/api/newsletter/");
+    const url = typeof input === 'string' ? input : input.toString()
+    const isNewsletterAPI = url.includes('/api/newsletter/')
 
     if (isNewsletterAPI) {
       return performanceMonitor.measureAsync(
-        "api_request",
+        'api_request',
         () => originalFetch(input, init),
         {
-          endpoint: url.split("/").pop() || "unknown",
-        }
-      );
+          endpoint: url.split('/').pop() || 'unknown',
+        },
+      )
     }
 
-    return originalFetch(input, init);
-  };
+    return originalFetch(input, init)
+  }
 }
 
 // Web Vitals tracking
 export function trackWebVitals() {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return
 
   // Track LCP (Largest Contentful Paint)
   const observer = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
-      if (entry.entryType === "largest-contentful-paint") {
-        performanceMonitor.record("lcp", entry.startTime, "ms");
+      if (entry.entryType === 'largest-contentful-paint') {
+        performanceMonitor.record('lcp', entry.startTime, 'ms')
       }
-      if (entry.entryType === "first-input") {
-        const fidEntry = entry as PerformanceEventTiming;
+      if (entry.entryType === 'first-input') {
+        const fidEntry = entry as PerformanceEventTiming
         performanceMonitor.record(
-          "fid",
+          'fid',
           fidEntry.processingStart - fidEntry.startTime,
-          "ms"
-        );
+          'ms',
+        )
       }
     }
-  });
+  })
 
-  observer.observe({ entryTypes: ["largest-contentful-paint", "first-input"] });
+  observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input'] })
 
   // Track CLS (Cumulative Layout Shift)
-  let clsValue = 0;
+  let clsValue = 0
   const clsObserver = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       if (
-        entry.entryType === "layout-shift"
+        entry.entryType === 'layout-shift'
         && !(entry as any).hadRecentInput
       ) {
-        clsValue += (entry as any).value;
+        clsValue += (entry as any).value
       }
     }
-  });
+  })
 
-  clsObserver.observe({ entryTypes: ["layout-shift"] });
+  clsObserver.observe({ entryTypes: ['layout-shift'] })
 
   // Record CLS on page unload
-  window.addEventListener("beforeunload", () => {
-    performanceMonitor.record("cls", clsValue, "score");
-  });
+  window.addEventListener('beforeunload', () => {
+    performanceMonitor.record('cls', clsValue, 'score')
+  })
 }

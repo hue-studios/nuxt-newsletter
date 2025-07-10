@@ -11,23 +11,41 @@
         </div>
 
         <div class="flex items-center space-x-2">
-          <Badge :variant="testStatusVariant" class="capitalize">
+          <Badge
+            :variant="testStatusVariant"
+            class="capitalize"
+          >
             {{ abTest.status }}
           </Badge>
 
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="outline" size="sm">
-                <Icon name="lucide:more-horizontal" class="w-4 h-4" />
+              <Button
+                variant="outline"
+                size="sm"
+              >
+                <Icon
+                  name="lucide:more-horizontal"
+                  class="w-4 h-4"
+                />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem @click="exportResults">
-                <Icon name="lucide:download" class="w-4 h-4 mr-2" />
+                <Icon
+                  name="lucide:download"
+                  class="w-4 h-4 mr-2"
+                />
                 Export Results
               </DropdownMenuItem>
-              <DropdownMenuItem :disabled="!hasWinner" @click="duplicateWinner">
-                <Icon name="lucide:copy" class="w-4 h-4 mr-2" />
+              <DropdownMenuItem
+                :disabled="!hasWinner"
+                @click="duplicateWinner"
+              >
+                <Icon
+                  name="lucide:copy"
+                  class="w-4 h-4 mr-2"
+                />
                 Duplicate Winner
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -35,7 +53,10 @@
                 :disabled="abTest.status !== 'running'"
                 @click="stopTest"
               >
-                <Icon name="lucide:stop-circle" class="w-4 h-4 mr-2" />
+                <Icon
+                  name="lucide:stop-circle"
+                  class="w-4 h-4 mr-2"
+                />
                 Stop Test
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -50,20 +71,29 @@
         class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg"
       >
         <div class="text-center">
-          <div class="text-sm text-gray-600">Test Duration</div>
+          <div class="text-sm text-gray-600">
+            Test Duration
+          </div>
           <div class="text-lg font-bold text-gray-900">
             {{ testDuration }}
           </div>
         </div>
         <div class="text-center">
-          <div class="text-sm text-gray-600">Total Recipients</div>
+          <div class="text-sm text-gray-600">
+            Total Recipients
+          </div>
           <div class="text-lg font-bold text-gray-900">
             {{ (abTest.variantA.sent + abTest.variantB.sent).toLocaleString() }}
           </div>
         </div>
         <div class="text-center">
-          <div class="text-sm text-gray-600">Confidence Level</div>
-          <div class="text-lg font-bold" :class="confidenceColor">
+          <div class="text-sm text-gray-600">
+            Confidence Level
+          </div>
+          <div
+            class="text-lg font-bold"
+            :class="confidenceColor"
+          >
             {{ confidenceLevel }}%
           </div>
         </div>
@@ -80,22 +110,34 @@
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <h3 class="text-lg font-semibold text-gray-900">Variant A</h3>
-              <Badge variant="outline" class="text-xs"> Control </Badge>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Variant A
+              </h3>
+              <Badge
+                variant="outline"
+                class="text-xs"
+              >
+                Control
+              </Badge>
             </div>
             <Badge
               v-if="winnerVariant === 'A'"
               variant="default"
               class="bg-green-600"
             >
-              <Icon name="lucide:crown" class="w-3 h-3 mr-1" />
+              <Icon
+                name="lucide:crown"
+                class="w-3 h-3 mr-1"
+              />
               Winner
             </Badge>
           </div>
 
           <!-- Subject Line -->
           <div class="space-y-1">
-            <div class="text-sm text-gray-600">Subject Line</div>
+            <div class="text-sm text-gray-600">
+              Subject Line
+            </div>
             <div
               class="font-medium text-gray-900 p-2 bg-gray-100 rounded text-sm"
             >
@@ -109,13 +151,17 @@
               <div class="text-2xl font-bold text-blue-600">
                 {{ abTest.variantA.sent.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Recipients</div>
+              <div class="text-xs text-gray-600">
+                Recipients
+              </div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-green-600">
                 {{ abTest.variantA.opens.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Opens</div>
+              <div class="text-xs text-gray-600">
+                Opens
+              </div>
             </div>
           </div>
 
@@ -123,9 +169,7 @@
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Open Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantAOpenRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantAOpenRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -136,9 +180,7 @@
 
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Click Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantAClickRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantAClickRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -158,22 +200,34 @@
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <h3 class="text-lg font-semibold text-gray-900">Variant B</h3>
-              <Badge variant="outline" class="text-xs"> Test </Badge>
+              <h3 class="text-lg font-semibold text-gray-900">
+                Variant B
+              </h3>
+              <Badge
+                variant="outline"
+                class="text-xs"
+              >
+                Test
+              </Badge>
             </div>
             <Badge
               v-if="winnerVariant === 'B'"
               variant="default"
               class="bg-green-600"
             >
-              <Icon name="lucide:crown" class="w-3 h-3 mr-1" />
+              <Icon
+                name="lucide:crown"
+                class="w-3 h-3 mr-1"
+              />
               Winner
             </Badge>
           </div>
 
           <!-- Subject Line -->
           <div class="space-y-1">
-            <div class="text-sm text-gray-600">Subject Line</div>
+            <div class="text-sm text-gray-600">
+              Subject Line
+            </div>
             <div
               class="font-medium text-gray-900 p-2 bg-gray-100 rounded text-sm"
             >
@@ -187,13 +241,17 @@
               <div class="text-2xl font-bold text-blue-600">
                 {{ abTest.variantB.sent.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Recipients</div>
+              <div class="text-xs text-gray-600">
+                Recipients
+              </div>
             </div>
             <div class="text-center">
               <div class="text-2xl font-bold text-green-600">
                 {{ abTest.variantB.opens.toLocaleString() }}
               </div>
-              <div class="text-xs text-gray-600">Opens</div>
+              <div class="text-xs text-gray-600">
+                Opens
+              </div>
             </div>
           </div>
 
@@ -201,9 +259,7 @@
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Open Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantBOpenRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantBOpenRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -214,9 +270,7 @@
 
             <div class="flex items-center justify-between">
               <span class="text-sm text-gray-600">Click Rate</span>
-              <span class="text-lg font-bold"
-                >{{ variantBClickRate.toFixed(1) }}%</span
-              >
+              <span class="text-lg font-bold">{{ variantBClickRate.toFixed(1) }}%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -230,15 +284,15 @@
 
       <!-- Performance Comparison -->
       <div class="space-y-4">
-        <h4 class="font-semibold text-gray-900">Performance Analysis</h4>
+        <h4 class="font-semibold text-gray-900">
+          Performance Analysis
+        </h4>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Open Rate Difference -->
           <div class="p-4 border border-gray-200 rounded-lg">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-900"
-                >Open Rate Difference</span
-              >
+              <span class="text-sm font-medium text-gray-900">Open Rate Difference</span>
               <div class="flex items-center space-x-1">
                 <Icon
                   :name="
@@ -279,9 +333,7 @@
           <!-- Click Rate Difference -->
           <div class="p-4 border border-gray-200 rounded-lg">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-900"
-                >Click Rate Difference</span
-              >
+              <span class="text-sm font-medium text-gray-900">Click Rate Difference</span>
               <div class="flex items-center space-x-1">
                 <Icon
                   :name="
@@ -329,7 +381,9 @@
             class="w-5 h-5 text-blue-600 mt-0.5"
           />
           <div>
-            <h5 class="font-medium text-blue-900">Statistical Analysis</h5>
+            <h5 class="font-medium text-blue-900">
+              Statistical Analysis
+            </h5>
             <div class="text-sm text-blue-800 mt-1 space-y-1">
               <p>
                 <strong>Confidence Level:</strong> {{ confidenceLevel }}%
@@ -360,21 +414,26 @@
 
       <!-- Time Series Chart -->
       <div v-if="timeSeriesData.length > 0">
-        <h4 class="font-semibold text-gray-900 mb-4">Performance Over Time</h4>
+        <h4 class="font-semibold text-gray-900 mb-4">
+          Performance Over Time
+        </h4>
         <div class="h-64 w-full">
           <LineChart
             :data="timeSeriesData"
             :margin="{ top: 5, right: 30, left: 20, bottom: 5 }"
           >
             <CartesianGrid stroke-dasharray="3 3" />
-            <XAxis data-key="time" tick="{{"
+            <XAxis
+              data-key="time"
+              tick="{{"
               fontSize:
               12
-            }}
-            /> <YAxis tick="{{"
+              }}
+            /> <YAxis
+              tick="{{"
               fontSize:
               12
-            }}
+              }}
             />
             <Tooltip />
             <Legend />
@@ -398,8 +457,14 @@
 
       <!-- Actions -->
       <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-        <Button variant="outline" @click="exportResults">
-          <Icon name="lucide:download" class="w-4 h-4 mr-2" />
+        <Button
+          variant="outline"
+          @click="exportResults"
+        >
+          <Icon
+            name="lucide:download"
+            class="w-4 h-4 mr-2"
+          />
           Export Results
         </Button>
 
@@ -408,7 +473,10 @@
           :disabled="abTest.status !== 'completed'"
           @click="sendWinningVariant"
         >
-          <Icon name="lucide:send" class="w-4 h-4 mr-2" />
+          <Icon
+            name="lucide:send"
+            class="w-4 h-4 mr-2"
+          />
           Send Winning Variant
         </Button>
       </div>
@@ -417,7 +485,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed } from 'vue'
 import {
   LineChart,
   Line,
@@ -426,173 +494,173 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-} from "recharts";
+} from 'recharts'
 
 interface ABTestData {
-  id: number;
-  status: "running" | "completed" | "stopped";
-  startDate: string;
-  endDate?: string;
+  id: number
+  status: 'running' | 'completed' | 'stopped'
+  startDate: string
+  endDate?: string
   variantA: {
-    subject: string;
-    sent: number;
-    opens: number;
-    clicks: number;
-  };
+    subject: string
+    sent: number
+    opens: number
+    clicks: number
+  }
   variantB: {
-    subject: string;
-    sent: number;
-    opens: number;
-    clicks: number;
-  };
+    subject: string
+    sent: number
+    opens: number
+    clicks: number
+  }
 }
 
 interface Props {
-  abTest: ABTestData;
+  abTest: ABTestData
 }
 
 interface Emits {
-  (e: "export-results"): void;
-  (e: "send-winning-variant", variant: "A" | "B"): void;
-  (e: "duplicate-winner", variant: "A" | "B"): void;
-  (e: "stop-test"): void;
+  (e: 'export-results'): void
+  (e: 'send-winning-variant', variant: 'A' | 'B'): void
+  (e: 'duplicate-winner', variant: 'A' | 'B'): void
+  (e: 'stop-test'): void
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
 // Computed
 const variantAOpenRate = computed(() => {
   return props.abTest.variantA.sent > 0
     ? (props.abTest.variantA.opens / props.abTest.variantA.sent) * 100
-    : 0;
-});
+    : 0
+})
 
 const variantBOpenRate = computed(() => {
   return props.abTest.variantB.sent > 0
     ? (props.abTest.variantB.opens / props.abTest.variantB.sent) * 100
-    : 0;
-});
+    : 0
+})
 
 const variantAClickRate = computed(() => {
   return props.abTest.variantA.sent > 0
     ? (props.abTest.variantA.clicks / props.abTest.variantA.sent) * 100
-    : 0;
-});
+    : 0
+})
 
 const variantBClickRate = computed(() => {
   return props.abTest.variantB.sent > 0
     ? (props.abTest.variantB.clicks / props.abTest.variantB.sent) * 100
-    : 0;
-});
+    : 0
+})
 
 const openRateDifference = computed(() => {
-  return variantBOpenRate.value - variantAOpenRate.value;
-});
+  return variantBOpenRate.value - variantAOpenRate.value
+})
 
 const clickRateDifference = computed(() => {
-  return variantBClickRate.value - variantAClickRate.value;
-});
+  return variantBClickRate.value - variantAClickRate.value
+})
 
 const winnerVariant = computed(() => {
-  if (!isStatisticallySignificant.value) return null;
-  return variantBOpenRate.value > variantAOpenRate.value ? "B" : "A";
-});
+  if (!isStatisticallySignificant.value) return null
+  return variantBOpenRate.value > variantAOpenRate.value ? 'B' : 'A'
+})
 
 const hasWinner = computed(() => {
-  return winnerVariant.value !== null && isStatisticallySignificant.value;
-});
+  return winnerVariant.value !== null && isStatisticallySignificant.value
+})
 
 const totalSampleSize = computed(() => {
-  return props.abTest.variantA.sent + props.abTest.variantB.sent;
-});
+  return props.abTest.variantA.sent + props.abTest.variantB.sent
+})
 
 const confidenceLevel = computed(() => {
   // Simplified confidence calculation based on sample size and difference
-  const difference = Math.abs(openRateDifference.value);
-  const sampleSize = totalSampleSize.value;
+  const difference = Math.abs(openRateDifference.value)
+  const sampleSize = totalSampleSize.value
 
-  if (sampleSize < 100) return 60;
-  if (difference < 1) return 70;
-  if (difference < 3) return 85;
-  if (difference < 5) return 92;
-  return 98;
-});
+  if (sampleSize < 100) return 60
+  if (difference < 1) return 70
+  if (difference < 3) return 85
+  if (difference < 5) return 92
+  return 98
+})
 
 const isStatisticallySignificant = computed(() => {
-  return confidenceLevel.value >= 90 && totalSampleSize.value >= 100;
-});
+  return confidenceLevel.value >= 90 && totalSampleSize.value >= 100
+})
 
 const confidenceColor = computed(() => {
-  if (confidenceLevel.value >= 95) return "text-green-600";
-  if (confidenceLevel.value >= 90) return "text-yellow-600";
-  return "text-red-600";
-});
+  if (confidenceLevel.value >= 95) return 'text-green-600'
+  if (confidenceLevel.value >= 90) return 'text-yellow-600'
+  return 'text-red-600'
+})
 
 const testStatusVariant = computed(() => {
   switch (props.abTest.status) {
-    case "running":
-      return "default";
-    case "completed":
-      return "default";
-    case "stopped":
-      return "destructive";
+    case 'running':
+      return 'default'
+    case 'completed':
+      return 'default'
+    case 'stopped':
+      return 'destructive'
     default:
-      return "secondary";
+      return 'secondary'
   }
-});
+})
 
 const testDuration = computed(() => {
-  const start = new Date(props.abTest.startDate);
+  const start = new Date(props.abTest.startDate)
   const end = props.abTest.endDate
     ? new Date(props.abTest.endDate)
-    : new Date();
+    : new Date()
   const days = Math.ceil(
-    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-  );
+    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+  )
 
-  if (days === 1) return "1 day";
-  if (days < 7) return `${days} days`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks`;
-  return `${Math.floor(days / 30)} months`;
-});
+  if (days === 1) return '1 day'
+  if (days < 7) return `${days} days`
+  if (days < 30) return `${Math.floor(days / 7)} weeks`
+  return `${Math.floor(days / 30)} months`
+})
 
 // Mock time series data - in reality this would come from the API
 const timeSeriesData = computed(() => {
   // Generate hourly data points for the last 24 hours
-  const data = [];
-  const now = new Date();
+  const data = []
+  const now = new Date()
 
   for (let i = 23; i >= 0; i--) {
-    const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+    const time = new Date(now.getTime() - i * 60 * 60 * 1000)
     data.push({
-      time: time.toLocaleTimeString("en-US", { hour: "2-digit" }),
+      time: time.toLocaleTimeString('en-US', { hour: '2-digit' }),
       variantA: variantAOpenRate.value * (0.8 + Math.random() * 0.4),
       variantB: variantBOpenRate.value * (0.8 + Math.random() * 0.4),
-    });
+    })
   }
 
-  return data;
-});
+  return data
+})
 
 // Methods
 const exportResults = () => {
-  emit("export-results");
-};
+  emit('export-results')
+}
 
 const sendWinningVariant = () => {
   if (winnerVariant.value) {
-    emit("send-winning-variant", winnerVariant.value);
+    emit('send-winning-variant', winnerVariant.value)
   }
-};
+}
 
 const duplicateWinner = () => {
   if (winnerVariant.value) {
-    emit("duplicate-winner", winnerVariant.value);
+    emit('duplicate-winner', winnerVariant.value)
   }
-};
+}
 
 const stopTest = () => {
-  emit("stop-test");
-};
+  emit('stop-test')
+}
 </script>

@@ -1,85 +1,85 @@
 // src/runtime/services/mjml.ts
-import { useRuntimeConfig } from "#imports";
-import mjml from "mjml";
-import Handlebars from "handlebars"; // Ensure Handlebars is imported directly
-import { sanitizeHtml } from "../../utils/security/sanitization"; // Ensure this import is correct
+import { useRuntimeConfig } from '#imports'
+import mjml from 'mjml'
+import Handlebars from 'handlebars' // Ensure Handlebars is imported directly
+import { sanitizeHtml } from '../../utils/security/sanitization' // Ensure this import is correct
 
 export interface MJMLCompileOptions {
-  validationLevel?: "strict" | "soft" | "skip";
-  beautify?: boolean;
-  minify?: boolean;
-  fonts?: Record<string, string>;
-  keepComments?: boolean;
-  preprocessing?: boolean;
+  validationLevel?: 'strict' | 'soft' | 'skip'
+  beautify?: boolean
+  minify?: boolean
+  fonts?: Record<string, string>
+  keepComments?: boolean
+  preprocessing?: boolean
 }
 
 export interface MJMLCompileResult {
-  html: string;
+  html: string
   errors: Array<{
-    line: number;
-    message: string;
-    tagName: string;
-    formattedMessage: string;
-  }>;
-  warnings: string[];
+    line: number
+    message: string
+    tagName: string
+    formattedMessage: string
+  }>
+  warnings: string[]
   metadata: {
-    compilationTime: number;
-    htmlSize: number;
-    mjmlSize: number;
-    blocksProcessed: number;
-  };
+    compilationTime: number
+    htmlSize: number
+    mjmlSize: number
+    blocksProcessed: number
+  }
 }
 
 export interface BlockData {
-  id: string | number;
-  type: string;
-  data: Record<string, any>;
-  template: string;
-  sort: number;
+  id: string | number
+  type: string
+  data: Record<string, any>
+  template: string
+  sort: number
 }
 
 // MJML Service for newsletter compilation
 export class MJMLService {
-  private handlebars: typeof Handlebars;
-  private defaultOptions: MJMLCompileOptions;
+  private handlebars: typeof Handlebars
+  private defaultOptions: MJMLCompileOptions
 
   constructor(options: MJMLCompileOptions = {}) {
     this.defaultOptions = {
-      validationLevel: "soft",
+      validationLevel: 'soft',
       beautify: true,
       minify: false,
       keepComments: false,
       preprocessing: true,
       fonts: {
         Inter:
-          "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap",
+          'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
         Roboto:
-          "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap",
+          'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
       },
       ...options,
-    };
+    }
 
-    this.handlebars = Handlebars.create();
-    this.registerDefaultHelpers();
+    this.handlebars = Handlebars.create()
+    this.registerDefaultHelpers()
   }
 
   // Compile newsletter blocks to MJML and then to HTML
   async compileNewsletter(
     blocks: BlockData[],
     newsletterData: Record<string, any> = {},
-    options: MJMLCompileOptions = {}
+    options: MJMLCompileOptions = {},
   ): Promise<MJMLCompileResult> {
-    const startTime = Date.now();
-    const compileOptions = { ...this.defaultOptions, ...options };
+    const startTime = Date.now()
+    const compileOptions = { ...this.defaultOptions, ...options }
 
     try {
       // Sort blocks by sort order
       const sortedBlocks = [...blocks].sort(
-        (a, b) => (a.sort || 0) - (b.sort || 0)
-      );
+        (a, b) => (a.sort || 0) - (b.sort || 0),
+      )
 
       // Build MJML structure
-      const mjmlContent = this.buildMJMLStructure(sortedBlocks, newsletterData);
+      const mjmlContent = this.buildMJMLStructure(sortedBlocks, newsletterData)
 
       // Compile MJML to HTML
       const mjmlResult = mjml(mjmlContent, {
@@ -88,16 +88,16 @@ export class MJMLService {
         minify: compileOptions.minify,
         keepComments: compileOptions.keepComments,
         fonts: compileOptions.fonts,
-      });
+      })
 
-      const compilationTime = Date.now() - startTime;
+      const compilationTime = Date.now() - startTime
 
       // Process warnings
-      const warnings: string[] = [];
+      const warnings: string[] = []
       if (mjmlResult.errors.length > 0) {
         mjmlResult.errors.forEach((error) => {
-          warnings.push(`MJML Error: ${error.message} (Line ${error.line})`);
-        });
+          warnings.push(`MJML Error: ${error.message} (Line ${error.line})`)
+        })
       }
 
       return {
@@ -110,28 +110,29 @@ export class MJMLService {
           mjmlSize: mjmlContent.length,
           blocksProcessed: sortedBlocks.length,
         },
-      };
-    } catch (error: any) {
-      throw new Error(`MJML compilation failed: ${error.message}`);
+      }
+    }
+    catch (error: any) {
+      throw new Error(`MJML compilation failed: ${error.message}`)
     }
   }
 
   // Build the complete MJML structure
   private buildMJMLStructure(
     blocks: BlockData[],
-    newsletterData: Record<string, any>
+    newsletterData: Record<string, any>,
   ): string {
     const {
-      title = "Newsletter",
+      title = 'Newsletter',
       subject = title,
-      previewText = "",
-      fromName = "Newsletter",
-      fromEmail = "newsletter@example.com",
-      backgroundColor = "#ffffff",
-      fontFamily = "Inter, Arial, sans-serif",
-      primaryColor = "#2563eb",
-      textColor = "#374151",
-    } = newsletterData;
+      previewText = '',
+      fromName = 'Newsletter',
+      fromEmail = 'newsletter@example.com',
+      backgroundColor = '#ffffff',
+      fontFamily = 'Inter, Arial, sans-serif',
+      primaryColor = '#2563eb',
+      textColor = '#374151',
+    } = newsletterData
 
     // Build head section
     const head = this.buildMJMLHead(title, subject, previewText, {
@@ -139,15 +140,15 @@ export class MJMLService {
       fontFamily,
       primaryColor,
       textColor,
-    });
+    })
 
     // Process blocks into MJML sections
     const bodyContent = blocks
-      .map((block) => this.processBlock(block, newsletterData))
-      .join("\n");
+      .map(block => this.processBlock(block, newsletterData))
+      .join('\n')
 
     // Add footer
-    const footer = this.buildFooter(fromName, fromEmail);
+    const footer = this.buildFooter(fromName, fromEmail)
 
     return `
       <mjml>
@@ -157,7 +158,7 @@ export class MJMLService {
           ${footer}
         </mj-body>
       </mjml>
-    `;
+    `
   }
 
   // Build MJML head section
@@ -165,11 +166,11 @@ export class MJMLService {
     title: string,
     subject: string,
     previewText: string,
-    styles: any
+    styles: any,
   ): string {
     const fontLinks = Object.values(this.defaultOptions.fonts || {})
-      .map((url) => `<link href="${url}" rel="stylesheet">`)
-      .join("\n");
+      .map(url => `<link href="${url}" rel="stylesheet">`)
+      .join('\n')
 
     return `
       <mj-head>
@@ -213,13 +214,13 @@ export class MJMLService {
           }
         </mj-style>
       </mj-head>
-    `;
+    `
   }
 
   // Process individual block
   private processBlock(
     block: BlockData,
-    newsletterData: Record<string, any>
+    newsletterData: Record<string, any>,
   ): string {
     try {
       // Prepare template data
@@ -234,25 +235,26 @@ export class MJMLService {
         // Add utility functions
         utils: {
           formatDate: (date: string) => new Date(date).toLocaleDateString(),
-          formatCurrency: (amount: number, currency = "USD") =>
-            new Intl.NumberFormat("en-US", {
-              style: "currency",
+          formatCurrency: (amount: number, currency = 'USD') =>
+            new Intl.NumberFormat('en-US', {
+              style: 'currency',
               currency,
             }).format(amount),
           truncate: (text: string, length = 100) =>
-            text.length > length ? text.substring(0, length) + "..." : text,
+            text.length > length ? text.substring(0, length) + '...' : text,
         },
-      };
+      }
 
       // Compile template
-      const template = this.handlebars.compile(block.template);
-      const compiledMjml = template(templateData);
+      const template = this.handlebars.compile(block.template)
+      const compiledMjml = template(templateData)
 
       // Sanitize if needed
-      return this.sanitizeBlockContent(compiledMjml);
-    } catch (error: any) {
-      console.error(`Error processing block ${block.id}:`, error);
-      return ``;
+      return this.sanitizeBlockContent(compiledMjml)
+    }
+    catch (error: any) {
+      console.error(`Error processing block ${block.id}:`, error)
+      return ``
     }
   }
 
@@ -284,130 +286,130 @@ export class MJMLService {
           </mj-text>
         </mj-column>
       </mj-section>
-    `;
+    `
   }
 
   // Register default Handlebars helpers
   private registerDefaultHelpers(): void {
     // Safe string helper
-    this.handlebars.registerHelper("safe", function (value: any) {
+    this.handlebars.registerHelper('safe', function (value: any) {
       // Use Handlebars.SafeString directly as Handlebars is imported
-      return new Handlebars.SafeString(value || "");
-    });
+      return new Handlebars.SafeString(value || '')
+    })
 
     // URL helper
     this.handlebars.registerHelper(
-      "url",
+      'url',
       function (path: string, base?: string) {
-        const config = useRuntimeConfig();
+        const config = useRuntimeConfig()
 
         // Ensure config.public.siteUrl is explicitly a string or undefined
-        const siteUrlFromConfig =
-          typeof config.public.siteUrl === "string"
+        const siteUrlFromConfig
+          = typeof config.public.siteUrl === 'string'
             ? config.public.siteUrl
-            : undefined;
+            : undefined
 
-        const baseUrl = base || siteUrlFromConfig || "http://localhost:3000";
+        const baseUrl = base || siteUrlFromConfig || 'http://localhost:3000'
 
-        if (path.startsWith("http")) {
-          return path;
+        if (path.startsWith('http')) {
+          return path
         }
 
         // baseUrl is now guaranteed to be a string
-        return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
-      }
-    );
+        return `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+      },
+    )
 
     // Asset URL helper (for Directus)
     this.handlebars.registerHelper(
-      "asset",
+      'asset',
       function (fileId: string, transform?: any) {
-        if (!fileId) return "";
+        if (!fileId) return ''
 
-        const config = useRuntimeConfig(); // useRuntimeConfig is a global Nuxt function
-        let url = `${config.public.newsletter.directusUrl}/assets/${fileId}`;
+        const config = useRuntimeConfig() // useRuntimeConfig is a global Nuxt function
+        let url = `${config.public.newsletter.directusUrl}/assets/${fileId}`
 
         if (transform) {
-          const params = new URLSearchParams();
+          const params = new URLSearchParams()
           Object.entries(transform).forEach(([key, value]) => {
-            params.set(key, String(value));
-          });
-          url += `?${params.toString()}`;
+            params.set(key, String(value))
+          })
+          url += `?${params.toString()}`
         }
 
-        return url;
-      }
-    );
+        return url
+      },
+    )
 
     // Date formatting helper
     this.handlebars.registerHelper(
-      "formatDate",
+      'formatDate',
       function (date: string | Date, format?: string) {
-        const d = typeof date === "string" ? new Date(date) : date;
+        const d = typeof date === 'string' ? new Date(date) : date
 
         if (!d || Number.isNaN(d.getTime())) {
-          return "";
+          return ''
         }
 
-        const options: Intl.DateTimeFormatOptions = {};
+        const options: Intl.DateTimeFormatOptions = {}
 
         switch (format) {
-          case "short":
-            options.dateStyle = "short";
-            break;
-          case "medium":
-            options.dateStyle = "medium";
-            break;
-          case "long":
-            options.dateStyle = "long";
-            break;
-          case "full":
-            options.dateStyle = "full";
-            break;
+          case 'short':
+            options.dateStyle = 'short'
+            break
+          case 'medium':
+            options.dateStyle = 'medium'
+            break
+          case 'long':
+            options.dateStyle = 'long'
+            break
+          case 'full':
+            options.dateStyle = 'full'
+            break
           default:
-            options.year = "numeric";
-            options.month = "long";
-            options.day = "numeric";
+            options.year = 'numeric'
+            options.month = 'long'
+            options.day = 'numeric'
         }
 
-        return d.toLocaleDateString("en-US", options);
-      }
-    );
+        return d.toLocaleDateString('en-US', options)
+      },
+    )
 
     // Conditional helpers (adding 'this: any' to explicitly type the context)
     this.handlebars.registerHelper(
-      "if_eq",
+      'if_eq',
       function (this: any, a: any, b: any, options: any) {
-        return a === b ? options.fn(this) : options.inverse(this);
-      }
-    );
+        return a === b ? options.fn(this) : options.inverse(this)
+      },
+    )
 
     this.handlebars.registerHelper(
-      "if_ne",
+      'if_ne',
       function (this: any, a: any, b: any, options: any) {
-        return a !== b ? options.fn(this) : options.inverse(this);
-      }
-    );
+        return a !== b ? options.fn(this) : options.inverse(this)
+      },
+    )
 
     this.handlebars.registerHelper(
-      "if_gt",
+      'if_gt',
       function (this: any, a: any, b: any, options: any) {
-        return a > b ? options.fn(this) : options.inverse(this);
-      }
-    );
+        return a > b ? options.fn(this) : options.inverse(this)
+      },
+    )
 
     this.handlebars.registerHelper(
-      "if_lt",
+      'if_lt',
       function (this: any, a: any, b: any, options: any) {
-        return a < b ? options.fn(this) : options.inverse(this);
-      }
-    );
+        return a < b ? options.fn(this) : options.inverse(this)
+      },
+    )
 
     // Loop helpers (adding 'this: any' to explicitly type the context)
     this.handlebars.registerHelper(
-      "each_with_index",
+      'each_with_index',
       function (this: any, array: any[], options: any) {
-        let result = "";
+        let result = ''
 
         for (let i = 0; i < array.length; i++) {
           result += options.fn({
@@ -417,147 +419,148 @@ export class MJMLService {
             last: i === array.length - 1,
             even: i % 2 === 0,
             odd: i % 2 === 1,
-          });
+          })
         }
 
-        return result;
-      }
-    );
+        return result
+      },
+    )
 
     // String helpers
-    this.handlebars.registerHelper("uppercase", function (str: string) {
-      return str ? str.toUpperCase() : "";
-    });
+    this.handlebars.registerHelper('uppercase', function (str: string) {
+      return str ? str.toUpperCase() : ''
+    })
 
-    this.handlebars.registerHelper("lowercase", function (str: string) {
-      return str ? str.toLowerCase() : "";
-    });
+    this.handlebars.registerHelper('lowercase', function (str: string) {
+      return str ? str.toLowerCase() : ''
+    })
 
     this.handlebars.registerHelper(
-      "truncate",
+      'truncate',
       function (str: string, length: number = 100) {
-        if (!str) return "";
-        return str.length > length ? str.substring(0, length) + "..." : str;
-      }
-    );
+        if (!str) return ''
+        return str.length > length ? str.substring(0, length) + '...' : str
+      },
+    )
 
     // Math helpers
-    this.handlebars.registerHelper("add", function (a: number, b: number) {
-      return (a || 0) + (b || 0);
-    });
+    this.handlebars.registerHelper('add', function (a: number, b: number) {
+      return (a || 0) + (b || 0)
+    })
 
-    this.handlebars.registerHelper("subtract", function (a: number, b: number) {
-      return (a || 0) - (b || 0);
-    });
+    this.handlebars.registerHelper('subtract', function (a: number, b: number) {
+      return (a || 0) - (b || 0)
+    })
 
-    this.handlebars.registerHelper("multiply", function (a: number, b: number) {
-      return (a || 0) * (b || 0);
-    });
+    this.handlebars.registerHelper('multiply', function (a: number, b: number) {
+      return (a || 0) * (b || 0)
+    })
 
-    this.handlebars.registerHelper("divide", function (a: number, b: number) {
-      return b !== 0 ? (a || 0) / b : 0;
-    });
+    this.handlebars.registerHelper('divide', function (a: number, b: number) {
+      return b !== 0 ? (a || 0) / b : 0
+    })
   }
 
   // Register custom helper
   registerHelper(name: string, helper: Function): void {
-    this.handlebars.registerHelper(name, helper as any);
+    this.handlebars.registerHelper(name, helper as any)
   }
 
   // Register custom partial
   registerPartial(name: string, template: string): void {
-    this.handlebars.registerPartial(name, template);
+    this.handlebars.registerPartial(name, template)
   }
 
   // Sanitize block content
   private sanitizeBlockContent(content: string): string {
     // Apply sanitization using the imported sanitizeHtml helper
-    return sanitizeHtml(content, "newsletter");
+    return sanitizeHtml(content, 'newsletter')
   }
 
   // HTML escape utility
   private escapeHtml(unsafe: string): string {
-    if (typeof unsafe !== "string") {
-      return "";
+    if (typeof unsafe !== 'string') {
+      return ''
     }
 
     return unsafe
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
   }
 
   // Validate MJML syntax
-  validateMJML(mjmlContent: string): { valid: boolean; errors: any[] } {
+  validateMJML(mjmlContent: string): { valid: boolean, errors: any[] } {
     try {
-      const result = mjml(mjmlContent, { validationLevel: "strict" });
+      const result = mjml(mjmlContent, { validationLevel: 'strict' })
       return {
         valid: result.errors.length === 0,
         errors: result.errors,
-      };
-    } catch (error: any) {
+      }
+    }
+    catch (error: any) {
       return {
         valid: false,
         errors: [{ message: error.message }],
-      };
+      }
     }
   }
 
   // Get available components
   getAvailableComponents(): string[] {
     return [
-      "mj-body",
-      "mj-section",
-      "mj-column",
-      "mj-text",
-      "mj-button",
-      "mj-image",
-      "mj-divider",
-      "mj-spacer",
-      "mj-raw",
-      "mj-hero",
-      "mj-wrapper",
-      "mj-group",
-      "mj-navbar",
-      "mj-social",
-      "mj-accordion",
-      "mj-carousel",
-    ];
+      'mj-body',
+      'mj-section',
+      'mj-column',
+      'mj-text',
+      'mj-button',
+      'mj-image',
+      'mj-divider',
+      'mj-spacer',
+      'mj-raw',
+      'mj-hero',
+      'mj-wrapper',
+      'mj-group',
+      'mj-navbar',
+      'mj-social',
+      'mj-accordion',
+      'mj-carousel',
+    ]
   }
 }
 
 // Default instance
-export const mjmlService = new MJMLService();
+export const mjmlService = new MJMLService()
 
 // Utility functions
 export function compileMJMLToHTML(
   mjmlContent: string,
-  options?: MJMLCompileOptions
+  options?: MJMLCompileOptions,
 ): string {
-  const result = mjml(mjmlContent, options);
+  const result = mjml(mjmlContent, options)
 
   if (result.errors.length > 0) {
-    console.warn("MJML compilation warnings:", result.errors);
+    console.warn('MJML compilation warnings:', result.errors)
   }
 
-  return result.html;
+  return result.html
 }
 
 export function createMJMLTemplate(
   blocks: string[],
   options: {
-    title?: string;
-    backgroundColor?: string;
-    fontFamily?: string;
-  } = {}
+    title?: string
+    backgroundColor?: string
+    fontFamily?: string
+  } = {},
 ): string {
   const {
-    title = "Newsletter",
-    backgroundColor = "#ffffff",
-    fontFamily = "Arial, sans-serif",
-  } = options;
+    title = 'Newsletter',
+    backgroundColor = '#ffffff',
+    fontFamily = 'Arial, sans-serif',
+  } = options
 
   return `
     <mjml>
@@ -568,8 +571,8 @@ export function createMJMLTemplate(
         </mj-attributes>
       </mj-head>
       <mj-body background-color="${backgroundColor}">
-        ${blocks.join("\n")}
+        ${blocks.join('\n')}
       </mj-body>
     </mjml>
-  `;
+  `
 }

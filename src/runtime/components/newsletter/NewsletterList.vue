@@ -2,17 +2,32 @@
 <template>
   <div class="newsletter-list">
     <div class="header">
-      <h2 class="uppercase">Newsletters</h2>
-      <Button @click="createNew">Create Newsletter</Button>
+      <h2 class="uppercase">
+        Newsletters
+      </h2>
+      <Button @click="createNew">
+        Create Newsletter
+      </Button>
     </div>
 
-    <div v-if="isLoading" class="loading">Loading newsletters...</div>
+    <div
+      v-if="isLoading"
+      class="loading"
+    >
+      Loading newsletters...
+    </div>
 
-    <div v-else-if="newsletters?.length === 0" class="empty">
+    <div
+      v-else-if="newsletters?.length === 0"
+      class="empty"
+    >
       <p>No newsletters found. Create your first newsletter!</p>
     </div>
 
-    <div v-else class="grid">
+    <div
+      v-else
+      class="grid"
+    >
       <div
         v-for="newsletter in newsletters"
         :key="newsletter.id"
@@ -31,34 +46,34 @@
 </template>
 
 <script setup lang="ts">
-import type { Newsletter } from "../../types/newsletter";
+import type { Newsletter } from '../../types/newsletter'
 
 interface Props {
-  newsletters?: Newsletter[];
-  isLoading?: boolean;
+  newsletters?: Newsletter[]
+  isLoading?: boolean
 }
 
 interface Emits {
-  (e: "select", newsletter: Newsletter): void;
-  (e: "create"): void;
+  (e: 'select', newsletter: Newsletter): void
+  (e: 'create'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   newsletters: () => [],
   isLoading: false,
-});
+})
 
-const emit = defineEmits<Emits>();
+const emit = defineEmits<Emits>()
 
 const createNew = () => {
-  emit("create");
-};
+  emit('create')
+}
 
 const formatDate = (date: string | Date | undefined): string => {
-  if (!date) return "";
-  const dateObj = typeof date === "string" ? new Date(date) : date;
-  return dateObj.toLocaleDateString();
-};
+  if (!date) return ''
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return dateObj.toLocaleDateString()
+}
 </script>
 
 <style scoped>

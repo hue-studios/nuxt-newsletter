@@ -7,23 +7,23 @@ import {
   readBody,
   getRouterParams,
   getQuery,
-} from "h3";
-import { z } from "zod";
+} from 'h3'
+import { z } from 'zod'
 import {
   sanitizeHtml,
   sanitizeUserInput,
-} from "../../utils/security/sanitization";
+} from '../../utils/security/sanitization'
 
-import { validateEmail } from "../../utils/security/validation";
+import { validateEmail } from '../../utils/security/validation'
 
 // Common validation schemas
 export const commonSchemas = {
   email: z
     .string()
-    .email("Invalid email address")
-    .refine(validateEmail, "Invalid email format"),
+    .email('Invalid email address')
+    .refine(validateEmail, 'Invalid email format'),
 
-  newsletterId: z.coerce.number().positive("Newsletter ID must be positive"),
+  newsletterId: z.coerce.number().positive('Newsletter ID must be positive'),
 
   pagination: z.object({
     limit: z.coerce.number().min(1).max(100).default(25),
@@ -31,10 +31,10 @@ export const commonSchemas = {
   }),
 
   sort: z.object({
-    field: z.string().regex(/^[a-z_]\w*$/i, "Invalid sort field"),
-    direction: z.enum(["asc", "desc"]).default("desc"),
+    field: z.string().regex(/^[a-z_]\w*$/i, 'Invalid sort field'),
+    direction: z.enum(['asc', 'desc']).default('desc'),
   }),
-};
+}
 
 // Request validation schemas for different endpoints
 export const validationSchemas = {
@@ -42,36 +42,36 @@ export const validationSchemas = {
   newsletter: z.object({
     title: z
       .string()
-      .min(1, "Title is required")
-      .max(200, "Title too long")
+      .min(1, 'Title is required')
+      .max(200, 'Title too long')
       .transform(sanitizeUserInput),
 
     subject_line: z
       .string()
-      .min(1, "Subject line is required")
-      .max(998, "Subject line too long") // RFC 2822 limit
+      .min(1, 'Subject line is required')
+      .max(998, 'Subject line too long') // RFC 2822 limit
       .transform(sanitizeUserInput),
 
     from_email: commonSchemas.email,
 
     from_name: z
       .string()
-      .min(1, "From name is required")
-      .max(100, "From name too long")
+      .min(1, 'From name is required')
+      .max(100, 'From name too long')
       .transform(sanitizeUserInput),
 
     category: z.enum([
-      "company",
-      "product",
-      "weekly",
-      "monthly",
-      "event",
-      "offer",
-      "announcement",
-      "newsletter",
+      'company',
+      'product',
+      'weekly',
+      'monthly',
+      'event',
+      'offer',
+      'announcement',
+      'newsletter',
     ]),
 
-    priority: z.enum(["low", "normal", "high"]).default("normal"),
+    priority: z.enum(['low', 'normal', 'high']).default('normal'),
 
     mailing_list_id: z.coerce.number().positive().optional(),
 
@@ -81,29 +81,29 @@ export const validationSchemas = {
       .string()
       .max(150)
       .optional()
-      .transform((val) => (val ? sanitizeUserInput(val) : val)),
+      .transform(val => (val ? sanitizeUserInput(val) : val)),
 
     reply_to: z.string().email().optional(),
 
-    status: z.enum(["draft", "scheduled", "sending", "sent"]).default("draft"),
+    status: z.enum(['draft', 'scheduled', 'sending', 'sent']).default('draft'),
   }),
 
   // Block creation/update
   block: z.object({
-    type: z.string().min(1, "Block type is required"),
+    type: z.string().min(1, 'Block type is required'),
 
     content: z.record(z.any()).transform((content) => {
       // Sanitize HTML content fields
       if (content.text_content) {
-        content.text_content = sanitizeHtml(content.text_content);
+        content.text_content = sanitizeHtml(content.text_content)
       }
       if (content.title) {
-        content.title = sanitizeUserInput(content.title);
+        content.title = sanitizeUserInput(content.title)
       }
       if (content.subtitle) {
-        content.subtitle = sanitizeUserInput(content.subtitle);
+        content.subtitle = sanitizeUserInput(content.subtitle)
       }
-      return content;
+      return content
     }),
 
     order: z.coerce.number().min(0).default(0),
@@ -115,7 +115,7 @@ export const validationSchemas = {
   sendTest: z.object({
     test_emails: z
       .array(commonSchemas.email)
-      .min(1, "At least one test email required"),
+      .min(1, 'At least one test email required'),
     newsletter_id: commonSchemas.newsletterId,
   }),
 
@@ -130,13 +130,13 @@ export const validationSchemas = {
   template: z.object({
     name: z
       .string()
-      .min(1, "Template name is required")
+      .min(1, 'Template name is required')
       .transform(sanitizeUserInput),
     description: z
       .string()
       .optional()
-      .transform((val) => (val ? sanitizeUserInput(val) : val)),
-    mjml_template: z.string().min(1, "MJML template is required"),
+      .transform(val => (val ? sanitizeUserInput(val) : val)),
+    mjml_template: z.string().min(1, 'MJML template is required'),
     category: z.string().optional(),
     is_default: z.boolean().default(false),
   }),
@@ -147,111 +147,112 @@ export const validationSchemas = {
     first_name: z
       .string()
       .optional()
-      .transform((val) => (val ? sanitizeUserInput(val) : val)),
+      .transform(val => (val ? sanitizeUserInput(val) : val)),
     last_name: z
       .string()
       .optional()
-      .transform((val) => (val ? sanitizeUserInput(val) : val)),
+      .transform(val => (val ? sanitizeUserInput(val) : val)),
     status: z
-      .enum(["active", "unsubscribed", "bounced", "complained"])
-      .default("active"),
+      .enum(['active', 'unsubscribed', 'bounced', 'complained'])
+      .default('active'),
     mailing_lists: z.array(z.coerce.number().positive()).optional(),
     metadata: z.record(z.any()).optional(),
   }),
 
   // Webhook validation (newsletter-specific)
   webhook: z.object({
-    event_type: z.string().min(1, "Event type is required"),
-    timestamp: z.coerce.number().positive("Valid timestamp required"),
+    event_type: z.string().min(1, 'Event type is required'),
+    timestamp: z.coerce.number().positive('Valid timestamp required'),
     email: commonSchemas.email.optional(),
     newsletter_id: z.coerce.number().positive().optional(),
     data: z.record(z.any()).optional(),
   }),
-};
+}
 
 // Create validation middleware function
 export function createValidationMiddleware(
   schema: z.ZodSchema,
-  source: "body" | "query" | "params" = "body"
+  source: 'body' | 'query' | 'params' = 'body',
 ) {
   return defineEventHandler(async (event) => {
     try {
-      let data;
+      let data
 
       switch (source) {
-        case "body":
-          data = await readBody(event);
-          break;
-        case "query":
-          data = getQuery(event);
-          break;
-        case "params":
-          data = getRouterParams(event);
-          break;
+        case 'body':
+          data = await readBody(event)
+          break
+        case 'query':
+          data = getQuery(event)
+          break
+        case 'params':
+          data = getRouterParams(event)
+          break
       }
 
-      const validatedData = schema.parse(data);
+      const validatedData = schema.parse(data)
 
       // Store validated data in context
       if (!event.context.validated) {
-        event.context.validated = {};
+        event.context.validated = {}
       }
-      event.context.validated[source] = validatedData;
-    } catch (error) {
+      event.context.validated[source] = validatedData
+    }
+    catch (error) {
       if (error instanceof z.ZodError) {
-        const errors = error.errors.map((err) => ({
-          field: err.path.join("."),
+        const errors = error.errors.map(err => ({
+          field: err.path.join('.'),
           message: err.message,
           code: err.code,
-        }));
+        }))
 
         throw createError({
           statusCode: 422,
-          statusMessage: "Validation failed",
+          statusMessage: 'Validation failed',
           data: {
             errors,
-            message: "Invalid input data",
+            message: 'Invalid input data',
           },
-        });
+        })
       }
 
       throw createError({
         statusCode: 400,
-        statusMessage: "Invalid request data",
-      });
+        statusMessage: 'Invalid request data',
+      })
     }
-  });
+  })
 }
 
 // Content Security Policy validation
 export function validateCSP(event: any) {
-  const cspHeader = getHeader(event, "content-security-policy");
+  const cspHeader = getHeader(event, 'content-security-policy')
 
   if (!cspHeader) {
     setHeader(
       event,
-      "Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;"
-    );
+      'Content-Security-Policy',
+      'default-src \'self\'; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: https:; font-src \'self\' https:; connect-src \'self\' https:;',
+    )
   }
 }
 
 // MIME type validation for file uploads
 export function validateMimeType(file: any, allowedTypes: string[]): boolean {
   if (!file || !file.type) {
-    return false;
+    return false
   }
 
-  return allowedTypes.includes(file.type);
+  return allowedTypes.includes(file.type)
 }
 
 // File size validation
 export function validateFileSize(file: any, maxSizeBytes: number): boolean {
-  if (!file || typeof file.size !== "number") {
-    return false;
+  if (!file || typeof file.size !== 'number') {
+    return false
   }
 
-  return file.size <= maxSizeBytes;
+  return file.size <= maxSizeBytes
 }
 
 // Webhook signature validation (newsletter-specific)
@@ -259,95 +260,95 @@ export function validateWebhookSignature(
   event: any,
   payload: string,
   signature: string,
-  secret: string
+  secret: string,
 ): boolean {
-  const crypto = require("node:crypto");
+  const crypto = require('node:crypto')
 
   const expectedSignature = crypto
-    .createHmac("sha256", secret)
+    .createHmac('sha256', secret)
     .update(payload)
-    .digest("hex");
+    .digest('hex')
 
-  const providedSignature = signature.startsWith("sha256=")
+  const providedSignature = signature.startsWith('sha256=')
     ? signature.slice(7)
-    : signature;
+    : signature
 
   return crypto.timingSafeEqual(
-    Buffer.from(expectedSignature, "hex"),
-    Buffer.from(providedSignature, "hex")
-  );
+    Buffer.from(expectedSignature, 'hex'),
+    Buffer.from(providedSignature, 'hex'),
+  )
 }
 
 // Helper to get validated data from context
 export function getValidatedData(
   event: any,
-  source: "body" | "query" | "params" = "body"
+  source: 'body' | 'query' | 'params' = 'body',
 ) {
-  return event.context.validated?.[source];
+  return event.context.validated?.[source]
 }
 
 // Specialized validators for common use cases
 export const validators = {
   newsletterId: createValidationMiddleware(
     z.object({ id: commonSchemas.newsletterId }),
-    "params"
+    'params',
   ),
 
-  pagination: createValidationMiddleware(commonSchemas.pagination, "query"),
+  pagination: createValidationMiddleware(commonSchemas.pagination, 'query'),
 
-  newsletter: createValidationMiddleware(validationSchemas.newsletter, "body"),
+  newsletter: createValidationMiddleware(validationSchemas.newsletter, 'body'),
 
-  block: createValidationMiddleware(validationSchemas.block, "body"),
+  block: createValidationMiddleware(validationSchemas.block, 'body'),
 
-  sendTest: createValidationMiddleware(validationSchemas.sendTest, "body"),
+  sendTest: createValidationMiddleware(validationSchemas.sendTest, 'body'),
 
   sendNewsletter: createValidationMiddleware(
     validationSchemas.sendNewsletter,
-    "body"
+    'body',
   ),
 
-  template: createValidationMiddleware(validationSchemas.template, "body"),
+  template: createValidationMiddleware(validationSchemas.template, 'body'),
 
-  subscriber: createValidationMiddleware(validationSchemas.subscriber, "body"),
+  subscriber: createValidationMiddleware(validationSchemas.subscriber, 'body'),
 
-  webhook: createValidationMiddleware(validationSchemas.webhook, "body"),
-};
+  webhook: createValidationMiddleware(validationSchemas.webhook, 'body'),
+}
 
 // Default validation middleware that applies basic security measures
 export default defineEventHandler(async (event) => {
   // Skip for non-newsletter API routes
-  if (!event.node.req.url?.startsWith("/api/newsletter")) {
-    return;
+  if (!event.node.req.url?.startsWith('/api/newsletter')) {
+    return
   }
 
   // Apply CSP headers
-  validateCSP(event);
+  validateCSP(event)
 
   // Validate Content-Type for POST/PUT/PATCH requests
-  if (["POST", "PUT", "PATCH"].includes(event.node.req.method || "")) {
-    const contentType = getHeader(event, "content-type");
+  if (['POST', 'PUT', 'PATCH'].includes(event.node.req.method || '')) {
+    const contentType = getHeader(event, 'content-type')
 
     if (!contentType) {
       throw createError({
         statusCode: 400,
-        statusMessage: "Content-Type header is required",
-      });
+        statusMessage: 'Content-Type header is required',
+      })
     }
 
     // Allow specific content types
     const allowedTypes = [
-      "application/json",
-      "multipart/form-data",
-      "application/x-www-form-urlencoded",
-    ];
+      'application/json',
+      'multipart/form-data',
+      'application/x-www-form-urlencoded',
+    ]
 
-    const isAllowed = allowedTypes.some((type) => contentType.includes(type));
+    const isAllowed = allowedTypes.some(type => contentType.includes(type))
 
     if (!isAllowed) {
       throw createError({
         statusCode: 415,
-        statusMessage: "Unsupported Media Type",
-      });
+        statusMessage: 'Unsupported Media Type',
+      })
     }
   }
-});
+})

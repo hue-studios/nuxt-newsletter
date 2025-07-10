@@ -56,7 +56,10 @@
               </div>
 
               <!-- Category Badge -->
-              <Badge variant="secondary" class="text-xs">
+              <Badge
+                variant="secondary"
+                class="text-xs"
+              >
                 {{ blockType.category }}
               </Badge>
             </div>
@@ -66,67 +69,74 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="filteredCategories.length === 0" class="text-center py-12">
+    <div
+      v-if="filteredCategories.length === 0"
+      class="text-center py-12"
+    >
       <Icon
         name="lucide:search-x"
         class="w-16 h-16 text-gray-400 mx-auto mb-4"
       />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">No blocks found</h3>
-      <p class="text-gray-600">Try a different search term</p>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">
+        No blocks found
+      </h3>
+      <p class="text-gray-600">
+        Try a different search term
+      </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { BlockType } from "../../types/newsletter";
+import { computed, ref } from 'vue'
+import type { BlockType } from '../../types/newsletter'
 
 interface Props {
-  blockTypes: BlockType[];
+  blockTypes: BlockType[]
 }
 
 interface Emits {
-  (e: "select", blockType: BlockType): void;
+  (e: 'select', blockType: BlockType): void
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
 // State
-const searchQuery = ref("");
+const searchQuery = ref('')
 
 // Computed
 const filteredCategories = computed(() => {
-  const categories = new Map();
+  const categories = new Map()
 
   // Filter block types by search query
   const filteredBlocks = props.blockTypes.filter((blockType) => {
-    if (!searchQuery.value) return true;
+    if (!searchQuery.value) return true
 
-    const query = searchQuery.value.toLowerCase();
+    const query = searchQuery.value.toLowerCase()
 
     return (
-      blockType.name.toLowerCase().includes(query) ||
-      blockType.description?.toLowerCase().includes(query) ||
-      false ||
-      blockType.category.toLowerCase().includes(query)
-    );
-  });
+      blockType.name.toLowerCase().includes(query)
+      || blockType.description?.toLowerCase().includes(query)
+      || false
+      || blockType.category.toLowerCase().includes(query)
+    )
+  })
 
   // Group by category
   filteredBlocks.forEach((blockType) => {
-    const category = blockType.category || "content";
+    const category = blockType.category || 'content'
     if (!categories.has(category)) {
       categories.set(category, {
         name: category.charAt(0).toUpperCase() + category.slice(1),
         blocks: [],
-      });
+      })
     }
-    categories.get(category).blocks.push(blockType);
-  });
+    categories.get(category).blocks.push(blockType)
+  })
 
-  return Array.from(categories.values());
-});
+  return Array.from(categories.values())
+})
 </script>
 
 <style scoped>

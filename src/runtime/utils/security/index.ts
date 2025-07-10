@@ -5,10 +5,10 @@
  */
 
 // Export sanitization utilities
-export * from "./sanitization";
+export * from './sanitization'
 
 // Export validation utilities
-export * from "./validation";
+export * from './validation'
 
 // Re-export commonly used functions for convenience
 export {
@@ -16,7 +16,7 @@ export {
   sanitizeText,
   sanitizeNewsletterContent,
   escapeHtml,
-} from "./sanitization";
+} from './sanitization'
 
 export {
   validateEmail,
@@ -27,4 +27,4 @@ export {
   validateXSSSafety,
   validateSqlSafety,
   VALIDATION_PATTERNS,
-} from "./validation";
+} from './validation'

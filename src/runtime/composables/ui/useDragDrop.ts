@@ -1,67 +1,69 @@
 // src/runtime/composables/ui/useDragDrop.ts
-import { ref, readonly, type Ref, type DeepReadonly } from "vue";
+import { ref, readonly } from 'vue'
+import type { Ref, DeepReadonly } from 'vue'
 
 export interface UseDragDropReturn {
-  isDragging: DeepReadonly<Ref<boolean>>;
-  draggedItem: DeepReadonly<Ref<any>>;
-  dropZones: DeepReadonly<Ref<HTMLElement[]>>;
-  onDragStart: (item: any, event: DragEvent) => void;
-  onDragEnd: () => void;
-  onDragOver: (event: DragEvent) => void;
+  isDragging: DeepReadonly<Ref<boolean>>
+  draggedItem: DeepReadonly<Ref<any>>
+  dropZones: DeepReadonly<Ref<HTMLElement[]>>
+  onDragStart: (item: any, event: DragEvent) => void
+  onDragEnd: () => void
+  onDragOver: (event: DragEvent) => void
   onDrop: (
     event: DragEvent,
     onDropCallback?: (item: any, target: any) => void
-  ) => void;
+  ) => void
 }
 
 export const useDragDrop = (): UseDragDropReturn => {
-  const isDragging = ref(false);
-  const draggedItem = ref<any>(null);
-  const dropZones = ref<HTMLElement[]>([]);
+  const isDragging = ref(false)
+  const draggedItem = ref<any>(null)
+  const dropZones = ref<HTMLElement[]>([])
 
   const onDragStart = (item: any, event: DragEvent) => {
-    isDragging.value = true;
-    draggedItem.value = item;
+    isDragging.value = true
+    draggedItem.value = item
 
     if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", JSON.stringify(item));
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('text/plain', JSON.stringify(item))
     }
-  };
+  }
 
   const onDragEnd = () => {
-    isDragging.value = false;
-    draggedItem.value = null;
-  };
+    isDragging.value = false
+    draggedItem.value = null
+  }
 
   const onDragOver = (event: DragEvent) => {
-    event.preventDefault();
+    event.preventDefault()
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.dropEffect = 'move'
     }
-  };
+  }
 
   const onDrop = (
     event: DragEvent,
-    onDropCallback?: (item: any, target: any) => void
+    onDropCallback?: (item: any, target: any) => void,
   ) => {
-    event.preventDefault();
+    event.preventDefault()
 
     if (event.dataTransfer) {
-      const data = event.dataTransfer.getData("text/plain");
+      const data = event.dataTransfer.getData('text/plain')
       try {
-        const item = JSON.parse(data);
+        const item = JSON.parse(data)
         if (onDropCallback) {
-          onDropCallback(item, event.target);
+          onDropCallback(item, event.target)
         }
-      } catch (error) {
-        console.error("Error parsing drag data:", error);
+      }
+      catch (error) {
+        console.error('Error parsing drag data:', error)
       }
     }
 
-    isDragging.value = false;
-    draggedItem.value = null;
-  };
+    isDragging.value = false
+    draggedItem.value = null
+  }
 
   return {
     isDragging: readonly(isDragging),
@@ -71,5 +73,5 @@ export const useDragDrop = (): UseDragDropReturn => {
     onDragEnd,
     onDragOver,
     onDrop,
-  };
-};
+  }
+}

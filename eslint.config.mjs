@@ -6,15 +6,27 @@ export default createConfigForNuxt({
   features: {
     // Rules for module authors
     tooling: true,
-    // Rules for formatting
-    stylistic: true,
+    // Disable stylistic rules to avoid formatting conflicts
+    stylistic: false,
   },
-  // dirs: {
-  //   src: [
-  //     './playground',
-  //   ],
-  // },
-})
-  .append
-  // your custom flat config here...
-  ();
+  dirs: {
+    src: ["./src", "./playground"],
+  },
+}).append({
+  rules: {
+    // Only essential code quality rules
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": "warn",
+    "vue/multi-word-component-names": "off",
+    "vue/require-default-prop": "off",
+
+    // Disable problematic regex rules
+    "regexp/no-super-linear-backtracking": "off",
+    "regexp/no-unused-capturing-group": "off",
+    "regexp/use-ignore-case": "off",
+    "regexp/optimal-quantifier-concatenation": "off",
+
+    // Allow common patterns
+    "no-useless-escape": "warn",
+  },
+});

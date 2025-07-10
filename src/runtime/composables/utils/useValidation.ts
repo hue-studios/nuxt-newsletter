@@ -1,45 +1,46 @@
 // src/runtime/composables/utils/useValidation.ts
-import { ref, readonly } from "vue";
+import { ref, readonly } from 'vue'
 import type {
   ValidationError,
   ValidationResult,
   Newsletter,
   NewsletterBlock,
-} from "../../types/newsletter";
+} from '../../types/newsletter'
 import {
   validateNewsletter,
   validateBlock,
   getValidationSummary,
-} from "../../types/newsletter-validation";
+} from '../../types/newsletter-validation'
 
 export const useValidation = () => {
-  const isValidating = ref(false);
-  const errors = ref<ValidationError[]>([]);
+  const isValidating = ref(false)
+  const errors = ref<ValidationError[]>([])
 
   const validateNewsletterData = async (
-    newsletter: Newsletter
+    newsletter: Newsletter,
   ): Promise<ValidationResult> => {
     try {
-      isValidating.value = true;
-      const result = validateNewsletter(newsletter);
-      errors.value = result.errors;
-      return result;
-    } finally {
-      isValidating.value = false;
+      isValidating.value = true
+      const result = validateNewsletter(newsletter)
+      errors.value = result.errors
+      return result
     }
-  };
+    finally {
+      isValidating.value = false
+    }
+  }
 
   const validateBlockData = (block: NewsletterBlock): ValidationError[] => {
-    return validateBlock(block);
-  };
+    return validateBlock(block)
+  }
 
   const clearErrors = () => {
-    errors.value = [];
-  };
+    errors.value = []
+  }
 
   const getValidationSummaryData = () => {
-    return getValidationSummary(errors.value);
-  };
+    return getValidationSummary(errors.value)
+  }
 
   return {
     isValidating: readonly(isValidating),
@@ -48,5 +49,5 @@ export const useValidation = () => {
     validateBlock: validateBlockData,
     clearErrors,
     getValidationSummary: getValidationSummaryData,
-  };
-};
+  }
+}

@@ -1,10 +1,11 @@
-import { defineNuxtRouteMiddleware, createError } from "#imports";
+import { defineNuxtRouteMiddleware, createError } from '#imports'
+
 export default defineNuxtRouteMiddleware((to) => {
   // Validate newsletter ID parameter
   if (to.params.id && !/^\d+$/.test(to.params.id as string)) {
     throw createError({
       statusCode: 404,
-      statusMessage: "Newsletter not found",
-    });
+      statusMessage: 'Newsletter not found',
+    })
   }
-});
+})

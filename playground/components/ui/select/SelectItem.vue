@@ -5,10 +5,11 @@ import { Check } from 'lucide-vue-next'
 import {
   SelectItem,
   SelectItemIndicator,
-  type SelectItemProps,
+  
   SelectItemText,
-  useForwardProps,
+  useForwardProps
 } from 'reka-ui'
+import type {SelectItemProps} from 'reka-ui';
 import { cn } from '@/lib/utils'
 
 const props = defineProps<SelectItemProps & { class?: HTMLAttributes['class'] }>()

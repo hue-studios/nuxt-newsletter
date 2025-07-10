@@ -1,37 +1,38 @@
 // src/runtime/composables/ui/useEditor.ts
-import { ref, readonly, type Ref, type DeepReadonly } from "vue";
+import { ref, readonly } from 'vue'
+import type { Ref, DeepReadonly } from 'vue'
 
 export interface UseEditorReturn {
-  editorContent: DeepReadonly<Ref<string>>;
-  isEditing: DeepReadonly<Ref<boolean>>;
-  selectedElement: DeepReadonly<Ref<HTMLElement | null>>;
-  startEditing: () => void;
-  stopEditing: () => void;
-  selectElement: (element: HTMLElement) => void;
-  updateContent: (content: string) => void;
+  editorContent: DeepReadonly<Ref<string>>
+  isEditing: DeepReadonly<Ref<boolean>>
+  selectedElement: DeepReadonly<Ref<HTMLElement | null>>
+  startEditing: () => void
+  stopEditing: () => void
+  selectElement: (element: HTMLElement) => void
+  updateContent: (content: string) => void
 }
 
 export const useEditor = (): UseEditorReturn => {
-  const editorContent = ref("");
-  const isEditing = ref(false);
-  const selectedElement = ref<HTMLElement | null>(null);
+  const editorContent = ref('')
+  const isEditing = ref(false)
+  const selectedElement = ref<HTMLElement | null>(null)
 
   const startEditing = () => {
-    isEditing.value = true;
-  };
+    isEditing.value = true
+  }
 
   const stopEditing = () => {
-    isEditing.value = false;
-    selectedElement.value = null;
-  };
+    isEditing.value = false
+    selectedElement.value = null
+  }
 
   const selectElement = (element: HTMLElement) => {
-    selectedElement.value = element;
-  };
+    selectedElement.value = element
+  }
 
   const updateContent = (content: string) => {
-    editorContent.value = content;
-  };
+    editorContent.value = content
+  }
 
   return {
     editorContent: readonly(editorContent),
@@ -41,5 +42,5 @@ export const useEditor = (): UseEditorReturn => {
     stopEditing,
     selectElement,
     updateContent,
-  };
-};
+  }
+}

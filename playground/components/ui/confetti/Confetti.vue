@@ -3,18 +3,19 @@
     <canvas
       ref="canvasRef"
       :class="$props.class"
-    ></canvas>
+    />
     <slot />
   </div>
 </template>
 
 <script setup lang="ts">
 import {
-  create,
-  type GlobalOptions as ConfettiGlobalOptions,
-  type Options as ConfettiOptions,
-  type CreateTypes as ConfettiInstance,
+  create
+  
+  
+  
 } from "canvas-confetti";
+import type {GlobalOptions as ConfettiGlobalOptions, Options as ConfettiOptions, CreateTypes as ConfettiInstance} from "canvas-confetti";
 import { ref, onMounted, onUnmounted, provide } from "vue";
 
 type Api = {

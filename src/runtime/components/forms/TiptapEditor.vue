@@ -11,7 +11,10 @@
           :disabled="!editor?.can().chain().focus().toggleBold().run()"
           @click="editor?.chain().focus().toggleBold().run()"
         >
-          <Icon name="lucide:bold" class="w-4 h-4" />
+          <Icon
+            name="lucide:bold"
+            class="w-4 h-4"
+          />
         </Button>
 
         <Button
@@ -21,7 +24,10 @@
           :disabled="!editor?.can().chain().focus().toggleItalic().run()"
           @click="editor?.chain().focus().toggleItalic().run()"
         >
-          <Icon name="lucide:italic" class="w-4 h-4" />
+          <Icon
+            name="lucide:italic"
+            class="w-4 h-4"
+          />
         </Button>
 
         <div class="w-px h-6 bg-gray-300 mx-2" />
@@ -61,7 +67,10 @@
           :class="{ 'bg-gray-200': editor?.isActive('bulletList') }"
           @click="editor?.chain().focus().toggleBulletList().run()"
         >
-          <Icon name="lucide:list" class="w-4 h-4" />
+          <Icon
+            name="lucide:list"
+            class="w-4 h-4"
+          />
         </Button>
 
         <Button
@@ -70,7 +79,10 @@
           :class="{ 'bg-gray-200': editor?.isActive('orderedList') }"
           @click="editor?.chain().focus().toggleOrderedList().run()"
         >
-          <Icon name="lucide:list-ordered" class="w-4 h-4" />
+          <Icon
+            name="lucide:list-ordered"
+            class="w-4 h-4"
+          />
         </Button>
 
         <div class="w-px h-6 bg-gray-300 mx-2" />
@@ -81,7 +93,10 @@
           :class="{ 'bg-gray-200': editor?.isActive('link') }"
           @click="setLink"
         >
-          <Icon name="lucide:link" class="w-4 h-4" />
+          <Icon
+            name="lucide:link"
+            class="w-4 h-4"
+          />
         </Button>
 
         <Button
@@ -90,7 +105,10 @@
           :disabled="!editor?.isActive('link')"
           @click="editor?.chain().focus().unsetLink().run()"
         >
-          <Icon name="lucide:link-2-off" class="w-4 h-4" />
+          <Icon
+            name="lucide:link-2-off"
+            class="w-4 h-4"
+          />
         </Button>
       </div>
     </div>
@@ -122,10 +140,15 @@
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showLinkDialog = false">
+          <Button
+            variant="outline"
+            @click="showLinkDialog = false"
+          >
             Cancel
           </Button>
-          <Button @click="confirmLink"> Add Link </Button>
+          <Button @click="confirmLink">
+            Add Link
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -133,29 +156,29 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, onBeforeUnmount } from "vue";
-import { Editor, EditorContent } from "@tiptap/vue-3";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
+import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
+import { Editor, EditorContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import Link from '@tiptap/extension-link'
 
 interface Props {
-  modelValue: string;
-  placeholder?: string;
+  modelValue: string
+  placeholder?: string
 }
 
 interface Emits {
-  (e: "update:modelValue", value: string): void;
+  (e: 'update:modelValue', value: string): void
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
 // State
-const showLinkDialog = ref(false);
-const linkUrl = ref("");
+const showLinkDialog = ref(false)
+const linkUrl = ref('')
 
 // Create editor
-const editor = ref<Editor>();
+const editor = ref<Editor>()
 
 onMounted(() => {
   editor.value = new Editor({
@@ -165,56 +188,56 @@ onMounted(() => {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: "text-blue-600 underline hover:text-blue-800",
+          class: 'text-blue-600 underline hover:text-blue-800',
         },
       }),
     ],
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none",
+        class: 'prose prose-sm max-w-none focus:outline-none',
       },
     },
     onUpdate: ({ editor }) => {
-      emit("update:modelValue", editor.getHTML());
+      emit('update:modelValue', editor.getHTML())
     },
-  });
-});
+  })
+})
 
 onBeforeUnmount(() => {
-  editor.value?.destroy();
-});
+  editor.value?.destroy()
+})
 
 // Watch for prop changes
 watch(
   () => props.modelValue,
   (value) => {
-    const isSame = editor.value?.getHTML() === value;
-    if (isSame) return;
+    const isSame = editor.value?.getHTML() === value
+    if (isSame) return
 
-    editor.value?.commands.setContent(value, false);
-  }
-);
+    editor.value?.commands.setContent(value, false)
+  },
+)
 
 // Methods
 const setLink = () => {
-  const previousUrl = editor.value?.getAttributes("link").href;
-  linkUrl.value = previousUrl || "";
-  showLinkDialog.value = true;
-};
+  const previousUrl = editor.value?.getAttributes('link').href
+  linkUrl.value = previousUrl || ''
+  showLinkDialog.value = true
+}
 
 const confirmLink = () => {
   if (linkUrl.value) {
     editor.value
       ?.chain()
       .focus()
-      .extendMarkRange("link")
+      .extendMarkRange('link')
       .setLink({ href: linkUrl.value })
-      .run();
+      .run()
   }
 
-  showLinkDialog.value = false;
-  linkUrl.value = "";
-};
+  showLinkDialog.value = false
+  linkUrl.value = ''
+}
 </script>
 
 <style>
