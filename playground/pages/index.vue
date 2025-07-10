@@ -1,15 +1,8 @@
 <template>
   <div>
-    Nuxt module playground!
     <NewsletterList
       :show-filters="true"
-      :show-stats="true"
-      @newsletter-selected="handleNewsletterSelect"
-    />
-    <NewsletterEditor
-      v-if="selectedNewsletter"
-      :newsletter="selectedNewsletter"
-      @content-change="handleContentChange"
+      @newsletter-selected="navigateTo(`/${$event.id}`)"
     />
   </div>
 </template>
