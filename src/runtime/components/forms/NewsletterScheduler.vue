@@ -96,9 +96,9 @@
                 <SelectItem
                   v-for="list in mailingLists"
                   :key="list.id"
-                  :value="list.id.toString()"
+                  :value="list.id?.toString()"
                 >
-                  {{ list.name }} ({{ list.active_subscriber_count }}
+                  {{ list.name }} ({{ list.subscriber_count }}
                   subscribers)
                 </SelectItem>
               </SelectContent>
@@ -150,7 +150,7 @@
                 <ul class="text-blue-800 mt-2 space-y-1">
                   <li>
                     • Recipients:
-                    {{ selectedMailingListInfo?.active_subscriber_count || 0 }}
+                    {{ selectedMailingListInfo?.subscriber_count || 0 }}
                     subscribers
                   </li>
                   <li v-if="scheduleType === 'now'">• Send immediately</li>
@@ -221,6 +221,14 @@ const alternativeSubject = ref("");
 const minDate = computed(() => {
   return new Date().toISOString().split("T")[0];
 });
+
+const getABTestSubject = (newsletter: Newsletter): string => {
+  return (newsletter as any).ab_test_subject_b || "";
+};
+
+const hasABTest = (newsletter: Newsletter): boolean => {
+  return !!(newsletter as any).is_ab_test;
+};
 
 const selectedMailingListInfo = computed(() => {
   return props.mailingLists.find(

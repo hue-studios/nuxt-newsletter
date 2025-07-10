@@ -531,29 +531,36 @@ function getOptionsForField(field: string) {
   return fieldOptions[field as keyof typeof fieldOptions] || [];
 }
 
-function getInputType(rule: SegmentRule) {
-  if (["is_null", "is_empty"].includes(rule.operator)) {
-    return "none";
-  }
+// function getInputType(rule: SegmentRule) {
+//   if (["is_null", "is_empty"].includes(rule.operator)) {
+//     return "none";
+//   }
 
-  if (["status", "subscription_source"].includes(rule.field)) {
-    return "select";
-  }
+//   if (["status", "subscription_source"].includes(rule.field)) {
+//     return "select";
+//   }
 
-  if (
-    ["engagement_score", "total_opens", "total_clicks"].includes(rule.field)
-  ) {
-    return "number";
-  }
+//   if (
+//     ["engagement_score", "total_opens", "total_clicks"].includes(rule.field)
+//   ) {
+//     return "number";
+//   }
 
-  if (
-    ["subscribed_at", "last_email_opened", "last_activity"].includes(rule.field)
-  ) {
-    return "date";
-  }
+//   if (
+//     ["subscribed_at", "last_email_opened", "last_activity"].includes(rule.field)
+//   ) {
+//     return "date";
+//   }
 
-  return "text";
-}
+//   return "text";
+// }
+
+const getInputType = (rule: SegmentRule): string => {
+  if (rule.type === "multi-select") {
+    return "multi-select";
+  }
+  return rule.type || "none";
+};
 
 function getPlaceholder(rule: SegmentRule) {
   const placeholders: Record<string, string> = {

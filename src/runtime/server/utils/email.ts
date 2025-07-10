@@ -128,7 +128,7 @@ export class EmailService {
       to: testEmails.map((email) => ({ email: email.trim().toLowerCase() })),
       categories: ["newsletter-test"],
       custom_args: {
-        newsletter_id: newsletter.id.toString(),
+        newsletter_id: newsletter.id?.toString(),
         is_test: "true",
         test_timestamp: new Date().toISOString(),
       },
@@ -173,7 +173,7 @@ export class EmailService {
       ],
       substitutions: this.getSubstitutions(newsletter, recipient, sendRecord),
       custom_args: {
-        newsletter_id: newsletter.id.toString(),
+        newsletter_id: newsletter.id?.toString(),
         subscriber_id: recipient.id?.toString() || "",
         send_record_id: sendRecord.id?.toString() || "",
         ...customArgs,
@@ -202,14 +202,14 @@ export class EmailService {
       },
       categories: ["newsletter", newsletter.category || "general"],
       custom_args: {
-        newsletter_id: newsletter.id.toString(),
+        newsletter_id: newsletter.id?.toString(),
         send_record_id: sendRecord.id?.toString() || "",
         batch_timestamp: new Date().toISOString(),
       },
     };
 
     // Send email
-    await sgMail.send(emailData);
+    await sgMail.send(emailData as any);
   }
 
   // Generate substitutions for personalization
@@ -224,7 +224,7 @@ export class EmailService {
     // Generate unsubscribe token
     const unsubscribeToken = this.generateUnsubscribeToken(
       recipient.email,
-      newsletter.id.toString()
+      newsletter.id?.toString() || ""
     );
 
     return {
@@ -236,7 +236,7 @@ export class EmailService {
 
       // Newsletter data
       newsletter_title: newsletter.title,
-      newsletter_id: newsletter.id.toString(),
+      newsletter_id: newsletter.id?.toString() || "",
 
       // Unsubscribe links
       unsubscribe_url: `${baseUrl}/unsubscribe?email=${encodeURIComponent(
@@ -461,6 +461,7 @@ export class EmailService {
       const response = await sgMail.send(emailData);
 
       return {
+        headers: response[0].headers,
         messageId: response[0].headers?.["x-message-id"] || "unknown",
         status: "success",
         recipients: Array.isArray(to) ? to.length : 1,
@@ -485,8 +486,9 @@ export function getEmailService(): EmailService {
 
     defaultEmailService = new EmailService({
       apiKey: config.newsletter.sendgridApiKey,
-      defaultFromEmail: config.newsletter.defaultFromEmail,
-      defaultFromName: config.newsletter.defaultFromName,
+      defaultFromEmail:
+        config.newsletter.defaultFromEmail || "G2T9K@example.com",
+      defaultFromName: config.newsletter.defaultFromName || "Nuxt Newsletter",
       webhookSecret: config.newsletter.webhookSecret,
     });
   }

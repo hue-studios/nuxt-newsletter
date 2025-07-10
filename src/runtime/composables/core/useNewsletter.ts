@@ -8,6 +8,7 @@ import type {
   PaginationParams,
   SendResult,
   UseNewsletterReturn,
+  EditorState,
 } from "../../types/newsletter";
 import { useNewsletterBlocks } from "#imports";
 
@@ -18,6 +19,46 @@ const error = ref<string | null>(null);
 
 export const useNewsletter = (): UseNewsletterReturn => {
   const { $directusHelpers } = useNuxtApp();
+
+  const editorState = ref<EditorState>({
+    selectedBlock: null,
+    previewMode: false,
+    isDragging: false,
+  });
+
+  const compileMJML = async (newsletterId: number) => {
+    // Implementation for MJML compilation
+    return $fetch(`/api/newsletter/core/compile-mjml`, {
+      method: "POST",
+      body: { newsletter_id: newsletterId },
+    });
+  };
+
+  const sendTestEmail = async (newsletterId: number, emails: string[]) => {
+    // Implementation for sending test emails
+    return $fetch(`/api/newsletter/core/send-test`, {
+      method: "POST",
+      body: { newsletter_id: newsletterId, emails },
+    });
+  };
+
+  const selectBlock = (block: NewsletterBlock | null) => {
+    editorState.value.selectedBlock = block;
+  };
+
+  const autoSave = async () => {
+    // Auto-save implementation
+    if (currentNewsletter.value?.id) {
+      await updateNewsletter(
+        currentNewsletter.value.id,
+        currentNewsletter.value
+      );
+    }
+  };
+
+  const togglePreview = () => {
+    editorState.value.previewMode = !editorState.value.previewMode;
+  };
 
   const fetchNewsletters = async (params?: PaginationParams) => {
     try {
@@ -312,5 +353,11 @@ export const useNewsletter = (): UseNewsletterReturn => {
     updateBlock,
     deleteBlock,
     reorderBlocks,
+    editorState: readonly(editorState),
+    compileMJML,
+    sendTestEmail,
+    selectBlock,
+    autoSave,
+    togglePreview,
   };
 };
