@@ -300,7 +300,6 @@
 </template>
 
 <script setup lang="ts">
-import { useNuxtApp } from "#app";
 import { computed, ref, watch } from "vue";
 import type { NewsletterBlock } from "../../types/newsletter";
 

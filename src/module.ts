@@ -86,6 +86,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/editor/NewsletterEditor.vue"
         ),
+        priority: 1, // Add priority
         global: true,
       },
       {
@@ -93,6 +94,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/newsletter/NewsletterList.vue"
         ),
+        priority: 1,
         global: true,
       },
       {
@@ -100,6 +102,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/analytics/NewsletterAnalytics.vue"
         ),
+        priority: 1,
         global: true,
       },
       {
@@ -107,6 +110,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/editor/BlockPicker.vue"
         ),
+        priority: 1,
         global: true,
       },
       {
@@ -114,6 +118,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/layout/NewsletterDashboard.vue"
         ),
+        priority: 1,
         global: true,
       },
       {
@@ -121,6 +126,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/forms/NewsletterSegmentBuilder.vue"
         ),
+        priority: 2,
         global: true,
       },
       {
@@ -128,6 +134,7 @@ export default defineNuxtModule<ModuleOptions>({
         filePath: resolver.resolve(
           "./runtime/components/forms/SegmentBuilder.vue"
         ),
+        priority: 1,
         global: true,
       },
     ];

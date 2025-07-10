@@ -93,7 +93,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { navigateTo } from "#app";
 import { useNewsletter } from "../../composables/core/useNewsletter";
 import { useNewsletterTemplates } from "../../composables/core/useNewsletterTemplates";
 import type { Newsletter, NewsletterTemplate } from "../../types/newsletter";
