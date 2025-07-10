@@ -2,7 +2,7 @@
 <template>
   <div class="newsletter-list">
     <div class="header">
-      <h2>Newsletters</h2>
+      <h2 class="uppercase">Newsletters</h2>
       <Button @click="createNew">Create Newsletter</Button>
     </div>
 
@@ -59,20 +59,6 @@ const formatDate = (date: string | Date | undefined): string => {
   const dateObj = typeof date === "string" ? new Date(date) : date;
   return dateObj.toLocaleDateString();
 };
-
-// Line 59 - Fix getDisplayDate return type
-// const getDisplayDate = (newsletter: Newsletter): string => {
-//   const date =
-//     newsletter.updated_at ||
-//     newsletter.date_updated ||
-//     newsletter.date_created ||
-//     "";
-
-//   if (!date) return "Unknown";
-
-//   // Convert Date to string if needed
-//   return typeof date === "string" ? date : date.toISOString();
-// };
 </script>
 
 <style scoped>
