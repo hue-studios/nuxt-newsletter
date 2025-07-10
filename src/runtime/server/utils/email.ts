@@ -17,6 +17,56 @@ export interface EmailConfig {
   enableOpenTracking?: boolean;
 }
 
+interface EmailData {
+  from: {
+    email: string;
+    name?: string;
+  };
+
+  // Either use 'to' for simple sends OR 'personalizations' for batch
+  to?: {
+    email: string;
+    name?: string;
+  }[];
+
+  subject?: string; // Optional when using personalizations
+  html?: string;
+  text?: string;
+  templateId?: string;
+
+  // Add personalizations for batch sending
+  personalizations?: {
+    to: { email: string; name?: string }[];
+    cc?: { email: string; name?: string }[];
+    bcc?: { email: string; name?: string }[];
+    subject?: string;
+    headers?: Record<string, string>;
+    substitutions?: Record<string, string>;
+    dynamic_template_data?: Record<string, any>;
+    custom_args?: Record<string, string>;
+    send_at?: number;
+  }[];
+
+  // Rest of the interface...
+  categories?: string[];
+  custom_args?: Record<string, string>;
+  tracking_settings?: {
+    click_tracking?: {
+      enable: boolean;
+      enable_text?: boolean; // Add this for your use case
+    };
+    open_tracking?: {
+      enable: boolean;
+      substitution_tag?: string; // Add this for your use case
+    };
+    subscription_tracking?: {
+      enable: boolean;
+      text?: string;
+      html?: string;
+    };
+  };
+}
+
 export interface SendResult {
   headers: any;
   messageId: string;
@@ -181,14 +231,14 @@ export class EmailService {
     }));
 
     // Prepare email data
-    const emailData = {
+    const emailData: EmailData = {
       from: {
         email: newsletter.from_email || this.config.defaultFromEmail,
         name: newsletter.from_name || this.config.defaultFromName,
       },
       subject: newsletter.subject_line,
       html: newsletter.compiled_html,
-      personalizations,
+      personalizations, // Now properly typed
       tracking_settings: {
         click_tracking: {
           enable: this.config.enableClickTracking,
@@ -198,18 +248,20 @@ export class EmailService {
           enable: this.config.enableOpenTracking,
           substitution_tag: "{{open_tracking}}",
         },
-        subscription_tracking: { enable: false },
+        subscription_tracking: {
+          enable: false,
+        },
       },
       categories: ["newsletter", newsletter.category || "general"],
       custom_args: {
-        newsletter_id: newsletter.id?.toString(),
+        newsletter_id: newsletter.id?.toString() || "",
         send_record_id: sendRecord.id?.toString() || "",
         batch_timestamp: new Date().toISOString(),
       },
     };
 
     // Send email
-    await sgMail.send(emailData as any);
+    await sgMail.send(emailData);
   }
 
   // Generate substitutions for personalization
@@ -219,7 +271,10 @@ export class EmailService {
     sendRecord: NewsletterSend
   ): Record<string, string> {
     const config = useRuntimeConfig();
-    const baseUrl = config.public.siteUrl || "https://example.com";
+    const baseUrl =
+      config.public?.siteUrl ||
+      config.public?.newsletter?.directusUrl ||
+      "https://example.com";
 
     // Generate unsubscribe token
     const unsubscribeToken = this.generateUnsubscribeToken(
@@ -435,14 +490,14 @@ export class EmailService {
       categories?: string[];
     } = {}
   ): Promise<SendResult> {
-    const emailData = {
+    // Build email data with conditional properties
+    const baseEmailData: EmailData = {
       from: options.from || {
         email: this.config.defaultFromEmail,
         name: this.config.defaultFromName,
       },
       to: Array.isArray(to) ? to.map((email) => ({ email })) : [{ email: to }],
       subject,
-      html,
       categories: options.categories || ["transactional"],
       tracking_settings: {
         click_tracking: { enable: false },
@@ -451,11 +506,17 @@ export class EmailService {
       },
     };
 
-    if (options.templateId) {
-      emailData.templateId = options.templateId;
-      emailData.dynamic_template_data = options.templateData || {};
-      delete emailData.html; // Don't include HTML when using template
-    }
+    // Add either html or template
+    const emailData: EmailData = options.templateId
+      ? {
+          ...baseEmailData,
+          templateId: options.templateId,
+          dynamic_template_data: options.templateData || {},
+        }
+      : {
+          ...baseEmailData,
+          html,
+        };
 
     try {
       const response = await sgMail.send(emailData);
@@ -485,11 +546,14 @@ export function getEmailService(): EmailService {
     const config = useRuntimeConfig();
 
     defaultEmailService = new EmailService({
-      apiKey: config.newsletter.sendgridApiKey,
+      apiKey: config.newsletter?.sendgridApiKey || "",
       defaultFromEmail:
-        config.newsletter.defaultFromEmail || "G2T9K@example.com",
-      defaultFromName: config.newsletter.defaultFromName || "Nuxt Newsletter",
-      webhookSecret: config.newsletter.webhookSecret,
+        config.newsletter?.defaultFromEmail || "noreply@example.com",
+      defaultFromName: config.newsletter?.defaultFromName || "Nuxt Newsletter",
+      webhookSecret: config.newsletter?.webhookSecret,
+      enableTracking: config.newsletter?.enableAnalytics,
+      enableClickTracking: config.newsletter?.enableAnalytics,
+      enableOpenTracking: config.newsletter?.enableAnalytics,
     });
   }
 

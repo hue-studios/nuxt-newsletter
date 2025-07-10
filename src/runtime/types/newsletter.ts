@@ -9,7 +9,8 @@ export interface Newsletter {
   from_name: string;
   from_email: string;
   category?: string;
-  status?: "draft" | "scheduled" | "sent" | "paused";
+  status?: "draft" | "scheduled" | "sent" | "paused" | "ready";
+  mailing_list_id?: string;
   preview_text?: string;
   html_content?: string;
   compiled_html?: string;

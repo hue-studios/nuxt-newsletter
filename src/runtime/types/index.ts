@@ -1,6 +1,5 @@
 export * from "./newsletter";
 
-// NuxtApp augmentation for newsletter helpers
 declare module "@nuxt/schema" {
   interface RuntimeConfig {
     newsletter: {
@@ -9,23 +8,16 @@ declare module "@nuxt/schema" {
       defaultFromEmail?: string;
       defaultFromName?: string;
       directusToken?: string;
-    };
-    public: {
-      newsletter: {
-        directusUrl: string;
-      };
+      directusUrl?: string;
+      enableAnalytics?: boolean;
+      enableWebhooks?: boolean;
     };
   }
-}
 
-// Optional: Better DX for environment variables
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv {
-      DIRECTUS_URL?: string;
-      SENDGRID_API_KEY?: string;
-      NEWSLETTER_WEBHOOK_SECRET?: string;
-    }
+  interface PublicRuntimeConfig {
+    newsletter: {
+      directusUrl: string;
+    };
   }
 }
 
