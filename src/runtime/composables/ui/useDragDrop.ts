@@ -1,7 +1,20 @@
 // src/runtime/composables/ui/useDragDrop.ts
-import { ref, readonly } from "vue";
+import { ref, readonly, type Ref, type DeepReadonly } from "vue";
 
-export const useDragDrop = () => {
+export interface UseDragDropReturn {
+  isDragging: DeepReadonly<Ref<boolean>>;
+  draggedItem: DeepReadonly<Ref<any>>;
+  dropZones: DeepReadonly<Ref<HTMLElement[]>>;
+  onDragStart: (item: any, event: DragEvent) => void;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent) => void;
+  onDrop: (
+    event: DragEvent,
+    onDropCallback?: (item: any, target: any) => void
+  ) => void;
+}
+
+export const useDragDrop = (): UseDragDropReturn => {
   const isDragging = ref(false);
   const draggedItem = ref<any>(null);
   const dropZones = ref<HTMLElement[]>([]);

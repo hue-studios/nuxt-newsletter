@@ -1,7 +1,17 @@
 // src/runtime/composables/ui/useEditor.ts
-import { ref, readonly } from "vue";
+import { ref, readonly, type Ref, type DeepReadonly } from "vue";
 
-export const useEditor = () => {
+export interface UseEditorReturn {
+  editorContent: DeepReadonly<Ref<string>>;
+  isEditing: DeepReadonly<Ref<boolean>>;
+  selectedElement: DeepReadonly<Ref<HTMLElement | null>>;
+  startEditing: () => void;
+  stopEditing: () => void;
+  selectElement: (element: HTMLElement) => void;
+  updateContent: (content: string) => void;
+}
+
+export const useEditor = (): UseEditorReturn => {
   const editorContent = ref("");
   const isEditing = ref(false);
   const selectedElement = ref<HTMLElement | null>(null);
