@@ -1,3 +1,4 @@
+// src/runtime/plugin.ts
 import { defineNuxtPlugin } from '#app'
 import type { NewsletterModuleOptions } from '../module'
 
@@ -10,7 +11,8 @@ export default defineNuxtPlugin({
     // Initialize newsletter system
     nuxtApp.provide('newsletter', {
       config,
-      initialized: true
+      initialized: true,
+      version: '1.0.0'
     })
 
     // Set up global error handler for newsletter operations
@@ -22,10 +24,11 @@ export default defineNuxtPlugin({
 
     // Log initialization in development
     if (import.meta.dev) {
-      console.log('[Newsletter] Plugin initialized with config:', {
+      console.log('[Newsletter] Module initialized v1.0.0', {
         directusUrl: config.directus?.url,
         authType: config.directus?.auth?.type,
-        features: config.features
+        mjmlMode: config.mjmlMode || 'client',
+        sendgridConfigured: !!nuxtApp.$config.sendgridApiKey
       })
     }
   }

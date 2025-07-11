@@ -8,20 +8,23 @@ export function useNewsletter() {
 
   const isInitialized = computed(() => !!nuxtApp.$newsletter?.initialized)
   
-  const features = computed(() => config.features || {})
+  const directusUrl = computed(() => config.directus?.url)
   
-  const isDragDropEnabled = computed(() => features.value.dragDrop !== false)
+  const authType = computed(() => config.directus?.auth?.type || 'static')
   
-  const stylingMode = computed(() => features.value.styling || 'unstyled')
+  const mjmlMode = computed(() => config.mjmlMode || 'client')
+
+  const defaultFromEmail = computed(() => config.defaultFromEmail || 'newsletter@example.com')
+  
+  const defaultFromName = computed(() => config.defaultFromName || 'Newsletter')
 
   return {
-    isInitialized: isInitialized,
-    config: config,
-    features: features,
-    isDragDropEnabled: isDragDropEnabled,
-    stylingMode: stylingMode
+    isInitialized,
+    config,
+    directusUrl,
+    authType,
+    mjmlMode,
+    defaultFromEmail,
+    defaultFromName
   }
 }
-
-
-

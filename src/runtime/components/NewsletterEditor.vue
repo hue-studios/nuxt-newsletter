@@ -1,94 +1,156 @@
 <template>
-  <div class="newsletter-editor" :class="containerClasses">
-    <div class="newsletter-editor__toolbar" :class="toolbarClasses">
+  <div class="newsletter-editor">
+    <div class="newsletter-editor__toolbar">
       <div class="toolbar-section">
         <h3>Newsletter Editor</h3>
+        <select 
+          v-if="templates.length > 0" 
+          @change="loadTemplate($event.target.value)"
+          class="template-select"
+        >
+          <option value="">-- Select Template --</option>
+          <option 
+            v-for="template in templates" 
+            :key="template.id"
+            :value="template.id"
+          >
+            {{ template.name }}
+          </option>
+        </select>
       </div>
       <div class="toolbar-section">
-        <button 
-          v-for="blockType in availableBlocks" 
-          :key="blockType.type"
-          @click="addBlock(blockType.type)"
-          class="toolbar-button"
-          :class="buttonClasses"
-        >
-          <span class="icon">{{ blockType.icon }}</span>
-          <span>{{ blockType.label }}</span>
-        </button>
+        <div v-if="loadingBlockTypes" class="loading-message">
+          Loading block types...
+        </div>
+        <template v-else>
+          <div class="block-categories">
+            <div 
+              v-for="category in blockCategories" 
+              :key="category"
+              class="category-group"
+            >
+              <span class="category-label">{{ category }}:</span>
+              <button 
+                v-for="blockType in getBlocksByCategory(category)" 
+                :key="blockType.id"
+                @click="addBlockFromType(blockType)"
+                class="toolbar-button"
+                :title="blockType.description"
+              >
+                <span class="icon">{{ blockType.icon || '📄' }}</span>
+                <span>{{ blockType.name }}</span>
+              </button>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
-    <div class="newsletter-editor__canvas" :class="canvasClasses">
-      <!-- Subject Line -->
-      <div class="subject-wrapper" :class="subjectClasses">
-        <label for="subject">Subject Line</label>
-        <input
-          id="subject"
-          v-model="newsletter.subject"
-          type="text"
-          placeholder="Enter your newsletter subject..."
-          class="subject-input"
-        />
-      </div>
-
-      <!-- Blocks -->
-      <div 
-        ref="blocksContainer"
-        class="blocks-container"
-        :class="blocksContainerClasses"
-      >
-        <template v-if="blocks.length === 0">
-          <div class="empty-state" :class="emptyStateClasses">
-            <p>No blocks added yet. Click the buttons above to add content.</p>
+    <div class="newsletter-editor__main">
+      <div class="newsletter-editor__canvas">
+        <!-- Newsletter Header Info -->
+        <div class="newsletter-header">
+          <div class="form-group">
+            <label for="subject">Subject Line</label>
+            <input
+              id="subject"
+              v-model="newsletter.subject"
+              type="text"
+              placeholder="Enter your newsletter subject..."
+              class="form-input"
+              required
+            />
           </div>
-        </template>
-        
-        <component
-          v-for="(block, index) in blocks"
-          :key="block.id"
-          :is="dragWrapper"
-          v-bind="getDragProps(block, index)"
-        >
-          <div 
+
+          <div class="form-group">
+            <label for="preheader">Preheader Text</label>
+            <input
+              id="preheader"
+              v-model="newsletter.preheader"
+              type="text"
+              placeholder="Preview text that appears in inbox..."
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="from_name">From Name</label>
+              <input
+                id="from_name"
+                v-model="newsletter.from_name"
+                type="text"
+                placeholder="Your Name"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label for="from_email">From Email</label>
+              <input
+                id="from_email"
+                v-model="newsletter.from_email"
+                type="email"
+                placeholder="newsletter@example.com"
+                class="form-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Blocks -->
+        <div class="blocks-container">
+          <template v-if="blocks.length === 0">
+            <div class="empty-state">
+              <p>No blocks added yet. Click the buttons above to add content.</p>
+            </div>
+          </template>
+          
+          <div
+            v-for="(block, index) in blocks"
+            :key="block.id"
             class="block-wrapper"
-            :class="getBlockClasses(block)"
             :data-block-id="block.id"
           >
-            <div class="block-controls" :class="blockControlsClasses">
-              <button @click="moveBlockUp(index)" :disabled="index === 0" class="control-btn">
+            <div class="block-controls">
+              <button @click="moveBlock(index, index - 1)" :disabled="index === 0" class="control-btn" title="Move up">
                 ↑
               </button>
-              <button @click="moveBlockDown(index)" :disabled="index === blocks.length - 1" class="control-btn">
+              <button @click="moveBlock(index, index + 1)" :disabled="index === blocks.length - 1" class="control-btn" title="Move down">
                 ↓
               </button>
-              <button @click="duplicateBlock(block.id)" class="control-btn">
+              <button @click="duplicateBlock(block.id)" class="control-btn" title="Duplicate">
                 ⧉
               </button>
-              <button @click="removeBlock(block.id)" class="control-btn danger">
+              <button @click="removeBlock(block.id)" class="control-btn danger" title="Delete">
                 ×
               </button>
             </div>
             
             <NewsletterBlock
               :block="block"
+              :block-type="getBlockType(block.type)"
               @update="(updates) => updateBlock(block.id, updates)"
             />
           </div>
-        </component>
+        </div>
       </div>
-    </div>
 
-    <!-- Preview Panel -->
-    <div v-if="showPreview" class="newsletter-editor__preview" :class="previewClasses">
-      <NewsletterPreview :newsletter="newsletter" />
+      <!-- Preview Panel -->
+      <div v-if="showPreview" class="newsletter-editor__preview">
+        <NewsletterPreview 
+          :newsletter="newsletter" 
+          :block-types="blockTypes"
+          @update:compiled="handleCompiled"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { useNewsletter } from '../composables/useNewsletter'
-import type { NewsletterBlock as NewsletterBlockType, NewsletterData } from '../composables/useNewsletterEditor'
+import { useDirectusNewsletter } from '../composables/useDirectusNewsletter'
+import type { NewsletterData } from '../composables/useNewsletterEditor'
 import { useNewsletterEditor } from '../composables/useNewsletterEditor'
 
 interface Props {
@@ -104,168 +166,105 @@ const emit = defineEmits<{
   'update:modelValue': [value: NewsletterData]
 }>()
 
-const { newsletter, blocks, addBlock, removeBlock, updateBlock, moveBlock, duplicateBlock } = useNewsletterEditor(props.modelValue)
-const { isDragDropEnabled, stylingMode, config } = useNewsletter()
+const { 
+  newsletter, 
+  blocks, 
+  addBlock, 
+  removeBlock, 
+  updateBlock, 
+  moveBlock, 
+  duplicateBlock,
+  loadFromTemplate 
+} = useNewsletterEditor(props.modelValue)
+
+const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
 
 // Dynamic component loading
 const NewsletterBlock = defineAsyncComponent(() => import('./NewsletterBlock.vue'))
 const NewsletterPreview = defineAsyncComponent(() => import('./NewsletterPreview.vue'))
 
-// Drag and drop setup
-const blocksContainer = ref<HTMLElement>()
-const dragWrapper = ref<any>('div') // Default to div if no drag provider
+// Block types and templates from Directus
+const blockTypes = ref<any[]>([])
+const templates = ref<any[]>([])
+const loadingBlockTypes = ref(true)
 
-// Available block types
-const availableBlocks = [
-  { type: 'text', label: 'Text', icon: 'T' },
-  { type: 'image', label: 'Image', icon: '🖼' },
-  { type: 'button', label: 'Button', icon: '🔘' },
-  { type: 'divider', label: 'Divider', icon: '—' },
-  { type: 'columns', label: 'Columns', icon: '⊞' }
-] as const
-
-// Initialize drag and drop based on provider
+// Load block types and templates from Directus
 onMounted(async () => {
-  if (!isDragDropEnabled.value) return
-
-  const provider = config.dragProvider
-
   try {
-    if (provider === 'sortablejs' || provider === 'auto') {
-      // Try to use SortableJS
-      const { Sortable } = await import('sortablejs').catch(() => ({ Sortable: null }))
-      if (Sortable && blocksContainer.value) {
-        new Sortable(blocksContainer.value, {
-          animation: 150,
-          ghostClass: 'sortable-ghost',
-          chosenClass: 'sortable-chosen',
-          dragClass: 'sortable-drag',
-          onEnd: (evt) => {
-            if (evt.oldIndex !== undefined && evt.newIndex !== undefined) {
-              moveBlock(evt.oldIndex, evt.newIndex)
-            }
-          }
-        })
-        console.log('[Newsletter] SortableJS drag and drop initialized')
-        return
-      }
-    }
-
-    if (provider === 'draggable-plus' || provider === 'auto') {
-      // Try to use Vue Draggable Plus
-      const VueDraggablePlus = await import('vue-draggable-plus').catch(() => null)
-      if (VueDraggablePlus) {
-        dragWrapper.value = VueDraggablePlus.VueDraggable
-        console.log('[Newsletter] Vue Draggable Plus initialized')
-        return
-      }
-    }
-
-    if (provider === 'auto') {
-      console.warn('[Newsletter] No drag and drop library found. Install sortablejs or vue-draggable-plus')
-    }
+    const [blockTypesData, templatesData] = await Promise.all([
+      fetchBlockTypes(),
+      fetchTemplates({ limit: 50 })
+    ])
+    blockTypes.value = blockTypesData
+    templates.value = templatesData
+    loadingBlockTypes.value = false
   } catch (error) {
-    console.error('[Newsletter] Error initializing drag and drop:', error)
+    console.error('Failed to load data from Directus:', error)
+    loadingBlockTypes.value = false
   }
 })
 
-// Get drag props based on provider
-const getDragProps = (block: NewsletterBlockType, index: number) => {
-  if (dragWrapper.value?.name === 'VueDraggable') {
-    return {
-      modelValue: blocks.value,
-      'onUpdate:modelValue': (value: NewsletterBlockType[]) => {
-        blocks.value = value
-      },
-      itemKey: 'id'
+// Get unique categories
+const blockCategories = computed(() => {
+  const categories = new Set(blockTypes.value.map(bt => bt.category))
+  return Array.from(categories).sort()
+})
+
+// Get blocks by category
+const getBlocksByCategory = (category: string) => {
+  return blockTypes.value.filter(bt => bt.category === category)
+}
+
+// Get block type by slug
+const getBlockType = (slug: string) => {
+  return blockTypes.value.find(bt => bt.slug === slug)
+}
+
+// Add block from block type
+const addBlockFromType = (blockType: any) => {
+  const newBlock = addBlock(blockType.slug)
+  
+  // Set default content based on field visibility config
+  if (blockType.field_visibility_config) {
+    const defaultContent: any = {}
+    
+    // Set reasonable defaults for common fields
+    if (blockType.field_visibility_config.includes('title')) {
+      defaultContent.title = 'Enter title'
     }
+    if (blockType.field_visibility_config.includes('text_content')) {
+      defaultContent.text_content = 'Enter your content here...'
+    }
+    if (blockType.field_visibility_config.includes('button_text')) {
+      defaultContent.button_text = 'Click here'
+      defaultContent.button_url = '#'
+    }
+    if (blockType.field_visibility_config.includes('image_url')) {
+      defaultContent.image_url = ''
+      defaultContent.image_alt_text = ''
+    }
+    
+    updateBlock(newBlock.id, { content: defaultContent })
   }
-  return {}
 }
 
-// Manual move functions (fallback when no drag library)
-const moveBlockUp = (index: number) => {
-  if (index > 0) {
-    moveBlock(index, index - 1)
+// Load template
+const loadTemplate = async (templateId: string) => {
+  if (!templateId) return
+  
+  try {
+    const template = await fetchTemplate(templateId)
+    loadFromTemplate(template)
+  } catch (error) {
+    console.error('Failed to load template:', error)
   }
 }
 
-const moveBlockDown = (index: number) => {
-  if (index < blocks.value.length - 1) {
-    moveBlock(index, index + 1)
-  }
+// Handle compiled MJML/HTML from preview
+const handleCompiled = (compiled: { mjml: string, html: string }) => {
+  newsletter.value.compiled_mjml = compiled.mjml
+  newsletter.value.compiled_html = compiled.html
 }
-
-// Styling classes based on config
-const containerClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'flex h-screen bg-gray-50'
-  }
-  return ''
-})
-
-const toolbarClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'bg-white border-b border-gray-200 p-4 flex justify-between items-center'
-  }
-  return ''
-})
-
-const buttonClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-2'
-  }
-  return ''
-})
-
-const canvasClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'flex-1 overflow-y-auto p-6'
-  }
-  return ''
-})
-
-const subjectClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'mb-6 bg-white p-4 rounded-lg shadow-sm'
-  }
-  return ''
-})
-
-const blocksContainerClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'space-y-4'
-  }
-  return ''
-})
-
-const emptyStateClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'text-center py-12 text-gray-500'
-  }
-  return ''
-})
-
-const getBlockClasses = (block: NewsletterBlockType) => {
-  if (stylingMode.value === 'tailwind') {
-    return 'bg-white rounded-lg shadow-sm p-4 relative group hover:shadow-md transition-shadow'
-  }
-  return ''
-}
-
-const blockControlsClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'
-  }
-  return ''
-})
-
-const previewClasses = computed(() => {
-  if (stylingMode.value === 'tailwind') {
-    return 'w-96 border-l border-gray-200 bg-white p-6 overflow-y-auto'
-  }
-  return ''
-})
 
 // Watch for changes and emit
 watch(newsletter, (value) => {
@@ -274,28 +273,59 @@ watch(newsletter, (value) => {
 </script>
 
 <style scoped>
-/* Base styles for unstyled mode */
+/* Base styles */
 .newsletter-editor {
   display: flex;
+  flex-direction: column;
   height: 100vh;
+  background: #f5f5f5;
 }
 
 .newsletter-editor__toolbar {
+  background: white;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e5e5;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .toolbar-section {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.template-select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.block-categories {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.category-group {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
+.category-label {
+  font-size: 0.875rem;
+  color: #666;
+  text-transform: capitalize;
+}
+
 .toolbar-button {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid #ddd;
   background: white;
   cursor: pointer;
@@ -303,45 +333,99 @@ watch(newsletter, (value) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: all 0.2s;
 }
 
 .toolbar-button:hover {
   background: #f5f5f5;
+  border-color: #999;
+}
+
+.toolbar-button .icon {
+  font-size: 1.125rem;
+}
+
+.loading-message {
+  color: #666;
+  font-style: italic;
+}
+
+.newsletter-editor__main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
 }
 
 .newsletter-editor__canvas {
   flex: 1;
   overflow-y: auto;
+  padding: 2rem;
+}
+
+.newsletter-header {
+  background: white;
   padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.subject-wrapper {
-  margin-bottom: 1.5rem;
+.form-group {
+  margin-bottom: 1rem;
 }
 
-.subject-wrapper label {
+.form-group label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
+  color: #333;
 }
 
-.subject-input {
+.form-input {
   width: 100%;
-  padding: 0.5rem;
+  padding: 0.75rem;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .blocks-container {
   min-height: 200px;
 }
 
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  background: white;
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+}
+
 .block-wrapper {
   position: relative;
   margin-bottom: 1rem;
-  padding: 1rem;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s;
+}
+
+.block-wrapper:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .block-controls {
@@ -350,6 +434,13 @@ watch(newsletter, (value) => {
   right: 0.5rem;
   display: flex;
   gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.block-wrapper:hover .block-controls {
+  opacity: 1;
 }
 
 .control-btn {
@@ -357,12 +448,14 @@ watch(newsletter, (value) => {
   border: 1px solid #ddd;
   background: white;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 3px;
   font-size: 0.875rem;
+  transition: all 0.2s;
 }
 
-.control-btn:hover {
+.control-btn:hover:not(:disabled) {
   background: #f5f5f5;
+  border-color: #999;
 }
 
 .control-btn:disabled {
@@ -371,26 +464,45 @@ watch(newsletter, (value) => {
 }
 
 .control-btn.danger {
-  color: #dc2626;
+  color: #dc3545;
+}
+
+.control-btn.danger:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
 }
 
 .newsletter-editor__preview {
-  width: 400px;
+  width: 450px;
   border-left: 1px solid #e5e5e5;
-  padding: 1.5rem;
-  overflow-y: auto;
+  background: white;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Sortable.js styles */
-.sortable-ghost {
-  opacity: 0.4;
+/* Responsive */
+@media (max-width: 1200px) {
+  .newsletter-editor__preview {
+    width: 400px;
+  }
 }
 
-.sortable-chosen {
-  cursor: move;
-}
-
-.sortable-drag {
-  cursor: move;
+@media (max-width: 768px) {
+  .newsletter-editor__main {
+    flex-direction: column;
+  }
+  
+  .newsletter-editor__preview {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #e5e5e5;
+    height: 50vh;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

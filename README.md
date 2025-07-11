@@ -1,107 +1,82 @@
 # Nuxt Newsletter Module
 
-A flexible and lightweight newsletter module for Nuxt 3 with Directus 11 integration. Build beautiful newsletters with drag-and-drop functionality, customizable styling, and seamless authentication.
-
-## Design Philosophy
-
-This module follows a **"pay for what you use"** approach:
-
-- **Minimal Core**: Only essential features in the base module
-- **Optional Everything**: Rich text, drag-drop, and styling are all optional
-- **Email-First**: Optimized for email client compatibility, not web complexity
-- **Your Dependencies**: You control versions of major libraries
+Professional MJML-based newsletter module for Nuxt 3 with Directus CMS and SendGrid integration.
 
 ## Features
 
-- 📧 **Directus 11 Integration** - Store and manage newsletters in your Directus instance
-- 🎨 **Flexible Styling** - Choose between Tailwind CSS, unstyled, or custom styles
-- 🔒 **Flexible Authentication** - Static tokens, middleware-based, or custom auth handlers
-- 🖱️ **Optional Drag & Drop** - Support for multiple drag-and-drop libraries
-- 📱 **Responsive Preview** - Real-time newsletter preview
-- 🧩 **Modular Components** - Use only what you need
-- 🌲 **Tree-shakeable** - Optimized bundle size
-- 💪 **TypeScript Support** - Full type safety
+- 📧 **MJML Email Templates** - Industry-standard responsive email design
+- 💾 **Directus CMS Integration** - Store newsletters, templates, and analytics
+- 📤 **SendGrid API** - Reliable email delivery and tracking
+- 📊 **Analytics & Webhooks** - Track opens, clicks, bounces automatically
+- 🎨 **Visual Block Editor** - No coding required for content creation
+- 👥 **Subscriber Management** - Lists, segmentation, and preferences
+- 🔒 **Flexible Authentication** - Static tokens or middleware-based auth
 
-## Quick Setup
+## Quick Start
 
-1. Add `@your-org/nuxt-newsletter` dependency to your project:
+### 1. Install
 
 ```bash
-# npm
-npm install @your-org/nuxt-newsletter
-
-# yarn
-yarn add @your-org/nuxt-newsletter
-
-# pnpm
-pnpm add @your-org/nuxt-newsletter
+npm install @hue-studios/nuxt-newsletter
 ```
 
-2. Add module to your `nuxt.config.ts`:
+### 2. Configure
 
-```ts
+```typescript
+// nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ['@your-org/nuxt-newsletter'],
+  modules: ['@hue-studios/nuxt-newsletter'],
   
   newsletter: {
     directus: {
-      url: 'https://your-directus-instance.com',
+      url: process.env.DIRECTUS_URL,
       auth: {
         type: 'static',
         token: process.env.DIRECTUS_TOKEN
       }
-    }
+    },
+    sendgrid: {
+      apiKey: process.env.SENDGRID_API_KEY,
+      webhookSecret: process.env.SENDGRID_WEBHOOK_SECRET,
+      defaultFromEmail: 'newsletter@example.com',
+      defaultFromName: 'Your Company'
+    },
+    mjmlMode: 'client' // or 'server' for better performance
   }
 })
 ```
 
-## Configuration
+### 3. Environment Variables
 
-### Full Configuration Options
-
-```ts
-export default defineNuxtConfig({
-  newsletter: {
-    // Directus configuration (required)
-    directus: {
-      url: 'https://your-directus-instance.com',
-      auth: {
-        // Authentication type
-        type: 'static' | 'middleware' | 'custom',
-        
-        // For static auth
-        token: 'your-static-token',
-        
-        // For middleware auth
-        middleware: 'auth', // Name of your auth middleware
-        
-        // For custom auth
-        handler: async () => {
-          // Return token
-          return await getTokenSomehow()
-        }
-      }
-    },
-    
-    // Component prefix (optional)
-    prefix: 'Newsletter', // Default: 'Newsletter'
-    
-    // Feature flags (optional)
-    features: {
-      dragDrop: true,      // Enable drag and drop
-      styling: 'tailwind', // 'tailwind' | 'unstyled' | 'custom'
-      preview: true,       // Enable preview panel
-      templates: true      // Enable newsletter templates
-    },
-    
-    // Drag provider (optional)
-    dragProvider: 'auto', // 'sortablejs' | 'draggable-plus' | 'custom' | 'auto'
-    
-    // Custom styles path (optional, only for styling: 'custom')
-    customStyles: '~/assets/newsletter.css'
-  }
-})
+```bash
+# .env
+DIRECTUS_URL=https://your-directus-instance.com
+DIRECTUS_TOKEN=your-static-token
+DIRECTUS_ADMIN_TOKEN=admin-token-for-webhooks
+SENDGRID_API_KEY=SG.your-sendgrid-api-key
+SENDGRID_WEBHOOK_SECRET=your-webhook-verification-secret
 ```
+
+### 4. Set Up Directus
+
+Run the setup script to create all required collections:
+
+```bash
+# Basic setup with core block types
+node scripts/install-directus-collections.js https://your-directus.com admin@example.com password
+
+# Optional: Add advanced block types
+node scripts/create-advanced-blocks.js https://your-directus.com admin@example.com password
+```
+
+### 5. Configure SendGrid Webhooks
+
+In your SendGrid account, set up event webhooks to:
+```
+https://your-app.com/api/newsletter/sendgrid-webhook
+```
+
+Enable events: Delivered, Open, Click, Bounce, Spam Report, Unsubscribe
 
 ## Usage
 
@@ -110,350 +85,271 @@ export default defineNuxtConfig({
 ```vue
 <template>
   <div>
-    <NewsletterEditor v-model="newsletter" />
-    <button @click="save">Save Newsletter</button>
+    <NewsletterEditor 
+      v-model="newsletter" 
+      :show-preview="true"
+    />
+    
+    <button @click="save">Save Draft</button>
+    <button @click="send">Send Newsletter</button>
   </div>
 </template>
 
 <script setup>
 const newsletter = ref({
-  subject: '',
+  subject: 'Monthly Newsletter',
+  preheader: 'Check out our latest updates',
   blocks: []
 })
 
 const { createNewsletter } = useDirectusNewsletter()
+const { sendNewsletter } = useSendGrid()
 
 const save = async () => {
-  await createNewsletter(newsletter.value)
+  const saved = await createNewsletter(newsletter.value)
+  console.log('Saved:', saved)
 }
-</script>
-```
 
-### With Authentication Middleware
-
-```ts
-// middleware/newsletter-auth.ts
-export default defineNuxtRouteMiddleware(async (to, from) => {
-  const { setAuthToken } = useDirectusNewsletter()
+const send = async () => {
+  // Fetch recipients from your mailing list
+  const recipients = [
+    { email: 'subscriber@example.com', name: 'John Doe' }
+  ]
   
-  // Get token from your auth system
-  const token = await $fetch('/api/auth/directus-token')
-  setAuthToken(token)
-})
-```
-
-```vue
-<template>
-  <div>
-    <NewsletterEditor v-model="newsletter" />
-  </div>
-</template>
-
-<script setup>
-definePageMeta({
-  middleware: 'newsletter-auth'
-})
+  const result = await sendNewsletter(
+    newsletter.value,
+    recipients,
+    {
+      categories: ['monthly', 'newsletter']
+    }
+  )
+  console.log('Sent:', result)
+}
 </script>
 ```
 
-### Custom Block Types
+### Send Test Email
 
 ```vue
 <script setup>
-const { addBlock } = useNewsletterEditor()
+const { sendTestEmail } = useSendGrid()
 
-// Add custom block type
-addBlock('custom', {
-  id: 'custom_1',
-  type: 'custom',
-  content: {
-    // Your custom content
-  }
-})
+const testEmail = async () => {
+  await sendTestEmail(
+    newsletter.value,
+    'test@example.com'
+  )
+}
 </script>
 ```
 
-## Bundle Size Impact
+### Load Newsletter Template
 
-| Feature | Size | When to Use |
-|---------|------|-------------|
-| Core Module | ~50KB | Always included |
-| Directus SDK | ~80KB | Required |
-| Simple Text Editor | 0KB | Default, built-in |
-| Tiptap Rich Text | ~200KB | Complex formatting needs |
-| SortableJS | ~30KB | Lightweight drag-drop |
-| Vue Draggable Plus | ~25KB | Vue 3 optimized drag-drop |
-| GSAP Draggable | ~100KB+ | Advanced animations |
+```vue
+<script setup>
+const { fetchTemplates } = useDirectusNewsletter()
+const { loadFromTemplate } = useNewsletterEditor()
 
-## Optional Features
+const templates = await fetchTemplates()
 
-### Rich Text Editing with Tiptap
-
-By default, the module uses a simple markdown-based text editor. For rich text editing, you can enable Tiptap:
-
-1. Install Tiptap dependencies:
-```bash
-npm install @tiptap/vue-3 @tiptap/starter-kit @tiptap/extension-link
-```
-
-2. Enable in configuration:
-```ts
-export default defineNuxtConfig({
-  newsletter: {
-    features: {
-      richTextEditor: true
-    }
-  }
-})
-```
-
-3. The text blocks will automatically upgrade to use Tiptap when available.
-
-**Note:** Tiptap adds ~200KB to your bundle. Only enable if you need rich text editing.
-
-### Simple vs Rich Text Comparison
-
-| Feature | Simple Editor | Tiptap |
-|---------|--------------|---------|
-| Bundle Size | 0KB | ~200KB |
-| Bold/Italic | ✅ Markdown | ✅ WYSIWYG |
-| Links | ✅ Markdown | ✅ WYSIWYG |
-| Headings | ❌ | ✅ |
-| Lists | ❌ | ✅ |
-| Tables | ❌ | ✅ (with extension) |
-| Email Compatibility | Excellent | Good |
-| Learning Curve | Minimal | Moderate |
-
-## Styling Options
-
-### 1. Tailwind CSS (Recommended)
-
-Install Tailwind CSS:
-
-```bash
-npm install -D @nuxtjs/tailwindcss
-```
-
-Configure in `nuxt.config.ts`:
-
-```ts
-export default defineNuxtConfig({
-  modules: ['@nuxtjs/tailwindcss', '@your-org/nuxt-newsletter'],
-  newsletter: {
-    features: {
-      styling: 'tailwind'
-    }
-  }
-})
-```
-
-### 2. Unstyled (Default)
-
-The module provides minimal base styles. Perfect for custom styling:
-
-```ts
-newsletter: {
-  features: {
-    styling: 'unstyled'
-  }
+const useTemplate = (templateId) => {
+  const template = templates.find(t => t.id === templateId)
+  loadFromTemplate(template)
 }
-```
-
-### 3. Custom Styles
-
-Provide your own stylesheet:
-
-```ts
-newsletter: {
-  features: {
-    styling: 'custom'
-  },
-  customStyles: '~/assets/css/newsletter.css'
-}
-```
-
-## Drag and Drop Setup
-
-### Option 1: SortableJS (Lightweight)
-
-```bash
-npm install sortablejs @types/sortablejs
-```
-
-### Option 2: Vue Draggable Plus (Vue 3 optimized)
-
-```bash
-npm install vue-draggable-plus
-```
-
-### Option 3: Custom Implementation
-
-```ts
-newsletter: {
-  dragProvider: 'custom'
-}
-```
-
-Then implement your own drag logic using the provided methods:
-
-```ts
-const { moveBlock } = useNewsletterEditor()
-// Move block from index 0 to index 2
-moveBlock(0, 2)
+</script>
 ```
 
 ## Composables
 
-### `useNewsletter()`
-
-Access module configuration and features:
-
-```ts
-const { 
-  config,           // Module configuration
-  features,         // Enabled features
-  isDragDropEnabled,// Check if drag-drop is enabled
-  stylingMode      // Current styling mode
-} = useNewsletter()
-```
-
 ### `useNewsletterEditor()`
 
-Manage newsletter content:
+Manages newsletter content and blocks:
 
-```ts
+```typescript
 const {
   newsletter,      // Reactive newsletter data
-  blocks,          // Newsletter blocks
-  addBlock,        // Add new block
+  blocks,          // Newsletter blocks array
+  addBlock,        // Add new block by type
   removeBlock,     // Remove block by ID
   updateBlock,     // Update block content
-  moveBlock,       // Move block position
+  moveBlock,       // Reorder blocks
   duplicateBlock,  // Duplicate existing block
-  clearBlocks      // Clear all blocks
+  clearBlocks,     // Clear all blocks
+  loadFromTemplate // Load from template
 } = useNewsletterEditor()
+```
+
+### `useSendGrid()`
+
+SendGrid email operations:
+
+```typescript
+const {
+  sendNewsletter,          // Send to recipients
+  sendTestEmail,           // Send test email
+  createBatch,             // Create batch for large sends
+  getBatchStatus,          // Check batch status
+  cancelScheduledSend,     // Cancel scheduled email
+  getSuppressions,         // Get suppression lists
+  addToSuppressionList,    // Add emails to suppression
+  removeFromSuppressionList // Remove from suppression
+} = useSendGrid()
 ```
 
 ### `useDirectusNewsletter()`
 
-Interact with Directus:
+Directus data operations:
 
-```ts
+```typescript
 const {
-  setAuthToken,      // Set authentication token
   fetchNewsletters,  // Get newsletter list
   fetchNewsletter,   // Get single newsletter
   createNewsletter,  // Create new newsletter
-  updateNewsletter,  // Update existing newsletter
+  updateNewsletter,  // Update existing
   deleteNewsletter,  // Delete newsletter
-  sendTestEmail      // Send test email
+  fetchBlockTypes,   // Get available blocks
+  fetchTemplates,    // Get templates
+  fetchTemplate      // Get single template
 } = useDirectusNewsletter()
 ```
 
-## Directus Schema
+### `useMjmlCompiler()`
 
-Create these collections in your Directus instance:
+MJML compilation:
 
-### `newsletters` Collection
+```typescript
+const {
+  compileNewsletterToMjml,  // Generate MJML
+  compileMjmlToHtml,        // Convert to HTML
+  isCompiling,              // Loading state
+  compilationError          // Error state
+} = useMjmlCompiler()
+```
 
-```json
+## Block Types
+
+The module uses MJML block types stored in Directus. Each block type includes:
+
+- **MJML Template** - The MJML markup with Handlebars placeholders
+- **Field Configuration** - Which fields are editable
+- **Category** - Organization (content, layout, media, interactive)
+
+### Example Block Type
+
+```javascript
 {
-  "collection": "newsletters",
-  "fields": [
-    {
-      "field": "id",
-      "type": "uuid",
-      "meta": {
-        "hidden": true,
-        "readonly": true,
-        "interface": "input",
-        "special": ["uuid"]
-      }
-    },
-    {
-      "field": "subject",
-      "type": "string",
-      "meta": {
-        "interface": "input",
-        "required": true
-      }
-    },
-    {
-      "field": "preheader",
-      "type": "string",
-      "meta": {
-        "interface": "input"
-      }
-    },
-    {
-      "field": "blocks",
-      "type": "json",
-      "meta": {
-        "interface": "code",
-        "options": {
-          "language": "json"
-        }
-      }
-    },
-    {
-      "field": "settings",
-      "type": "json",
-      "meta": {
-        "interface": "code",
-        "options": {
-          "language": "json"
-        }
-      }
-    },
-    {
-      "field": "status",
-      "type": "string",
-      "meta": {
-        "interface": "select-dropdown",
-        "options": {
-          "choices": [
-            { "text": "Draft", "value": "draft" },
-            { "text": "Scheduled", "value": "scheduled" },
-            { "text": "Sent", "value": "sent" }
-          ]
-        },
-        "default_value": "draft"
-      }
-    }
+  name: "Hero Section",
+  slug: "hero",
+  category: "content",
+  icon: "title",
+  mjml_template: `
+    <mj-section background-color="{{background_color}}" padding="{{padding}}">
+      <mj-column>
+        <mj-text align="{{text_align}}" font-size="32px" color="{{text_color}}">
+          {{title}}
+        </mj-text>
+        {{#if subtitle}}
+        <mj-text align="{{text_align}}" font-size="18px" color="{{text_color}}">
+          {{subtitle}}
+        </mj-text>
+        {{/if}}
+      </mj-column>
+    </mj-section>
+  `,
+  field_visibility_config: [
+    "title",
+    "subtitle", 
+    "background_color",
+    "text_color",
+    "text_align",
+    "padding"
   ]
 }
 ```
 
-## Development
+## Server-Side MJML Compilation
 
+For better performance, use server-side compilation:
+
+1. Install MJML:
 ```bash
-# Install dependencies
-npm install
-
-# Generate type stubs
-npm run dev:prepare
-
-# Develop with the playground
-npm run dev
-
-# Build the playground
-npm run dev:build
-
-# Run ESLint
-npm run lint
-
-# Run Vitest
-npm run test
-npm run test:watch
-
-# Release new version
-npm run release
+npm install mjml
 ```
+
+2. Update config:
+```typescript
+newsletter: {
+  mjmlMode: 'server'
+}
+```
+
+## Analytics & Tracking
+
+SendGrid webhooks automatically update:
+
+- **Subscriber Status** - Active, bounced, unsubscribed
+- **Engagement Scores** - Based on opens and clicks
+- **Send Statistics** - Delivery rates, open rates, click rates
+- **Individual Events** - Stored in newsletter_analytics
+
+## Authentication Options
+
+### Static Token (Simple)
+```typescript
+directus: {
+  auth: {
+    type: 'static',
+    token: 'your-static-token'
+  }
+}
+```
+
+### Middleware-based (Secure)
+```typescript
+directus: {
+  auth: {
+    type: 'middleware',
+    middleware: 'auth' // Your auth middleware name
+  }
+}
+```
+
+## Production Checklist
+
+- [ ] Configure SendGrid webhooks
+- [ ] Set up Directus collections
+- [ ] Create block types
+- [ ] Configure authentication
+- [ ] Test email rendering
+- [ ] Set up bounce handling
+- [ ] Configure unsubscribe links
+- [ ] Test analytics tracking
+
+## File Structure
+
+```
+your-app/
+├── server/
+│   └── api/
+│       └── newsletter/
+│           ├── compile-mjml.post.ts  # Server MJML (optional)
+│           └── sendgrid-webhook.post.ts  # Auto-created
+├── components/
+│   └── NewsletterEditor.vue  # Your implementation
+└── pages/
+    └── admin/
+        └── newsletter.vue  # Editor page
+```
+
+## Support
+
+- [GitHub Issues](https://github.com/hue-studios/nuxt-newsletter)
+- [Documentation](https://github.com/hue-studios/nuxt-newsletter/wiki)
 
 ## License
 
 MIT License
 
-## Contributing
+---
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+Built with ❤️ by Hue Studios

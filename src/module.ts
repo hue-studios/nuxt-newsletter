@@ -3,11 +3,11 @@ import {
   addImports,
   addImportsDir,
   addPlugin,
+  addServerHandler,
   createResolver,
   defineNuxtModule,
   installModule
 } from '@nuxt/kit'
-import type { Nuxt } from '@nuxt/schema'
 import { defu } from 'defu'
 
 export interface NewsletterModuleOptions {
@@ -27,9 +27,8 @@ export interface NewsletterModuleOptions {
        * Authentication type
        * - 'static': Use a static token
        * - 'middleware': Use Nuxt middleware for auth
-       * - 'custom': Provide your own auth handler
        */
-      type: 'static' | 'middleware' | 'custom'
+      type: 'static' | 'middleware'
       /**
        * Static token (only used when type is 'static')
        */
@@ -39,61 +38,44 @@ export interface NewsletterModuleOptions {
        * @default 'auth'
        */
       middleware?: string
-      /**
-       * Custom auth handler (only used when type is 'custom')
-       */
-      handler?: () => string | Promise<string>
     }
   }
+  /**
+   * SendGrid configuration
+   */
+  sendgrid: {
+    /**
+     * SendGrid API key
+     */
+    apiKey?: string
+    /**
+     * Webhook verification secret
+     */
+    webhookSecret?: string
+    /**
+     * Default from email
+     */
+    defaultFromEmail?: string
+    /**
+     * Default from name
+     */
+    defaultFromName?: string
+  }
+  /**
+   * MJML compilation mode
+   * @default 'client'
+   */
+  mjmlMode?: 'client' | 'server'
   /**
    * Component prefix
    * @default 'Newsletter'
    */
   prefix?: string
-  /**
-   * Feature flags
-   */
-  features?: {
-    /**
-     * Enable drag and drop functionality
-     * @default true
-     */
-    dragDrop?: boolean
-    /**
-     * Styling system to use
-     * @default 'unstyled'
-     */
-    styling?: 'tailwind' | 'unstyled' | 'custom'
-    /**
-     * Enable preview functionality
-     * @default true
-     */
-    preview?: boolean
-    /**
-     * Enable templates
-     * @default true
-     */
-    templates?: boolean
-    /**
-     * Enable rich text editor (Tiptap)
-     * @default false
-     */
-    richTextEditor?: boolean
-  }
-  /**
-   * Drag and drop provider
-   * @default 'auto'
-   */
-  dragProvider?: 'sortablejs' | 'draggable-plus' | 'custom' | 'auto'
-  /**
-   * Custom CSS file path (only used when styling is 'custom')
-   */
-  customStyles?: string
 }
 
 export default defineNuxtModule<NewsletterModuleOptions>({
   meta: {
-    name: '@nuxt/newsletter',
+    name: '@hue-studios/nuxt-newsletter',
     configKey: 'newsletter',
     compatibility: {
       nuxt: '>=3.0.0'
@@ -103,26 +85,23 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     directus: {
       url: '',
       auth: {
-        type: 'middleware',
+        type: 'static',
         middleware: 'auth'
       }
     },
-    prefix: 'Newsletter',
-    features: {
-      dragDrop: true,
-      styling: 'unstyled',
-      preview: true,
-      templates: true,
-      richTextEditor: false
+    sendgrid: {
+      defaultFromEmail: 'newsletter@example.com',
+      defaultFromName: 'Newsletter'
     },
-    dragProvider: 'auto'
+    mjmlMode: 'client',
+    prefix: 'Newsletter'
   },
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
 
     // Validate required options
     if (!options.directus.url) {
-      console.warn('[@nuxt/newsletter] Directus URL is required. Please set `newsletter.directus.url` in your nuxt.config.ts')
+      console.warn('[@hue-studios/nuxt-newsletter] Directus URL is required. Please set `newsletter.directus.url` in your nuxt.config.ts')
     }
 
     // Add runtime config
@@ -133,10 +112,16 @@ export default defineNuxtModule<NewsletterModuleOptions>({
           url: options.directus.url,
           auth: options.directus.auth
         },
-        features: options.features,
-        dragProvider: options.dragProvider
+        defaultFromEmail: options.sendgrid.defaultFromEmail,
+        defaultFromName: options.sendgrid.defaultFromName,
+        mjmlMode: options.mjmlMode
       }
     )
+
+    // Add private runtime config for sensitive data
+    nuxt.options.runtimeConfig.sendgridApiKey = options.sendgrid.apiKey || process.env.SENDGRID_API_KEY || ''
+    nuxt.options.runtimeConfig.sendgridWebhookSecret = options.sendgrid.webhookSecret || process.env.SENDGRID_WEBHOOK_SECRET || ''
+    nuxt.options.runtimeConfig.directusAdminToken = process.env.DIRECTUS_ADMIN_TOKEN || ''
 
     // Install required dependencies
     await installModule('@vueuse/nuxt')
@@ -163,6 +148,14 @@ export default defineNuxtModule<NewsletterModuleOptions>({
       {
         name: 'useDirectusNewsletter',
         from: resolver.resolve('./runtime/composables/useDirectusNewsletter')
+      },
+      {
+        name: 'useMjmlCompiler',
+        from: resolver.resolve('./runtime/composables/useMjmlCompiler')
+      },
+      {
+        name: 'useSendGrid',
+        from: resolver.resolve('./runtime/composables/useSendGrid')
       }
     ])
 
@@ -173,6 +166,19 @@ export default defineNuxtModule<NewsletterModuleOptions>({
       global: false
     })
 
+    // Add server handlers
+    addServerHandler({
+      route: '/api/newsletter/sendgrid-webhook',
+      handler: resolver.resolve('./runtime/server/api/newsletter/sendgrid-webhook.post')
+    })
+
+    if (options.mjmlMode === 'server') {
+      addServerHandler({
+        route: '/api/newsletter/compile-mjml',
+        handler: resolver.resolve('./runtime/server/api/newsletter/compile-mjml.post')
+      })
+    }
+
     // Add server utilities if needed
     if (options.directus.auth?.type === 'middleware') {
       nuxt.hook('nitro:config', (nitroConfig) => {
@@ -181,47 +187,22 @@ export default defineNuxtModule<NewsletterModuleOptions>({
       })
     }
 
-    // Handle styling
-    if (options.features?.styling === 'tailwind') {
-      // Check if Tailwind is installed
-      if (!hasNuxtModule('@nuxtjs/tailwindcss', nuxt)) {
-        console.info('[@nuxt/newsletter] TailwindCSS styling is enabled but @nuxtjs/tailwindcss is not installed.')
-        console.info('[@nuxt/newsletter] Run: npm install -D @nuxtjs/tailwindcss')
-      }
-    } else if (options.features?.styling === 'custom' && options.customStyles) {
-      nuxt.options.css.push(options.customStyles)
-    }
-
-    // Provide development warnings/info
-    if (options.features?.dragDrop && options.dragProvider === 'auto') {
-      nuxt.hook('build:before', () => {
-        console.info('[@nuxt/newsletter] Drag and drop is enabled. Install your preferred provider:')
-        console.info('  - SortableJS: npm install sortablejs @types/sortablejs')
-        console.info('  - Vue Draggable Plus: npm install vue-draggable-plus')
-        console.info('  - Or set dragProvider: "custom" to use your own solution')
-      })
-    }
-
-    // Rich text editor warning
-    if (options.features?.richTextEditor) {
-      nuxt.hook('build:before', () => {
-        console.info('[@nuxt/newsletter] Rich text editor is enabled. Install Tiptap:')
-        console.info('  npm install @tiptap/vue-3 @tiptap/starter-kit @tiptap/extension-link')
-      })
-    }
-
     // Add module transpilation
     nuxt.options.build.transpile.push(resolver.resolve('./runtime'))
 
-    console.info('[@nuxt/newsletter] Module initialized')
+    // Development hints
+    nuxt.hook('build:before', () => {
+      if (!options.sendgrid.apiKey && !process.env.SENDGRID_API_KEY) {
+        console.info('[@hue-studios/nuxt-newsletter] SendGrid API key not configured. Set SENDGRID_API_KEY environment variable.')
+      }
+
+      if (options.mjmlMode === 'server') {
+        console.info('[@hue-studios/nuxt-newsletter] Server-side MJML compilation enabled. Install mjml: npm install mjml')
+      } else {
+        console.info('[@hue-studios/nuxt-newsletter] Client-side MJML compilation enabled. MJML browser will be loaded automatically.')
+      }
+    })
+
+    console.info('[@hue-studios/nuxt-newsletter] Module initialized (v1.0.0)')
   }
 })
-
-// Helper to check if a module is installed
-function hasNuxtModule(name: string, nuxt: Nuxt): boolean {
-  return nuxt.options.modules.some((m) => {
-    if (typeof m === 'string') return m === name
-    if (Array.isArray(m)) return m[0] === name
-    return false
-  })
-}

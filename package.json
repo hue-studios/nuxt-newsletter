@@ -1,21 +1,40 @@
 {
   "name": "@hue-studios/nuxt-newsletter",
   "version": "1.0.0",
-  "description": "A flexible newsletter module for Nuxt 3 with Directus integration",
-  "repository": "hue-studios/nuxt-newsletter",
+  "description": "MJML newsletter module for Nuxt 3 with Directus CMS and SendGrid",
+  "keywords": [
+    "nuxt",
+    "nuxt3",
+    "newsletter",
+    "email",
+    "mjml",
+    "directus",
+    "sendgrid",
+    "cms"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hue-studios/nuxt-newsletter.git"
+  },
   "license": "MIT",
+  "author": "Hue Studios",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/types.d.ts",
       "import": "./dist/module.mjs",
       "require": "./dist/module.cjs"
+    },
+    "./composables": {
+      "types": "./dist/runtime/composables/index.d.ts",
+      "import": "./dist/runtime/composables/index.mjs"
     }
   },
   "main": "./dist/module.cjs",
   "types": "./dist/types.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "scripts"
   ],
   "scripts": {
     "prepack": "nuxt-module-build build",
@@ -26,18 +45,25 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
+    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
+    "setup:directus": "node scripts/install-directus-collections.js",
+    "setup:blocks": "node scripts/create-advanced-blocks.js",
+    "verify": "node scripts/verify-setup.js"
   },
   "dependencies": {
     "@directus/sdk": "^17.0.0",
-    "@nuxt/kit": "^3.11.0"
+    "@nuxt/kit": "^3.11.0",
+    "defu": "^6.1.4",
+    "ofetch": "^1.3.3"
   },
   "devDependencies": {
     "@nuxt/devtools": "^1.0.0",
+    "@nuxt/eslint-config": "^0.3.0",
     "@nuxt/module-builder": "^0.8.0",
     "@nuxt/schema": "^3.11.0",
     "@nuxt/test-utils": "^3.11.0",
     "@types/node": "^20.0.0",
+    "@vueuse/nuxt": "^10.0.0",
     "changelogen": "^0.5.0",
     "eslint": "^9.0.0",
     "nuxt": "^3.11.0",
@@ -46,25 +72,18 @@
     "vue-tsc": "^2.0.0"
   },
   "peerDependencies": {
-    "@nuxtjs/tailwindcss": "^6.0.0",
     "@vueuse/nuxt": "^10.0.0",
     "nuxt": "^3.0.0",
-    "shadcn-vue": "*"
-  },
-  "peerDependenciesMeta": {
-    "@nuxtjs/tailwindcss": {
-      "optional": true
-    },
-    "shadcn-vue": {
-      "optional": true
-    }
+    "vue": "^3.0.0"
   },
   "optionalDependencies": {
-    "sortablejs": "^1.15.0",
-    "@types/sortablejs": "^1.15.0",
-    "vue-draggable-plus": "^0.4.0",
-    "@tiptap/vue-3": "^2.1.0",
-    "@tiptap/starter-kit": "^2.1.0",
-    "@tiptap/extension-link": "^2.1.0"
+    "mjml": "^4.14.0",
+    "mjml-browser": "^4.14.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
