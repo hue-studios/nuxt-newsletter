@@ -1,114 +1,70 @@
 {
   "name": "@hue-studios/nuxt-newsletter",
   "version": "1.0.0",
-  "description": "Complete newsletter management system for Nuxt 3 with Tailwind CSS 4 support",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/hue-studios/nuxt-newsletter.git"
-  },
+  "description": "A flexible newsletter module for Nuxt 3 with Directus integration",
+  "repository": "hue-studios/nuxt-newsletter",
   "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/types.d.mts",
-      "import": "./dist/module.mjs"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/module.mjs",
+      "require": "./dist/module.cjs"
     }
   },
-  "main": "./dist/module.mjs",
-  "typesVersions": {
-    "*": {
-      ".": [
-        "./dist/types.d.mts"
-      ]
-    }
-  },
+  "main": "./dist/module.cjs",
+  "types": "./dist/types.d.ts",
   "files": [
     "dist"
   ],
-
   "scripts": {
     "prepack": "nuxt-module-build build",
-    "dev": "npm run dev:prepare && nuxi dev playground",
+    "dev": "nuxi dev playground",
     "dev:build": "nuxi build playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
-    "release": "npm run lint:check && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
-    "lint:check": "eslint . --max-warnings 10",
-    "lint:fix": "eslint . --fix",
+    "release": "npm run lint && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
-    "setup:complete": "npm run install-collections && npm run verify-setup",
-    "verify-setup": "node scripts/verify-setup.js",
-    "install-collections": "node scripts/install-directus-collections.js"
+    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
   },
   "dependencies": {
-    "@directus/sdk": "^20.0.0",
-    "@nuxt/kit": "^3.17.6",
-    "@sendgrid/mail": "^8.1.5",
-    "@tiptap/core": "^2.1.13",
-    "@tiptap/extension-bold": "^2.1.13",
-    "@tiptap/extension-italic": "^2.1.13",
-    "@tiptap/extension-link": "^2.1.13",
-    "@tiptap/starter-kit": "^2.1.13",
-    "@tiptap/vue-3": "^2.1.13",
-    "@vitejs/plugin-vue": "^6.0.0",
-    "@vueuse/core": "^10.5.0",
-    "@vueuse/nuxt": "^10.11.1",
-    "defu": "^6.1.4",
-    "gsap": "^3.12.2",
-    "handlebars": "^4.7.8",
-    "mjml": "^4.15.3",
-    "recharts": "^3.0.2",
-    "sortablejs": "^1.15.0",
-    "zod": "^3.25.75"
+    "@directus/sdk": "^17.0.0",
+    "@nuxt/kit": "^3.11.0"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^2.6.2",
-    "@nuxt/eslint-config": "^1.5.2",
-    "@nuxt/icon": "1.15.0",
-    "@nuxt/module-builder": "^1.0.1",
-    "@nuxt/schema": "^3.17.6",
-    "@nuxt/test-utils": "^3.19.2",
-    "@nuxt/types": "^2.18.1",
-    "@types/mjml": "^4.7.4",
-    "@types/node": "latest",
-    "@typescript-eslint/eslint-plugin": "^8.36.0",
-    "@typescript-eslint/parser": "^8.36.0",
-    "@vitest/coverage-v8": "^3.2.4",
-    "@vue/runtime-core": "^3.5.17",
-    "@vue/test-utils": "^2.4.6",
-    "changelogen": "^0.6.2",
-    "eslint": "^9.30.1",
-    "h3": "^1.15.3",
-    "happy-dom": "^18.0.1",
-    "isomorphic-dompurify": "^2.26.0",
-    "nuxt": "^3.17.6",
-    "typescript": "~5.8.3",
-    "vitest": "^3.2.4",
-    "vue": "^3.3.0",
-    "vue-tsc": "^2.2.12"
+    "@nuxt/devtools": "^1.0.0",
+    "@nuxt/module-builder": "^0.8.0",
+    "@nuxt/schema": "^3.11.0",
+    "@nuxt/test-utils": "^3.11.0",
+    "@types/node": "^20.0.0",
+    "changelogen": "^0.5.0",
+    "eslint": "^9.0.0",
+    "nuxt": "^3.11.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "vue-tsc": "^2.0.0"
   },
   "peerDependencies": {
-    "@nuxtjs/color-mode": "^3.0.0",
-    "@tailwindcss/vite": "^4.0.0",
+    "@nuxtjs/tailwindcss": "^6.0.0",
+    "@vueuse/nuxt": "^10.0.0",
     "nuxt": "^3.0.0",
-    "shadcn-nuxt": "^2.0.0",
-    "tailwindcss": "^4.0.0",
-    "vue": "^3.3.0"
+    "shadcn-vue": "*"
   },
   "peerDependenciesMeta": {
-    "tailwindcss": {
-      "optional": false
+    "@nuxtjs/tailwindcss": {
+      "optional": true
     },
-    "@tailwindcss/vite": {
-      "optional": false
-    },
-    "shadcn-nuxt": {
-      "optional": false
-    },
-    "@nuxtjs/color-mode": {
-      "optional": false
+    "shadcn-vue": {
+      "optional": true
     }
   },
-  "packageManager": "pnpm@9.4.0+sha512.f549b8a52c9d2b8536762f99c0722205efc5af913e77835dbccc3b0b0b2ca9e7dc8022b78062c17291c48e88749c70ce88eb5a74f1fa8c4bf5e18bb46c8bd83a"
+  "optionalDependencies": {
+    "sortablejs": "^1.15.0",
+    "@types/sortablejs": "^1.15.0",
+    "vue-draggable-plus": "^0.4.0",
+    "@tiptap/vue-3": "^2.1.0",
+    "@tiptap/starter-kit": "^2.1.0",
+    "@tiptap/extension-link": "^2.1.0"
+  }
 }
