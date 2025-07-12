@@ -1,5 +1,6 @@
 // src/runtime/server/api/newsletter/compile-mjml.post.ts
 import { createError, defineEventHandler, readBody } from 'h3'
+import type { MJMLParseResults } from 'mjml'
 
 // Type for MJML compilation result
 interface MJMLParseResults {
@@ -14,7 +15,7 @@ interface MJMLParseResults {
 }
 
 // Lazy load mjml to avoid build issues
-let mjml2html: any
+let mjml2html: typeof import('mjml').default | null = null
 
 const loadMjml = async () => {
   if (!mjml2html) {

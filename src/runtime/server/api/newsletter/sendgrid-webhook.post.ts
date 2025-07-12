@@ -1,6 +1,8 @@
 // server/api/newsletter/sendgrid-webhook.post.ts
-import { createDirectus, createItem, readItem, rest, staticToken, updateItem } from '@directus/sdk'
+import { createError, useRuntimeConfig } from '#app'
+import { createDirectus, createItem, readItem, readItems, rest, staticToken, updateItem } from '@directus/sdk'
 import crypto from 'crypto'
+import { defineEventHandler, getHeader, readBody, readRawBody } from 'h3'
 
 interface SendGridEvent {
   email: string
@@ -71,7 +73,7 @@ export default defineEventHandler(async (event) => {
 
   const directus = createDirectus(directusUrl)
     .with(rest())
-    .with(staticToken(directusToken))
+    .with(staticToken(directusToken as string))
 
   // Process each event
   const results = []
@@ -105,7 +107,7 @@ export default defineEventHandler(async (event) => {
       // Try to find subscriber by email
       try {
         const subscribers = await directus.request(
-          rest.readItems('subscribers', {
+          readItems('subscribers', {
             filter: {
               email: { _eq: sgEvent.email }
             },

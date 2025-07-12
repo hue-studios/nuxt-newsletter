@@ -8,15 +8,15 @@ export function useNewsletter() {
 
   const isInitialized = computed(() => !!nuxtApp.$newsletter?.initialized)
   
-  const directusUrl = computed(() => config.directus?.url)
+  const directusUrl = computed(() => config?.directus?.url)
   
-  const authType = computed(() => config.directus?.auth?.type || 'static')
+  const authType = computed(() => config?.directus?.auth?.type || 'static')
   
-  const mjmlMode = computed(() => config.mjmlMode || 'client')
+  const mjmlMode = computed(() => config?.mjmlMode || 'client')
 
-  const defaultFromEmail = computed(() => config.defaultFromEmail || 'newsletter@example.com')
+  const defaultFromEmail = computed(() => config?.sendgrid?.defaultFromEmail || 'newsletter@example.com')
   
-  const defaultFromName = computed(() => config.defaultFromName || 'Newsletter')
+  const defaultFromName = computed(() => config?.sendgrid?.defaultFromName || 'Newsletter')
 
   return {
     isInitialized,

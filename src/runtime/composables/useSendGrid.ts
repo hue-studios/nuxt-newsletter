@@ -1,5 +1,6 @@
 // src/runtime/composables/useSendGrid.ts
 import { useRuntimeConfig } from '#app'
+import { $fetch } from 'ofetch'
 import type { NewsletterData } from './useNewsletterEditor'
 
 interface SendGridRecipient {
@@ -129,7 +130,7 @@ export function useSendGrid() {
 
       return {
         success: true,
-        messageId: response.headers?.['x-message-id'],
+        messageId: (response as any).headers?.['x-message-id'],
         response
       }
     } catch (error) {
@@ -159,6 +160,10 @@ export function useSendGrid() {
 
   // Create batch for large sends
   const createBatch = async () => {
+    if (!apiKey) {
+      throw new Error('SendGrid API key not configured')
+    }
+
     try {
       const response = await $fetch('https://api.sendgrid.com/v3/mail/batch', {
         method: 'POST',
@@ -168,7 +173,7 @@ export function useSendGrid() {
         }
       })
 
-      return response.batch_id
+      return (response as any).batch_id
     } catch (error) {
       console.error('SendGrid batch creation error:', error)
       throw error
@@ -177,6 +182,10 @@ export function useSendGrid() {
 
   // Get batch status
   const getBatchStatus = async (batchId: string) => {
+    if (!apiKey) {
+      throw new Error('SendGrid API key not configured')
+    }
+
     try {
       const response = await $fetch(`https://api.sendgrid.com/v3/mail/batch/${batchId}`, {
         headers: {
@@ -193,6 +202,10 @@ export function useSendGrid() {
 
   // Cancel scheduled send
   const cancelScheduledSend = async (batchId: string) => {
+    if (!apiKey) {
+      throw new Error('SendGrid API key not configured')
+    }
+
     try {
       await $fetch(`https://api.sendgrid.com/v3/user/scheduled_sends`, {
         method: 'POST',
@@ -215,6 +228,10 @@ export function useSendGrid() {
 
   // Get suppression lists
   const getSuppressions = async (type: 'bounces' | 'blocks' | 'invalid_emails' | 'spam_reports' | 'unsubscribes') => {
+    if (!apiKey) {
+      throw new Error('SendGrid API key not configured')
+    }
+
     try {
       const response = await $fetch(`https://api.sendgrid.com/v3/suppression/${type}`, {
         headers: {
@@ -234,6 +251,10 @@ export function useSendGrid() {
     type: 'bounces' | 'blocks' | 'invalid_emails' | 'spam_reports' | 'unsubscribes',
     emails: string[]
   ) => {
+    if (!apiKey) {
+      throw new Error('SendGrid API key not configured')
+    }
+
     try {
       const response = await $fetch(`https://api.sendgrid.com/v3/suppression/${type}`, {
         method: 'POST',
@@ -258,6 +279,10 @@ export function useSendGrid() {
     type: 'bounces' | 'blocks' | 'invalid_emails' | 'spam_reports' | 'unsubscribes',
     emails: string[]
   ) => {
+    if (!apiKey) {
+      throw new Error('SendGrid API key not configured')
+    }
+
     try {
       const response = await $fetch(`https://api.sendgrid.com/v3/suppression/${type}`, {
         method: 'DELETE',

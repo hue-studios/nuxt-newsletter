@@ -255,26 +255,6 @@ export interface SendGridSendOptions {
   customArgs?: Record<string, string>
 }
 
-// Module configuration types
-export interface NewsletterModuleOptions {
-  directus: {
-    url: string
-    auth?: {
-      type: 'static' | 'middleware'
-      token?: string
-      middleware?: string
-    }
-  }
-  sendgrid: {
-    apiKey?: string
-    webhookSecret?: string
-    defaultFromEmail?: string
-    defaultFromName?: string
-  }
-  mjmlMode?: 'client' | 'server'
-  prefix?: string
-}
-
 // Editor types
 export interface NewsletterData {
   id?: string

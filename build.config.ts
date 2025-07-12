@@ -26,6 +26,12 @@ export default defineBuildConfig({
       outDir: 'dist/runtime',
       declaration: true,
       ext: 'mjs'
+    },
+    {
+      input: 'src/types/',
+      outDir: 'dist/types',
+      declaration: true,
+      ext: 'ts'
     }
   ]
 })

@@ -165,11 +165,9 @@
 </template>
 
 <script setup>
-import { useDirectusNewsletter } from '#newsletter/composables/useDirectusNewsletter'
-import { useMjmlCompiler } from '#newsletter/composables/useMjmlCompiler'
-import { useNewsletterEditor } from '#newsletter/composables/useNewsletterEditor'
-import { useSendGrid } from '#newsletter/composables/useSendGrid'
 import { computed, onMounted, ref } from 'vue'
+
+// Composables are auto-imported by the module - no explicit imports needed
 
 // State
 const newsletters = ref([])

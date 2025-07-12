@@ -1,3 +1,4 @@
+// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: ['../src/module'],
   
@@ -9,13 +10,13 @@ export default defineNuxtConfig({
         token: process.env.DIRECTUS_TOKEN || 'dev-token'
       }
     },
-    features: {
-      styling: 'tailwind',
-      dragDrop: true,
-      preview: true,
-      templates: true
+    sendgrid: {
+      // These will be overridden by env vars if set
+      defaultFromEmail: 'newsletter@example.com',
+      defaultFromName: 'Test Newsletter'
     },
-    dragProvider: 'auto'
+    mjmlMode: 'client', // Use client-side compilation for development
+    prefix: 'Newsletter'
   },
 
   // For development

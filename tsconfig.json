@@ -19,10 +19,11 @@
       "#app": ["./node_modules/nuxt/dist/app"],
       "#newsletter/*": ["./src/runtime/*"],
       "~/*": ["./src/*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@hue-studios/nuxt-newsletter": ["./src/module.ts"]
     },
     "types": ["@types/node", "@nuxt/types", "@nuxt/schema"]
   },
-  "include": ["./src/**/*", "./test/**/*"],
+  "include": ["./src/**/*", "./src/types/**/*", "./test/**/*"],
   "exclude": ["dist", "node_modules", ".nuxt", "playground"]
 }

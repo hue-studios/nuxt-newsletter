@@ -129,7 +129,7 @@
             <NewsletterBlock
               :block="block"
               :block-type="getBlockType(block.type)"
-              @update="(updates) => updateBlock(block.id, updates)"
+              @update="(updates: any) => updateBlock(block.id, updates)"
             />
           </div>
         </div>
@@ -148,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDirectusNewsletter } from '../composables/useDirectusNewsletter'
 import type { NewsletterData } from '../composables/useNewsletterEditor'
 import { useNewsletterEditor } from '../composables/useNewsletterEditor'
@@ -180,8 +180,8 @@ const {
 const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
 
 // Dynamic component loading
-const NewsletterBlock = defineAsyncComponent(() => import('./NewsletterBlock.vue'))
-const NewsletterPreview = defineAsyncComponent(() => import('./NewsletterPreview.vue'))
+// const NewsletterBlock = defineAsyncComponent(() => import('./NewsletterBlock.vue'))
+// const NewsletterPreview = defineAsyncComponent(() => import('./NewsletterPreview.vue'))
 
 // Block types and templates from Directus
 const blockTypes = ref<any[]>([])

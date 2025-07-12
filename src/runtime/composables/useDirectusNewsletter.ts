@@ -1,6 +1,6 @@
 // src/runtime/composables/useDirectusNewsletter.ts
-import { useState } from '#app'
-import { authentication, createDirectus, rest, staticToken } from '@directus/sdk'
+import { useRuntimeConfig, useState } from '#app'
+import { authentication, createDirectus, createItem, deleteItem, readItem, readItems, rest, staticToken, updateItem } from '@directus/sdk'
 import type {
   BlockType,
   MailingList,
@@ -23,14 +23,22 @@ export function useDirectusNewsletter() {
   const config = useRuntimeConfig().public.newsletter
   const authToken = useState<string | null>('newsletter:auth:token', () => null)
 
+  // Validate config
+  if (!config?.directus?.url) {
+    throw new Error('[Newsletter] Directus URL not configured. Please set newsletter.directus.url in your nuxt.config.ts')
+  }
+
+  const directusUrl = config.directus.url
+  const authConfig = config.directus.auth
+
   // Create Directus client
   const getClient = () => {
-    const client = createDirectus(config.directus.url).with(rest())
+    const client = createDirectus(directusUrl).with(rest())
 
     // Handle authentication based on config
-    if (config.directus.auth?.type === 'static' && config.directus.auth.token) {
-      return client.with(staticToken(config.directus.auth.token))
-    } else if (config.directus.auth?.type === 'middleware' && authToken.value) {
+    if (authConfig?.type === 'static' && authConfig.token) {
+      return client.with(staticToken(authConfig.token))
+    } else if (authConfig?.type === 'middleware' && authToken.value) {
       return client.with(staticToken(authToken.value))
     } else {
       return client.with(authentication())
@@ -50,7 +58,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItems('newsletters', {
+        readItems('newsletters', {
           limit: options?.limit || 10,
           offset: options?.offset || 0,
           filter: options?.filter,
@@ -69,7 +77,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItem('newsletters', id, {
+       readItem('newsletters', id, {
           fields: ['*', 'blocks.*', 'blocks.block_type.*']
         })
       )
@@ -102,7 +110,7 @@ export function useDirectusNewsletter() {
       }
       
       const response = await client.request(
-        rest.createItem('newsletters', newsletterData)
+        createItem('newsletters', newsletterData)
       )
       return response as Newsletter
     } catch (error) {
@@ -140,7 +148,7 @@ export function useDirectusNewsletter() {
       }
       
       const response = await client.request(
-        rest.updateItem('newsletters', id, updateData)
+        updateItem('newsletters', id, updateData)
       )
       return response as Newsletter
     } catch (error) {
@@ -152,7 +160,7 @@ export function useDirectusNewsletter() {
   const deleteNewsletter = async (id: string) => {
     try {
       const client = getClient()
-      await client.request(rest.deleteItem('newsletters', id))
+      await client.request(deleteItem('newsletters', id))
       return true
     } catch (error) {
       console.error('[Newsletter] Error deleting newsletter:', error)
@@ -168,7 +176,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItems('block_types', {
+        readItems('block_types', {
           limit: options?.limit || 100,
           filter: options?.filter || { status: { _eq: 'published' } },
           sort: options?.sort || ['category', 'name']
@@ -190,7 +198,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItems('newsletter_templates', {
+        readItems('newsletter_templates', {
           limit: options?.limit || 20,
           offset: options?.offset || 0,
           filter: options?.filter || { status: { _eq: 'published' } },
@@ -208,7 +216,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItem('newsletter_templates', id)
+        readItem('newsletter_templates', id)
       )
       return response as NewsletterTemplate
     } catch (error) {
@@ -226,7 +234,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItems('subscribers', {
+        readItems('subscribers', {
           limit: options?.limit || 50,
           offset: options?.offset || 0,
           filter: options?.filter || { status: { _eq: 'active' } },
@@ -247,7 +255,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItems('mailing_lists', {
+        readItems('mailing_lists', {
           limit: options?.limit || 100,
           filter: options?.filter || { status: { _eq: 'active' } },
           fields: ['*', 'subscriber_count']
@@ -267,7 +275,7 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       const response = await client.request(
-        rest.readItems('mailing_lists_subscribers', {
+        readItems('mailing_lists_subscribers', {
           filter: {
             mailing_lists_id: { _eq: listId },
             status: { _eq: 'subscribed' }
@@ -289,7 +297,7 @@ export function useDirectusNewsletter() {
       const client = getClient()
       // This would call a custom endpoint in Directus
       const response = await client.request(
-        rest.createItem('newsletter_test', {
+        createItem('newsletter_test', {
           newsletter_id: id,
           email
         })
