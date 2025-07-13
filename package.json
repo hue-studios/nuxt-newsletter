@@ -1,6 +1,6 @@
 {
   "name": "@hue-studios/nuxt-newsletter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MJML newsletter module for Nuxt 3 with Directus CMS and SendGrid integration",
   "keywords": [
     "nuxt",

@@ -1,5 +1,7 @@
 # Changelog
 
+## v1.0.1
+
 ## v1.0.0 (2024-01-XX)
 
 ### 🎉 Initial Release
