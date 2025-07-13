@@ -49,6 +49,17 @@ export function useDirectusNewsletter() {
     authToken.value = token
   }
 
+  // Helper function to clean options object
+  const cleanOptions = (options: any) => {
+    const cleaned: any = {}
+    for (const [key, value] of Object.entries(options)) {
+      if (value !== undefined && value !== null) {
+        cleaned[key] = value
+      }
+    }
+    return cleaned
+  }
+
   const fetchNewsletters = async (options?: {
     limit?: number
     offset?: number
@@ -57,15 +68,21 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItems('newsletters', {
-          limit: options?.limit || 10,
-          offset: options?.offset || 0,
-          filter: options?.filter,
-          sort: options?.sort || ['-date_created'],
-          fields: ['*', 'blocks.*', 'blocks.block_type.*']
-        })
-      )
+      
+      // Build clean request options
+      const requestOptions: any = {
+        limit: options?.limit || 10,
+        offset: options?.offset || 0,
+        sort: options?.sort || ['-date_created'],
+        fields: ['*', 'blocks.*', 'blocks.block_type.*']
+      }
+
+      // Only add filter if it's defined and not empty
+      if (options?.filter && Object.keys(options.filter).length > 0) {
+        requestOptions.filter = options.filter
+      }
+
+      const response = await client.request(readItems('newsletters', requestOptions))
       return response as Newsletter[]
     } catch (error) {
       console.error('[Newsletter] Error fetching newsletters:', error)
@@ -175,13 +192,22 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItems('block_types', {
-          limit: options?.limit || 100,
-          filter: options?.filter || { status: { _eq: 'published' } },
-          sort: options?.sort || ['category', 'name']
-        })
-      )
+      
+      const requestOptions: any = {
+        limit: options?.limit || 100,
+        sort: options?.sort || ['category', 'name']
+      }
+
+      // Default filter for published block types
+      const defaultFilter = { status: { _eq: 'published' } }
+      
+      if (options?.filter) {
+        requestOptions.filter = { ...defaultFilter, ...options.filter }
+      } else {
+        requestOptions.filter = defaultFilter
+      }
+
+      const response = await client.request(readItems('block_types', requestOptions))
       return response as BlockType[]
     } catch (error) {
       console.error('[Newsletter] Error fetching block types:', error)
@@ -197,14 +223,23 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItems('newsletter_templates', {
-          limit: options?.limit || 20,
-          offset: options?.offset || 0,
-          filter: options?.filter || { status: { _eq: 'published' } },
-          sort: options?.sort || ['-usage_count', 'name']
-        })
-      )
+      
+      const requestOptions: any = {
+        limit: options?.limit || 20,
+        offset: options?.offset || 0,
+        sort: options?.sort || ['-usage_count', 'name']
+      }
+
+      // Default filter for published templates
+      const defaultFilter = { status: { _eq: 'published' } }
+      
+      if (options?.filter) {
+        requestOptions.filter = { ...defaultFilter, ...options.filter }
+      } else {
+        requestOptions.filter = defaultFilter
+      }
+
+      const response = await client.request(readItems('newsletter_templates', requestOptions))
       return response as NewsletterTemplate[]
     } catch (error) {
       console.error('[Newsletter] Error fetching templates:', error)
@@ -233,14 +268,23 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItems('subscribers', {
-          limit: options?.limit || 50,
-          offset: options?.offset || 0,
-          filter: options?.filter || { status: { _eq: 'active' } },
-          sort: options?.sort || ['-subscribed_at']
-        })
-      )
+      
+      const requestOptions: any = {
+        limit: options?.limit || 50,
+        offset: options?.offset || 0,
+        sort: options?.sort || ['-subscribed_at']
+      }
+
+      // Default filter for active subscribers
+      const defaultFilter = { status: { _eq: 'active' } }
+      
+      if (options?.filter) {
+        requestOptions.filter = { ...defaultFilter, ...options.filter }
+      } else {
+        requestOptions.filter = defaultFilter
+      }
+
+      const response = await client.request(readItems('subscribers', requestOptions))
       return response as Subscriber[]
     } catch (error) {
       console.error('[Newsletter] Error fetching subscribers:', error)
@@ -254,13 +298,22 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItems('mailing_lists', {
-          limit: options?.limit || 100,
-          filter: options?.filter || { status: { _eq: 'active' } },
-          fields: ['*', 'subscriber_count']
-        })
-      )
+      
+      const requestOptions: any = {
+        limit: options?.limit || 100,
+        fields: ['*', 'subscriber_count']
+      }
+
+      // Default filter for active mailing lists
+      const defaultFilter = { status: { _eq: 'active' } }
+      
+      if (options?.filter) {
+        requestOptions.filter = { ...defaultFilter, ...options.filter }
+      } else {
+        requestOptions.filter = defaultFilter
+      }
+
+      const response = await client.request(readItems('mailing_lists', requestOptions))
       return response as MailingList[]
     } catch (error) {
       console.error('[Newsletter] Error fetching mailing lists:', error)
@@ -274,17 +327,18 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItems('mailing_lists_subscribers', {
-          filter: {
-            mailing_lists_id: { _eq: listId },
-            status: { _eq: 'subscribed' }
-          },
-          fields: ['*', 'subscribers_id.*'],
-          limit: options?.limit || 1000,
-          offset: options?.offset || 0
-        })
-      )
+      
+      const requestOptions: any = {
+        filter: {
+          mailing_lists_id: { _eq: listId },
+          status: { _eq: 'subscribed' }
+        },
+        fields: ['*', 'subscribers_id.*'],
+        limit: options?.limit || 1000,
+        offset: options?.offset || 0
+      }
+
+      const response = await client.request(readItems('mailing_lists_subscribers', requestOptions))
       return response.map((item: any) => item.subscribers_id) as Subscriber[]
     } catch (error) {
       console.error('[Newsletter] Error fetching mailing list subscribers:', error)

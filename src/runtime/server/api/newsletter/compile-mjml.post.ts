@@ -1,6 +1,5 @@
 // src/runtime/server/api/newsletter/compile-mjml.post.ts
 import { createError, defineEventHandler, readBody } from 'h3'
-import type { MJMLParseResults } from 'mjml'
 
 // Type for MJML compilation result
 interface MJMLParseResults {
@@ -33,6 +32,15 @@ const loadMjml = async () => {
   return mjml2html
 }
 
+// Post-process HTML for minification if needed
+const minifyHtml = (html: string): string => {
+  // Simple minification - remove extra whitespace
+  return html
+    .replace(/>\s+</g, '><')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export default defineEventHandler(async (event) => {
   // Only allow POST
   if (event.node.req.method !== 'POST') {
@@ -55,10 +63,9 @@ export default defineEventHandler(async (event) => {
     // Load MJML compiler
     const mjml2htmlCompiler = await loadMjml()
 
-    // Compile MJML to HTML
+    // Compile MJML to HTML - REMOVED deprecated minify option
     const result: MJMLParseResults = mjml2htmlCompiler(body.mjml, {
       keepComments: false,
-      minify: body.minify !== false, // Default to true
       validationLevel: body.validationLevel || 'soft',
       filePath: body.filePath,
       preprocessors: body.preprocessors,
@@ -74,14 +81,14 @@ export default defineEventHandler(async (event) => {
         applyAttributesTableElements: true,
         ...body.juiceOptions
       },
-      minifyOptions: {
-        collapseWhitespace: true,
-        minifyCSS: true,
-        removeEmptyAttributes: true,
-        ...body.minifyOptions
-      },
       fonts: body.fonts
     })
+
+    // Apply minification post-compilation if requested
+    let html = result.html
+    if (body.minify !== false) {
+      html = minifyHtml(html)
+    }
 
     // Log warnings if any
     if (result.errors && result.errors.length > 0) {
@@ -89,7 +96,7 @@ export default defineEventHandler(async (event) => {
     }
 
     return {
-      html: result.html,
+      html,
       errors: result.errors || []
     }
   } catch (error) {

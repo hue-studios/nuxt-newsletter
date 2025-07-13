@@ -1,142 +1,248 @@
 <template>
-  <div class="newsletter-editor">
-    <div class="newsletter-editor__toolbar">
-      <div class="toolbar-section">
-        <h3>Newsletter Editor</h3>
-        <select 
-          v-if="templates.length > 0" 
-          @change="loadTemplate($event.target.value)"
-          class="template-select"
-        >
-          <option value="">-- Select Template --</option>
-          <option 
-            v-for="template in templates" 
-            :key="template.id"
-            :value="template.id"
-          >
-            {{ template.name }}
-          </option>
-        </select>
-      </div>
-      <div class="toolbar-section">
-        <div v-if="loadingBlockTypes" class="loading-message">
-          Loading block types...
-        </div>
-        <template v-else>
-          <div class="block-categories">
-            <div 
-              v-for="category in blockCategories" 
-              :key="category"
-              class="category-group"
+  <div class="flex flex-col h-screen bg-gray-50">
+    <!-- Skip to main content for accessibility -->
+    <a href="#editor-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-blue-600 text-white px-3 py-1 rounded z-50">
+      Skip to main content
+    </a>
+    
+    <!-- Compact Toolbar -->
+    <div class="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-xl font-semibold text-gray-900">Newsletter Editor</h1>
+          
+          <!-- Template Selector -->
+          <div v-if="templates.length > 0" class="relative">
+            <select 
+              @change="loadTemplate($event.target.value)"
+              class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
-              <span class="category-label">{{ category }}:</span>
-              <button 
-                v-for="blockType in getBlocksByCategory(category)" 
+              <option value="">Choose template...</option>
+              <option v-for="template in templates" :key="template.id" :value="template.id">
+                {{ template.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Progress Badge -->
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                class="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-300"
+                :style="{ width: `${completionPercentage}%` }"
+              ></div>
+            </div>
+            <span class="text-sm text-gray-600">{{ completionPercentage }}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact Block Toolbar -->
+      <div class="mt-3 border-t border-gray-100 pt-3">
+        <div v-if="loadingBlockTypes" class="flex items-center space-x-2 text-gray-500">
+          <Icon name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+          <span class="text-sm">Loading blocks...</span>
+        </div>
+        
+        <div v-else class="space-y-3">
+          <div v-for="category in blockCategories" :key="category" class="flex items-center space-x-2">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide min-w-16">
+              {{ formatCategoryName(category) }}
+            </span>
+            <div class="flex items-center space-x-1 flex-wrap">
+              <button
+                v-for="blockType in getBlocksByCategory(category)"
                 :key="blockType.id"
                 @click="addBlockFromType(blockType)"
-                class="toolbar-button"
+                class="inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 :title="blockType.description"
               >
-                <span class="icon">{{ blockType.icon || '📄' }}</span>
+                <Icon :name="getBlockIcon(blockType)" class="w-3 h-3" />
                 <span>{{ blockType.name }}</span>
               </button>
             </div>
           </div>
-        </template>
+        </div>
       </div>
     </div>
 
-    <div class="newsletter-editor__main">
-      <div class="newsletter-editor__canvas">
-        <!-- Newsletter Header Info -->
-        <div class="newsletter-header">
-          <div class="form-group">
-            <label for="subject">Subject Line</label>
-            <input
-              id="subject"
-              v-model="newsletter.subject"
-              type="text"
-              placeholder="Enter your newsletter subject..."
-              class="form-input"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="preheader">Preheader Text</label>
-            <input
-              id="preheader"
-              v-model="newsletter.preheader"
-              type="text"
-              placeholder="Preview text that appears in inbox..."
-              class="form-input"
-            />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="from_name">From Name</label>
-              <input
-                id="from_name"
-                v-model="newsletter.from_name"
-                type="text"
-                placeholder="Your Name"
-                class="form-input"
-              />
-            </div>
-            <div class="form-group">
-              <label for="from_email">From Email</label>
-              <input
-                id="from_email"
-                v-model="newsletter.from_email"
-                type="email"
-                placeholder="newsletter@example.com"
-                class="form-input"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Blocks -->
-        <div class="blocks-container">
-          <template v-if="blocks.length === 0">
-            <div class="empty-state">
-              <p>No blocks added yet. Click the buttons above to add content.</p>
-            </div>
-          </template>
-          
-          <div
-            v-for="(block, index) in blocks"
-            :key="block.id"
-            class="block-wrapper"
-            :data-block-id="block.id"
-          >
-            <div class="block-controls">
-              <button @click="moveBlock(index, index - 1)" :disabled="index === 0" class="control-btn" title="Move up">
-                ↑
-              </button>
-              <button @click="moveBlock(index, index + 1)" :disabled="index === blocks.length - 1" class="control-btn" title="Move down">
-                ↓
-              </button>
-              <button @click="duplicateBlock(block.id)" class="control-btn" title="Duplicate">
-                ⧉
-              </button>
-              <button @click="removeBlock(block.id)" class="control-btn danger" title="Delete">
-                ×
-              </button>
-            </div>
+    <!-- Main Editor Area -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Editor Canvas -->
+      <div id="editor-content" class="flex-1 overflow-y-auto">
+        <div class="max-w-3xl mx-auto p-6 space-y-6">
+          <!-- Newsletter Settings Card -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Newsletter Settings</h2>
             
-            <NewsletterBlock
-              :block="block"
-              :block-type="getBlockType(block.type)"
-              @update="(updates: any) => updateBlock(block.id, updates)"
-            />
+            <div class="grid grid-cols-1 gap-4">
+              <!-- Subject Line -->
+              <div>
+                <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">
+                  Subject Line <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="subject"
+                  v-model="newsletter.subject"
+                  type="text"
+                  placeholder="Enter compelling subject line..."
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.subject }"
+                  @blur="validateField('subject')"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  {{ newsletter.subject?.length || 0 }}/78 characters
+                </p>
+                <p v-if="errors.subject" class="mt-1 text-sm text-red-600">{{ errors.subject }}</p>
+              </div>
+
+              <!-- Preview Text -->
+              <div>
+                <label for="preheader" class="block text-sm font-medium text-gray-700 mb-1">
+                  Preview Text
+                </label>
+                <input
+                  id="preheader"
+                  v-model="newsletter.preheader"
+                  type="text"
+                  placeholder="Appears in inbox preview..."
+                  class="block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                  {{ newsletter.preheader?.length || 0 }}/140 characters
+                </p>
+              </div>
+
+              <!-- Sender Info -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label for="from_name" class="block text-sm font-medium text-gray-700 mb-1">
+                    From Name
+                  </label>
+                  <input
+                    id="from_name"
+                    v-model="newsletter.from_name"
+                    type="text"
+                    placeholder="Your Company"
+                    class="block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label for="from_email" class="block text-sm font-medium text-gray-700 mb-1">
+                    From Email <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="from_email"
+                    v-model="newsletter.from_email"
+                    type="email"
+                    placeholder="newsletter@example.com"
+                    class="block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-500': errors.from_email }"
+                    @blur="validateField('from_email')"
+                  />
+                  <p v-if="errors.from_email" class="mt-1 text-sm text-red-600">{{ errors.from_email }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content Blocks -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-6 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Content Blocks</h2>
+              <p class="mt-1 text-sm text-gray-500">Drag to reorder blocks</p>
+            </div>
+
+            <div class="p-6">
+              <!-- Empty State -->
+              <div v-if="blocks.length === 0" class="text-center py-12">
+                <Icon name="lucide:file-text" class="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No content blocks yet</h3>
+                <p class="text-sm text-gray-500 mb-4">Add content blocks from the toolbar above to start building your newsletter.</p>
+                <p class="text-xs text-gray-400">Try starting with a Hero Section!</p>
+              </div>
+
+              <!-- Draggable Blocks -->
+              <div v-else class="space-y-3">
+                <TransitionGroup name="block-list" tag="div">
+                  <div
+                    v-for="(block, index) in blocks"
+                    :key="block.id"
+                    class="group relative bg-gray-50 border border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200"
+                    :class="{ 'ring-2 ring-blue-500 border-blue-500': draggedIndex === index }"
+                    :draggable="true"
+                    @dragstart="handleDragStart(index, $event)"
+                    @dragover="handleDragOver(index, $event)"
+                    @drop="handleDrop(index, $event)"
+                    @dragend="handleDragEnd"
+                  >
+                    <!-- Drag Handle & Controls -->
+                    <div class="flex items-center justify-between p-3 border-b border-gray-200 bg-white rounded-t-lg">
+                      <div class="flex items-center space-x-3">
+                        <Icon name="lucide:grip-vertical" class="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing" />
+                        <div class="flex items-center space-x-2">
+                          <Icon :name="getBlockIcon(getBlockType(block.type))" class="w-4 h-4 text-gray-600" />
+                          <span class="text-sm font-medium text-gray-900">
+                            {{ getBlockType(block.type)?.name || 'Unknown Block' }}
+                          </span>
+                          <span class="text-xs text-gray-500">#{{ index + 1 }}</span>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          @click="moveBlock(index, index - 1)"
+                          :disabled="index === 0"
+                          class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Move up"
+                        >
+                          <Icon name="lucide:chevron-up" class="w-4 h-4" />
+                        </button>
+                        <button
+                          @click="moveBlock(index, index + 1)"
+                          :disabled="index === blocks.length - 1"
+                          class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Move down"
+                        >
+                          <Icon name="lucide:chevron-down" class="w-4 h-4" />
+                        </button>
+                        <button
+                          @click="duplicateBlock(block.id)"
+                          class="p-1 text-gray-400 hover:text-gray-600"
+                          title="Duplicate"
+                        >
+                          <Icon name="lucide:copy" class="w-4 h-4" />
+                        </button>
+                        <button
+                          @click="removeBlock(block.id)"
+                          class="p-1 text-gray-400 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Icon name="lucide:trash-2" class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Block Content -->
+                    <div class="p-3">
+                      <NewsletterBlock
+                        :block="block"
+                        :block-type="getBlockType(block.type)"
+                        @update="(updates: any) => updateBlock(block.id, updates)"
+                      />
+                    </div>
+                  </div>
+                </TransitionGroup>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Preview Panel -->
-      <div v-if="showPreview" class="newsletter-editor__preview">
+      <div v-if="showPreview" class="w-96 bg-white border-l border-gray-200 flex flex-col">
         <NewsletterPreview 
           :newsletter="newsletter" 
           :block-types="blockTypes"
@@ -144,6 +250,44 @@
         />
       </div>
     </div>
+
+    <!-- Notification Toast -->
+    <Transition
+      enter-active-class="transform ease-out duration-300 transition"
+      enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="notification.show"
+        class="fixed top-4 right-4 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden z-50"
+      >
+        <div class="p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <Icon 
+                :name="notification.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'" 
+                :class="notification.type === 'success' ? 'text-green-400' : 'text-red-400'" 
+                class="w-6 h-6" 
+              />
+            </div>
+            <div class="ml-3 w-0 flex-1 pt-0.5">
+              <p class="text-sm font-medium text-gray-900">{{ notification.message }}</p>
+            </div>
+            <div class="ml-4 flex-shrink-0 flex">
+              <button
+                @click="notification.show = false"
+                class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Icon name="lucide:x" class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -166,6 +310,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: NewsletterData]
 }>()
 
+// Core newsletter editing
 const { 
   newsletter, 
   blocks, 
@@ -179,330 +324,263 @@ const {
 
 const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
 
-// Dynamic component loading
-// const NewsletterBlock = defineAsyncComponent(() => import('./NewsletterBlock.vue'))
-// const NewsletterPreview = defineAsyncComponent(() => import('./NewsletterPreview.vue'))
+// State management
+const errors = ref<Record<string, string>>({})
+const notification = ref({
+  show: false,
+  message: '',
+  type: 'success' as 'success' | 'error'
+})
 
-// Block types and templates from Directus
 const blockTypes = ref<any[]>([])
 const templates = ref<any[]>([])
 const loadingBlockTypes = ref(true)
 
-// Load block types and templates from Directus
-onMounted(async () => {
-  try {
-    const [blockTypesData, templatesData] = await Promise.all([
-      fetchBlockTypes(),
-      fetchTemplates({ limit: 50 })
-    ])
-    blockTypes.value = blockTypesData
-    templates.value = templatesData
-    loadingBlockTypes.value = false
-  } catch (error) {
-    console.error('Failed to load data from Directus:', error)
-    loadingBlockTypes.value = false
-  }
+// Drag and drop state
+const draggedIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+
+// Computed properties
+const completionPercentage = computed(() => {
+  let completed = 0
+  let total = 4
+  
+  if (newsletter.value.subject?.trim()) completed++
+  if (newsletter.value.from_email?.trim()) completed++
+  if (blocks.value.length > 0) completed++
+  
+  const blocksWithContent = blocks.value.filter(block => 
+    Object.values(block.content || {}).some(value => 
+      typeof value === 'string' && value.trim().length > 0
+    )
+  ).length
+  
+  if (blocksWithContent > 0) completed++
+  
+  return Math.round((completed / total) * 100)
 })
 
-// Get unique categories
 const blockCategories = computed(() => {
   const categories = new Set(blockTypes.value.map(bt => bt.category))
   return Array.from(categories).sort()
 })
 
-// Get blocks by category
+// Icon mapping for block types
+const getBlockIcon = (blockType: any) => {
+  if (!blockType) return 'lucide:file-text'
+  
+  const iconMap: Record<string, string> = {
+    'hero': 'lucide:header',
+    'text': 'lucide:type',
+    'image': 'lucide:image',
+    'button': 'lucide:mouse-pointer-click',
+    'product-showcase': 'lucide:shopping-bag',
+    'team-member': 'lucide:user-circle',
+    'statistics': 'lucide:bar-chart-3',
+    'social-links': 'lucide:share-2',
+    'event-card': 'lucide:calendar',
+    'feature-list': 'lucide:list-checks',
+    'testimonial': 'lucide:quote',
+    'three-column': 'lucide:columns-3',
+    'cta-section': 'lucide:megaphone',
+    'progress-bar': 'lucide:trending-up'
+  }
+
+  return iconMap[blockType.slug] || 'lucide:file-text'
+}
+
+// Utility functions
+const formatCategoryName = (category: string) => {
+  return category.charAt(0).toUpperCase() + category.slice(1)
+}
+
 const getBlocksByCategory = (category: string) => {
   return blockTypes.value.filter(bt => bt.category === category)
 }
 
-// Get block type by slug
 const getBlockType = (slug: string) => {
   return blockTypes.value.find(bt => bt.slug === slug)
 }
 
-// Add block from block type
+const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+  notification.value = { show: true, message, type }
+  setTimeout(() => {
+    notification.value.show = false
+  }, 4000)
+}
+
+// Validation
+const validateField = (fieldName: string) => {
+  switch (fieldName) {
+    case 'subject':
+      if (!newsletter.value.subject?.trim()) {
+        errors.value.subject = 'Subject line is required'
+      } else if (newsletter.value.subject.length > 78) {
+        errors.value.subject = 'Subject line should be under 78 characters'
+      } else {
+        delete errors.value.subject
+      }
+      break
+    
+    case 'from_email':
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!newsletter.value.from_email?.trim()) {
+        errors.value.from_email = 'From email is required'
+      } else if (!emailRegex.test(newsletter.value.from_email)) {
+        errors.value.from_email = 'Please enter a valid email address'
+      } else {
+        delete errors.value.from_email
+      }
+      break
+  }
+}
+
+// Drag and drop handlers
+const handleDragStart = (index: number, event: DragEvent) => {
+  draggedIndex.value = index
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/html', index.toString())
+  }
+}
+
+const handleDragOver = (index: number, event: DragEvent) => {
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragOverIndex.value = index
+}
+
+const handleDrop = (toIndex: number, event: DragEvent) => {
+  event.preventDefault()
+  const fromIndex = draggedIndex.value
+  
+  if (fromIndex !== null && fromIndex !== toIndex) {
+    moveBlock(fromIndex, toIndex)
+    showNotification('Block moved successfully')
+  }
+  
+  handleDragEnd()
+}
+
+const handleDragEnd = () => {
+  draggedIndex.value = null
+  dragOverIndex.value = null
+}
+
+// Block operations
 const addBlockFromType = (blockType: any) => {
   const newBlock = addBlock(blockType.slug)
   
-  // Set default content based on field visibility config
   if (blockType.field_visibility_config) {
     const defaultContent: any = {}
     
-    // Set reasonable defaults for common fields
     if (blockType.field_visibility_config.includes('title')) {
-      defaultContent.title = 'Enter title'
+      defaultContent.title = blockType.name === 'Hero Section' ? 'Welcome!' : 'Add your title here'
     }
     if (blockType.field_visibility_config.includes('text_content')) {
-      defaultContent.text_content = 'Enter your content here...'
+      defaultContent.text_content = 'Click edit to add your content...'
     }
     if (blockType.field_visibility_config.includes('button_text')) {
-      defaultContent.button_text = 'Click here'
-      defaultContent.button_url = '#'
-    }
-    if (blockType.field_visibility_config.includes('image_url')) {
-      defaultContent.image_url = ''
-      defaultContent.image_alt_text = ''
+      defaultContent.button_text = 'Learn More'
+      defaultContent.button_url = 'https://example.com'
     }
     
     updateBlock(newBlock.id, { content: defaultContent })
   }
+  
+  showNotification(`Added ${blockType.name} block`)
+  
+  // Smooth scroll to new block
+  setTimeout(() => {
+    const blockElement = document.querySelector(`[data-block-id="${newBlock.id}"]`)
+    if (blockElement) {
+      blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, 100)
 }
 
-// Load template
+// Template loading
 const loadTemplate = async (templateId: string) => {
   if (!templateId) return
   
   try {
     const template = await fetchTemplate(templateId)
     loadFromTemplate(template)
+    showNotification(`Loaded template: ${template.name}`)
   } catch (error) {
-    console.error('Failed to load template:', error)
+    showNotification('Failed to load template', 'error')
   }
 }
 
-// Handle compiled MJML/HTML from preview
+// Handle compiled output
 const handleCompiled = (compiled: { mjml: string, html: string }) => {
   newsletter.value.compiled_mjml = compiled.mjml
   newsletter.value.compiled_html = compiled.html
 }
 
-// Watch for changes and emit
+// Data loading
+onMounted(async () => {
+  try {
+    const [blockTypesData, templatesData] = await Promise.all([
+      fetchBlockTypes().catch(() => {
+        showNotification('Could not load block types', 'error')
+        return []
+      }),
+      fetchTemplates({ limit: 50 }).catch(() => [])
+    ])
+    
+    blockTypes.value = blockTypesData
+    templates.value = templatesData
+  } finally {
+    loadingBlockTypes.value = false
+  }
+})
+
+// Emit changes
 watch(newsletter, (value) => {
+  if (value.subject) validateField('subject')
+  if (value.from_email) validateField('from_email')
   emit('update:modelValue', value)
 }, { deep: true })
 </script>
 
 <style scoped>
-/* Base styles */
-.newsletter-editor {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: #f5f5f5;
+/* Drag and drop animations */
+.block-list-move,
+.block-list-enter-active,
+.block-list-leave-active {
+  transition: all 0.3s ease;
 }
 
-.newsletter-editor__toolbar {
-  background: white;
-  border-bottom: 1px solid #e5e5e5;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.toolbar-section {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.template-select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-}
-
-.block-categories {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.category-group {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.category-label {
-  font-size: 0.875rem;
-  color: #666;
-  text-transform: capitalize;
-}
-
-.toolbar-button {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
-  background: white;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-
-.toolbar-button:hover {
-  background: #f5f5f5;
-  border-color: #999;
-}
-
-.toolbar-button .icon {
-  font-size: 1.125rem;
-}
-
-.loading-message {
-  color: #666;
-  font-style: italic;
-}
-
-.newsletter-editor__main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-.newsletter-editor__canvas {
-  flex: 1;
-  overflow-y: auto;
-  padding: 2rem;
-}
-
-.newsletter-header {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #333;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.blocks-container {
-  min-height: 200px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-  background: white;
-  border-radius: 8px;
-  border: 2px dashed #ddd;
-}
-
-.block-wrapper {
-  position: relative;
-  margin-bottom: 1rem;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s;
-}
-
-.block-wrapper:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.block-controls {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  display: flex;
-  gap: 0.25rem;
+.block-list-enter-from,
+.block-list-leave-to {
   opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 10;
+  transform: translateX(30px);
 }
 
-.block-wrapper:hover .block-controls {
-  opacity: 1;
+.block-list-leave-active {
+  position: absolute;
+  right: 0;
+  left: 0;
 }
 
-.control-btn {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #ddd;
-  background: white;
-  cursor: pointer;
+/* Custom scrollbar for webkit browsers */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
   border-radius: 3px;
-  font-size: 0.875rem;
-  transition: all 0.2s;
 }
 
-.control-btn:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #999;
-}
-
-.control-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.control-btn.danger {
-  color: #dc3545;
-}
-
-.control-btn.danger:hover {
-  background: #dc3545;
-  color: white;
-  border-color: #dc3545;
-}
-
-.newsletter-editor__preview {
-  width: 450px;
-  border-left: 1px solid #e5e5e5;
-  background: white;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Responsive */
-@media (max-width: 1200px) {
-  .newsletter-editor__preview {
-    width: 400px;
-  }
-}
-
-@media (max-width: 768px) {
-  .newsletter-editor__main {
-    flex-direction: column;
-  }
-  
-  .newsletter-editor__preview {
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid #e5e5e5;
-    height: 50vh;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 </style>

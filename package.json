@@ -1,7 +1,7 @@
 {
   "name": "@hue-studios/nuxt-newsletter",
-  "version": "1.0.1",
-  "description": "MJML newsletter module for Nuxt 3 with Directus CMS and SendGrid integration",
+  "version": "1.0.2",
+  "description": "Modern MJML newsletter module for Nuxt 3 with Directus CMS and SendGrid integration",
   "keywords": [
     "nuxt",
     "nuxt3",
@@ -10,7 +10,9 @@
     "mjml",
     "directus",
     "sendgrid",
-    "cms"
+    "cms",
+    "tailwindcss",
+    "drag-drop"
   ],
   "repository": {
     "type": "git",
@@ -56,6 +58,7 @@
     "test:ci": "node scripts/run-tests.js",
     "setup:directus": "node scripts/install-directus-collections.js",
     "setup:blocks": "node scripts/create-advanced-blocks.js",
+    "setup:wizard": "node scripts/setup-wizard.js",
     "verify": "node scripts/verify-setup.js"
   },
   "dependencies": {
@@ -85,6 +88,8 @@
     "vue-tsc": "^2.2.0"
   },
   "peerDependencies": {
+    "@nuxt/icon": "^1.0.0",
+    "@nuxtjs/tailwindcss": "^6.0.0",
     "@vueuse/nuxt": ">=10.0.0",
     "nuxt": "^3.0.0",
     "vue": "^3.0.0"
