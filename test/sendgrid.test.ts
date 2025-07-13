@@ -1,29 +1,30 @@
 // test/sendgrid.test.ts
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSendGrid } from '../src/runtime/composables/useSendGrid'
 
-// Mock $fetch
-vi.mock('ofetch', () => ({
-  $fetch: vi.fn().mockResolvedValue({ success: true })
-}))
+// Set up mocks properly
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('useSendGrid', () => {
   it('should require API key for sending', async () => {
-    // Mock config without API key
-    vi.mock('#app', () => ({
+    // Override config for this specific test
+    vi.doMock('#app', () => ({
       useRuntimeConfig: () => ({
-        sendgridApiKey: '',
-        public: {
-          newsletter: {}
-        }
+        sendgridApiKey: '', // No API key
+        public: { newsletter: {} }
       })
-    }), { virtual: true })
-
+    }))
+    
     const { sendNewsletter } = useSendGrid()
     
     await expect(
       sendNewsletter(
-        { subject: 'Test', compiled_html: '<html></html>' },
+        {
+          subject: 'Test', compiled_html: '<html></html>',
+          blocks: []
+        },
         [{ email: 'test@example.com' }]
       )
     ).rejects.toThrow('SendGrid API key not configured')
@@ -43,12 +44,18 @@ describe('useSendGrid', () => {
   it('should format recipients correctly', async () => {
     const { sendTestEmail } = useSendGrid()
     
-    // This should not throw
-    await expect(
-      sendTestEmail(
-        { subject: 'Test', compiled_html: '<html>Test</html>' },
-        'test@example.com'
-      )
-    ).resolves.toMatchObject({ success: true })
+    // Mock successful response
+    const mockFetch = vi.fn().mockResolvedValue({ success: true })
+    vi.doMock('ofetch', () => ({ $fetch: mockFetch }))
+    
+    const result = await sendTestEmail(
+      {
+        subject: 'Test', compiled_html: '<html>Test</html>',
+        blocks: []
+      },
+      'test@example.com'
+    )
+    
+    expect(result).toMatchObject({ success: true })
   })
 })
