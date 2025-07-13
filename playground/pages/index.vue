@@ -1,108 +1,75 @@
+<!-- playground/pages/index.vue -->
 <template>
-  <div class="newsletter-admin">
-    <div class="admin-header">
-      <h1>Newsletter Management</h1>
+  <div class="newsletter-editor-page">
+    <div class="editor-header">
+      <div class="header-left">
+        <NuxtLink to="/list" class="btn btn-secondary">
+          ← Back to List
+        </NuxtLink>
+        <div class="editor-title">
+          <h1>{{ isEditing ? 'Edit Newsletter' : 'Create Newsletter' }}</h1>
+          <p v-if="currentNewsletter?.subject" class="current-subject">
+            {{ currentNewsletter.subject }}
+          </p>
+        </div>
+      </div>
       <div class="header-actions">
-        <button @click="createNew" class="btn btn-primary">
-          Create Newsletter
+        <button @click="saveNewsletter" :disabled="saving" class="btn btn-primary">
+          {{ saving ? 'Saving...' : 'Save' }}
+        </button>
+        <button 
+          v-if="currentNewsletter?.id && currentNewsletter?.compiled_html"
+          @click="sendTest" 
+          class="btn btn-secondary"
+        >
+          Send Test
+        </button>
+        <select 
+          v-if="mailingLists.length > 0"
+          v-model="selectedMailingList" 
+          class="mailing-list-select"
+        >
+          <option value="">Select Mailing List</option>
+          <option 
+            v-for="list in mailingLists" 
+            :key="list.id"
+            :value="list.id"
+          >
+            {{ list.name }} ({{ list.subscriber_count }} subscribers)
+          </option>
+        </select>
+        <button 
+          v-if="currentNewsletter?.status === 'ready' && selectedMailingList"
+          @click="sendToList" 
+          class="btn btn-success"
+        >
+          Send to List
         </button>
       </div>
     </div>
 
-    <!-- Newsletter List -->
-    <div v-if="!editingNewsletter" class="newsletter-list">
-      <div v-if="loading" class="loading">
-        Loading newsletters...
-      </div>
-      
-      <div v-else-if="error" class="error">
-        Error loading newsletters: {{ error }}
-      </div>
-      
-      <div v-else-if="newsletters.length === 0" class="empty-state">
-        <p>No newsletters yet. Create your first one!</p>
-      </div>
-      
-      <div v-else class="newsletters-grid">
-        <div 
-          v-for="newsletter in newsletters" 
-          :key="newsletter.id"
-          class="newsletter-card"
-        >
-          <div class="card-header">
-            <h3>{{ newsletter.title }}</h3>
-            <span class="status" :class="`status-${newsletter.status}`">
-              {{ newsletter.status }}
-            </span>
-          </div>
-          
-          <div class="card-body">
-            <p class="subject">{{ newsletter.subject_line }}</p>
-            <div class="meta">
-              <span>{{ newsletter.blocks?.length || 0 }} blocks</span>
-              <span>{{ formatDate(newsletter.date_created) }}</span>
-            </div>
-          </div>
-          
-          <div class="card-actions">
-            <button @click="editNewsletter(newsletter)" class="btn btn-sm">
-              Edit
-            </button>
-            <button @click="duplicateNewsletter(newsletter)" class="btn btn-sm">
-              Duplicate
-            </button>
-            <button 
-              v-if="newsletter.status === 'ready'"
-              @click="sendNewsletter(newsletter)" 
-              class="btn btn-sm btn-success"
-            >
-              Send
-            </button>
-            <button @click="deleteNewsletterConfirm(newsletter)" class="btn btn-sm btn-danger">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+    <!-- Loading State -->
+    <div v-if="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>{{ loadingMessage }}</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <div class="error-icon">⚠️</div>
+      <h3>Error Loading Newsletter</h3>
+      <p>{{ error }}</p>
+      <button @click="initializeEditor" class="btn btn-primary">
+        Try Again
+      </button>
     </div>
 
     <!-- Newsletter Editor -->
-    <div v-else class="newsletter-editor-wrapper">
-      <div class="editor-header">
-        <button @click="closeEditor" class="btn btn-secondary">
-          ← Back to List
-        </button>
-        <div class="editor-actions">
-          <button @click="saveNewsletter" :disabled="saving" class="btn btn-primary">
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
-          <button @click="sendTest" class="btn btn-secondary">
-            Send Test
-          </button>
-          <select v-model="selectedMailingList" class="mailing-list-select">
-            <option value="">Select Mailing List</option>
-            <option 
-              v-for="list in mailingLists" 
-              :key="list.id"
-              :value="list.id"
-            >
-              {{ list.name }} ({{ list.subscriber_count }} subscribers)
-            </option>
-          </select>
-          <button 
-            v-if="currentNewsletter.status === 'ready'"
-            @click="sendToList" 
-            class="btn btn-success"
-            :disabled="!selectedMailingList"
-          >
-            Send to List
-          </button>
-        </div>
-      </div>
-
+    <div v-else-if="currentNewsletter" class="editor-wrapper">
       <NewsletterEditor 
         v-model="currentNewsletter" 
         :show-preview="true"
+        @update:compiled="handleCompiled"
       />
     </div>
 
@@ -110,6 +77,7 @@
     <div v-if="showTestModal" class="modal" @click.self="showTestModal = false">
       <div class="modal-content">
         <h3>Send Test Email</h3>
+        <p>Send test email for "{{ currentNewsletter?.subject || 'Newsletter' }}"</p>
         <input 
           v-model="testEmail" 
           type="email" 
@@ -118,7 +86,7 @@
           @keyup.enter="confirmSendTest"
         />
         <div class="modal-actions">
-          <button @click="confirmSendTest" class="btn btn-primary">
+          <button @click="confirmSendTest" class="btn btn-primary" :disabled="!testEmail">
             Send Test
           </button>
           <button @click="showTestModal = false" class="btn btn-secondary">
@@ -133,27 +101,28 @@
       <div class="modal-content">
         <h3>Send Newsletter</h3>
         <p>
-          Send "{{ currentNewsletter.subject }}" to 
+          Send "{{ currentNewsletter?.subject || 'Newsletter' }}" to 
           <strong>{{ selectedList?.name }}</strong> 
           ({{ selectedList?.subscriber_count }} subscribers)?
         </p>
         <div class="send-options">
-          <label>
+          <label class="checkbox-label">
             <input type="checkbox" v-model="sendOptions.sendNow" />
-            Send immediately
+            <span>Send immediately</span>
           </label>
-          <div v-if="!sendOptions.sendNow" class="schedule-input">
-            <label>Schedule for:</label>
+          <div v-if="!sendOptions.sendNow" class="schedule-section">
+            <label class="field-label">Schedule for:</label>
             <input 
               type="datetime-local" 
               v-model="sendOptions.scheduledDate"
               class="form-input"
+              :min="minScheduleDate"
             />
           </div>
         </div>
         <div class="modal-actions">
-          <button @click="confirmSendToList" class="btn btn-primary">
-            {{ sendOptions.sendNow ? 'Send Now' : 'Schedule' }}
+          <button @click="confirmSendToList" class="btn btn-primary" :disabled="sendingToList">
+            {{ sendingToList ? 'Sending...' : (sendOptions.sendNow ? 'Send Now' : 'Schedule') }}
           </button>
           <button @click="showSendModal = false" class="btn btn-secondary">
             Cancel
@@ -161,22 +130,46 @@
         </div>
       </div>
     </div>
+
+    <!-- Success/Error Messages -->
+    <div v-if="message.show" class="message-toast" :class="message.type">
+      {{ message.text }}
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// Composables are auto-imported by the module - no explicit imports needed
+// Page metadata
+definePageMeta({
+  title: 'Newsletter Editor'
+})
+
+// URL parameters
+const route = useRoute()
+const editId = computed(() => route.query.edit)
+const shouldShowSendModal = computed(() => route.query.send === 'true')
 
 // State
-const newsletters = ref([])
-const mailingLists = ref([])
-const loading = ref(true)
+const loading = ref(false)
+const loadingMessage = ref('')
 const error = ref(null)
 const saving = ref(false)
-const editingNewsletter = ref(false)
-const currentNewsletter = ref(null)
+const sendingToList = ref(false)
+const isEditing = ref(false)
+const currentNewsletter = ref({
+  subject: '',
+  preheader: '',
+  blocks: [],
+  settings: {
+    backgroundColor: '#f5f5f5',
+    textColor: '#333333',
+    fontFamily: 'Arial, sans-serif'
+  },
+  status: 'draft'
+})
+const mailingLists = ref([])
 const selectedMailingList = ref('')
 const showTestModal = ref(false)
 const showSendModal = ref(false)
@@ -185,14 +178,17 @@ const sendOptions = ref({
   sendNow: true,
   scheduledDate: ''
 })
+const message = ref({
+  show: false,
+  text: '',
+  type: 'success'
+})
 
 // Composables
 const { 
-  fetchNewsletters, 
   fetchNewsletter,
   createNewsletter: createNewsletterInDirectus,
   updateNewsletter: updateNewsletterInDirectus,
-  deleteNewsletter: deleteNewsletterFromDirectus,
   fetchMailingLists,
   fetchMailingListSubscribers,
   fetchBlockTypes
@@ -206,76 +202,72 @@ const selectedList = computed(() =>
   mailingLists.value.find(list => list.id === selectedMailingList.value)
 )
 
-// Load data
-onMounted(async () => {
-  try {
-    const [newsletterData, listData] = await Promise.all([
-      fetchNewsletters({ limit: 20 }),
-      fetchMailingLists()
-    ])
-    newsletters.value = newsletterData
-    mailingLists.value = listData
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    loading.value = false
-  }
+const minScheduleDate = computed(() => {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() + 30) // Minimum 30 minutes from now
+  return now.toISOString().slice(0, 16)
 })
 
-// Methods
-const createNew = () => {
-  const { newsletter } = useNewsletterEditor()
-  currentNewsletter.value = newsletter.value
-  editingNewsletter.value = true
-}
+// Initialize editor
+const initializeEditor = async () => {
+  loading.value = true
+  error.value = null
 
-const editNewsletter = async (newsletter) => {
   try {
-    // Fetch full newsletter with blocks
-    const fullNewsletter = await fetchNewsletter(newsletter.id)
-    
-    // Convert to editor format
-    const editorData = {
-      id: fullNewsletter.id,
-      subject: fullNewsletter.subject_line,
-      preheader: fullNewsletter.preview_text,
-      from_name: fullNewsletter.from_name,
-      from_email: fullNewsletter.from_email,
-      reply_to: fullNewsletter.reply_to,
-      blocks: fullNewsletter.blocks?.map(block => ({
-        id: block.id,
-        type: block.block_type.slug,
-        content: block.content || {},
-        sort: block.sort
-      })) || [],
-      status: fullNewsletter.status,
-      mailing_list_id: fullNewsletter.mailing_list_id
+    // Load mailing lists
+    loadingMessage.value = 'Loading mailing lists...'
+    mailingLists.value = await fetchMailingLists()
+
+    // Check if we're editing an existing newsletter
+    if (editId.value) {
+      loadingMessage.value = 'Loading newsletter...'
+      isEditing.value = true
+      
+      const fullNewsletter = await fetchNewsletter(editId.value)
+      
+      // Convert to editor format
+      const editorData = {
+        id: fullNewsletter.id,
+        subject: fullNewsletter.subject_line,
+        preheader: fullNewsletter.preview_text,
+        from_name: fullNewsletter.from_name,
+        from_email: fullNewsletter.from_email,
+        reply_to: fullNewsletter.reply_to,
+        blocks: fullNewsletter.blocks?.map(block => ({
+          id: block.id,
+          type: typeof block.block_type === 'object' ? block.block_type.slug : block.block_type,
+          content: block.content || {},
+          sort: block.sort
+        })) || [],
+        status: fullNewsletter.status,
+        mailing_list_id: fullNewsletter.mailing_list_id,
+        compiled_mjml: fullNewsletter.compiled_mjml,
+        compiled_html: fullNewsletter.compiled_html
+      }
+      
+      // Load into editor
+      const { newsletter: editorNewsletter } = useNewsletterEditor(editorData)
+      Object.assign(currentNewsletter.value, editorNewsletter.value)
+      selectedMailingList.value = fullNewsletter.mailing_list_id || ''
+      
+      // Show send modal if requested
+      if (shouldShowSendModal.value && fullNewsletter.status === 'ready') {
+        showSendModal.value = true
+      }
+    } else {
+      // Create new newsletter - currentNewsletter is already initialized with defaults
+      isEditing.value = false
     }
-    
-    const { newsletter } = useNewsletterEditor(editorData)
-    currentNewsletter.value = newsletter.value
-    editingNewsletter.value = true
-    selectedMailingList.value = fullNewsletter.mailing_list_id || ''
   } catch (err) {
-    alert('Error loading newsletter: ' + err.message)
+    error.value = err.message
+    console.error('Error initializing editor:', err)
+  } finally {
+    loading.value = false
+    loadingMessage.value = ''
   }
 }
 
-const duplicateNewsletter = async (newsletter) => {
-  try {
-    const copy = { ...newsletter }
-    delete copy.id
-    copy.title = `${copy.title} (Copy)`
-    copy.subject_line = `${copy.subject_line} (Copy)`
-    copy.status = 'draft'
-    
-    await createNewsletterInDirectus(copy)
-    await refreshNewsletters()
-  } catch (err) {
-    alert('Error duplicating newsletter: ' + err.message)
-  }
-}
-
+// Save newsletter
 const saveNewsletter = async () => {
   saving.value = true
   try {
@@ -290,45 +282,60 @@ const saveNewsletter = async () => {
     
     if (currentNewsletter.value.id) {
       await updateNewsletterInDirectus(currentNewsletter.value.id, currentNewsletter.value)
+      showMessage('Newsletter updated successfully!', 'success')
     } else {
       const created = await createNewsletterInDirectus(currentNewsletter.value)
       currentNewsletter.value.id = created.id
+      isEditing.value = true
+      showMessage('Newsletter created successfully!', 'success')
+      
+      // Update URL to show we're now editing
+      await navigateTo(`/?edit=${created.id}`, { replace: true })
     }
-    
-    alert('Newsletter saved successfully!')
   } catch (err) {
-    alert('Error saving newsletter: ' + err.message)
+    showMessage('Error saving newsletter: ' + err.message, 'error')
+    console.error('Save error:', err)
   } finally {
     saving.value = false
   }
 }
 
+// Test email functions
 const sendTest = () => {
   testEmail.value = ''
   showTestModal.value = true
 }
 
 const confirmSendTest = async () => {
-  if (!testEmail.value) return
+  if (!testEmail.value || !currentNewsletter.value.compiled_html) return
   
   try {
     await sendTestEmail(currentNewsletter.value, testEmail.value)
-    alert('Test email sent to ' + testEmail.value)
+    showMessage('Test email sent to ' + testEmail.value, 'success')
     showTestModal.value = false
   } catch (err) {
-    alert('Error sending test: ' + err.message)
+    showMessage('Error sending test: ' + err.message, 'error')
   }
 }
 
+// Send to list functions
 const sendToList = () => {
   if (!selectedMailingList.value) {
-    alert('Please select a mailing list')
+    showMessage('Please select a mailing list', 'error')
     return
   }
+  
+  // Set default schedule time to 30 minutes from now
+  const defaultSchedule = new Date()
+  defaultSchedule.setMinutes(defaultSchedule.getMinutes() + 30)
+  sendOptions.value.scheduledDate = defaultSchedule.toISOString().slice(0, 16)
+  
   showSendModal.value = true
 }
 
 const confirmSendToList = async () => {
+  sendingToList.value = true
+  
   try {
     // Get subscribers from the selected list
     const subscribers = await fetchMailingListSubscribers(selectedMailingList.value)
@@ -336,7 +343,12 @@ const confirmSendToList = async () => {
     // Prepare recipients
     const recipients = subscribers.map(sub => ({
       email: sub.email,
-      name: sub.name || sub.email
+      name: sub.name || sub.email,
+      custom_args: {
+        subscriber_id: sub.id,
+        newsletter_id: currentNewsletter.value.id,
+        send_record_id: `send_${Date.now()}`
+      }
     }))
     
     // Send via SendGrid
@@ -348,7 +360,11 @@ const confirmSendToList = async () => {
         fromName: currentNewsletter.value.from_name,
         replyTo: currentNewsletter.value.reply_to,
         categories: ['newsletter', currentNewsletter.value.category || 'general'],
-        sendAt: sendOptions.value.sendNow ? undefined : new Date(sendOptions.value.scheduledDate)
+        sendAt: sendOptions.value.sendNow ? undefined : new Date(sendOptions.value.scheduledDate),
+        customArgs: {
+          newsletter_id: currentNewsletter.value.id,
+          mailing_list_id: selectedMailingList.value
+        }
       }
     )
     
@@ -358,187 +374,186 @@ const confirmSendToList = async () => {
       scheduled_send_date: sendOptions.value.scheduledDate || undefined
     })
     
-    alert(sendOptions.value.sendNow ? 'Newsletter sent!' : 'Newsletter scheduled!')
+    const message = sendOptions.value.sendNow 
+      ? `Newsletter sent to ${recipients.length} subscribers!`
+      : `Newsletter scheduled for ${new Date(sendOptions.value.scheduledDate).toLocaleString()}!`
+    
+    showMessage(message, 'success')
     showSendModal.value = false
-    closeEditor()
+    
+    // Navigate back to list after successful send
+    setTimeout(() => {
+      navigateTo('/list')
+    }, 2000)
   } catch (err) {
-    alert('Error sending newsletter: ' + err.message)
+    showMessage('Error sending newsletter: ' + err.message, 'error')
+    console.error('Send error:', err)
+  } finally {
+    sendingToList.value = false
   }
 }
 
-const deleteNewsletterConfirm = async (newsletter) => {
-  if (confirm(`Delete "${newsletter.title}"? This cannot be undone.`)) {
-    try {
-      await deleteNewsletterFromDirectus(newsletter.id)
-      await refreshNewsletters()
-    } catch (err) {
-      alert('Error deleting newsletter: ' + err.message)
+// Handle compiled newsletter from editor
+const handleCompiled = (compiled) => {
+  if (currentNewsletter.value) {
+    currentNewsletter.value.compiled_mjml = compiled.mjml
+    currentNewsletter.value.compiled_html = compiled.html
+  }
+}
+
+// Utility functions
+const showMessage = (text, type = 'success') => {
+  message.value = { show: true, text, type }
+  setTimeout(() => {
+    message.value.show = false
+  }, 4000)
+}
+
+// Watch for route changes
+watch(() => route.query.edit, () => {
+  initializeEditor()
+})
+
+// Initialize on mount
+onMounted(() => {
+  initializeEditor()
+})
+
+// Auto-save every 30 seconds if there are changes
+let autoSaveInterval
+onMounted(() => {
+  autoSaveInterval = setInterval(() => {
+    if (currentNewsletter.value?.id && !saving.value) {
+      saveNewsletter()
     }
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (autoSaveInterval) {
+    clearInterval(autoSaveInterval)
   }
-}
-
-const closeEditor = () => {
-  editingNewsletter.value = false
-  currentNewsletter.value = null
-  refreshNewsletters()
-}
-
-const refreshNewsletters = async () => {
-  try {
-    newsletters.value = await fetchNewsletters({ limit: 20 })
-  } catch (err) {
-    console.error('Error refreshing newsletters:', err)
-  }
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString()
-}
+})
 </script>
 
 <style scoped>
-.newsletter-admin {
-  min-height: 100vh;
-  background: #f5f5f5;
-}
-
-.admin-header {
-  background: white;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e5e5e5;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.admin-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  color: #333;
-}
-
-/* Newsletter List */
-.newsletter-list {
-  padding: 2rem;
-}
-
-.newsletters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.newsletter-card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  overflow: hidden;
-  transition: box-shadow 0.2s;
-}
-
-.newsletter-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.card-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e5e5;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #333;
-}
-
-.status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.status-draft { background: #f3f4f6; color: #6b7280; }
-.status-ready { background: #dbeafe; color: #2563eb; }
-.status-scheduled { background: #f3e8ff; color: #7c3aed; }
-.status-sent { background: #d1fae5; color: #059669; }
-
-.card-body {
-  padding: 1.5rem;
-}
-
-.subject {
-  margin: 0 0 1rem;
-  color: #555;
-}
-
-.meta {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: #999;
-}
-
-.card-actions {
-  padding: 1rem 1.5rem;
-  background: #f9fafb;
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Editor */
-.newsletter-editor-wrapper {
+.newsletter-editor-page {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #f8fafc;
 }
 
 .editor-header {
   background: white;
   padding: 1rem 2rem;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
-.editor-actions {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.editor-title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.current-subject {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.header-actions {
   display: flex;
   gap: 1rem;
   align-items: center;
 }
 
 .mailing-list-select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  min-width: 200px;
+}
+
+.editor-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Loading and Error States */
+.loading-state,
+.error-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 1rem;
+  border: 3px solid #f3f4f6;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.error-state h3 {
+  margin: 0 0 0.5rem;
+  color: #1f2937;
+}
+
+.error-state p {
+  color: #6b7280;
+  margin-bottom: 1rem;
 }
 
 /* Buttons */
 .btn {
   padding: 0.5rem 1rem;
   border: none;
-  border-radius: 4px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
 }
 
 .btn-primary {
@@ -568,87 +583,163 @@ const formatDate = (dateString) => {
   background: #059669;
 }
 
-.btn-danger {
-  background: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #dc2626;
-}
-
-/* States */
-.loading,
-.error,
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.error {
-  color: #ef4444;
-}
-
-/* Modal */
+/* Modal Styles */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 2rem;
 }
 
 .modal-content {
   background: white;
   padding: 2rem;
-  border-radius: 8px;
+  border-radius: 12px;
   max-width: 500px;
-  width: 90%;
+  width: 100%;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
 }
 
 .modal-content h3 {
   margin: 0 0 1rem;
+  font-size: 1.25rem;
+  color: #1f2937;
+}
+
+.modal-content p {
+  margin: 0.5rem 0 1rem;
+  color: #6b7280;
 }
 
 .form-input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
   font-size: 1rem;
   margin-bottom: 1rem;
 }
 
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .modal-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   justify-content: flex-end;
+  margin-top: 1.5rem;
 }
 
+/* Send Options */
 .send-options {
   margin: 1rem 0;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
-.send-options label {
+.checkbox-label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
 }
 
-.schedule-input {
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.schedule-section {
   margin-top: 1rem;
 }
 
-.schedule-input label {
+.field-label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
+  color: #374151;
+}
+
+/* Message Toast */
+.message-toast {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+  max-width: 400px;
+}
+
+.message-toast.success {
+  background: #d1fae5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.message-toast.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .editor-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+    padding: 1rem;
+  }
+  
+  .header-left {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  
+  .mailing-list-select {
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .modal {
+    padding: 1rem;
+  }
+  
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
 }
 </style>
