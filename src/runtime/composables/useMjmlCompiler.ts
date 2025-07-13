@@ -26,15 +26,24 @@ export function useMjmlCompiler() {
   const compilationError = ref<string | null>(null)
 
   // Compile Handlebars template with block data
-  const compileHandlebars = (template: string, data: any): string => {
+ const compileHandlebars = (template: string, data: any): string => {
   // Basic Handlebars implementation for common patterns
   let compiled = template
 
-  // Replace simple variables {{variable}}
+  // Handle triple mustache for unescaped HTML {{{variable}}} FIRST
+  Object.keys(data).forEach(key => {
+    const value = data[key]
+    if (typeof value === 'string') {
+      const regex = new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g')
+      compiled = compiled.replace(regex, value)
+    }
+  })
+
+  // Then replace simple variables {{variable}}
   Object.keys(data).forEach(key => {
     const value = data[key]
     if (typeof value === 'string' || typeof value === 'number') {
-      const regex = new RegExp(`{{${key}}}`, 'g')
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
       compiled = compiled.replace(regex, String(value))
     }
   })
@@ -42,15 +51,6 @@ export function useMjmlCompiler() {
   // Handle {{#if variable}} ... {{/if}}
   compiled = compiled.replace(/{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g, (match, variable, content) => {
     return data[variable] ? content : ''
-  })
-
-  // Handle triple mustache for unescaped HTML {{{variable}}}
-  Object.keys(data).forEach(key => {
-    const value = data[key]
-    if (typeof value === 'string') {
-      const regex = new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g')
-      compiled = compiled.replace(regex, value)
-    }
   })
 
   return compiled
