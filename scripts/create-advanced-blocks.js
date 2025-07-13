@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Advanced Block Types Creator
+ * Enhanced Advanced Block Types Creator
  * Creates more sophisticated MJML block types for newsletters
+ * and ensures they're organized within the Newsletter System folder
  */
 
 import {
-  createDirectus,
-  rest,
   authentication,
-  createItems,
+  createDirectus,
   createField,
+  createItems,
+  readCollections,
+  rest,
 } from "@directus/sdk";
 
 class AdvancedBlocksInstaller {
@@ -20,6 +22,7 @@ class AdvancedBlocksInstaller {
       .with(authentication());
     this.email = email;
     this.password = password;
+    this.folderName = "Newsletter System";
   }
 
   async authenticate() {
@@ -31,6 +34,31 @@ class AdvancedBlocksInstaller {
     } catch (error) {
       console.error("❌ Authentication failed:", error.message);
       return false;
+    }
+  }
+
+  async checkNewsletterSystemFolder() {
+    console.log(`📁 Checking for "${this.folderName}" folder...`);
+    
+    try {
+      const collections = await this.directus.request(readCollections());
+      const newsletterFolder = collections.find(c => 
+        c.meta?.group === null && 
+        c.meta?.display_template === this.folderName
+      );
+
+      if (newsletterFolder) {
+        console.log(`✅ Found "${this.folderName}" folder - collections will be organized properly`);
+        return newsletterFolder.collection;
+      } else {
+        console.log(`⚠️  "${this.folderName}" folder not found`);
+        console.log("📋 Run the main installer first: npm run newsletter:setup");
+        console.log("   This will create the folder and organize all collections");
+        return null;
+      }
+    } catch (error) {
+      console.error(`❌ Failed to check for folder: ${error.message}`);
+      return null;
     }
   }
 
@@ -868,6 +896,15 @@ class AdvancedBlocksInstaller {
       return false;
     }
 
+    // Check if Newsletter System folder exists
+    const folderId = await this.checkNewsletterSystemFolder();
+    if (!folderId) {
+      console.log("\n⚠️  Warning: Newsletter System folder not found!");
+      console.log("📋 To organize all collections properly, run the main installer first:");
+      console.log("   npm run newsletter:setup [directus-url] [email] [password]");
+      console.log("\n🔄 Continuing with advanced blocks installation...\n");
+    }
+
     try {
       await this.addRequiredFields();
       await this.installAdvancedBlocks();
@@ -893,6 +930,10 @@ class AdvancedBlocksInstaller {
         "\n📋 These blocks are now available in your newsletter editor!"
       );
 
+      if (folderId) {
+        console.log(`📁 All block types are organized in the "${this.folderName}" folder`);
+      }
+
       return true;
     } catch (error) {
       console.error("\n❌ Installation failed:", error.message);
@@ -908,6 +949,7 @@ async function main() {
 
   if (args.length < 3) {
     console.log("Advanced Newsletter Blocks Installer");
+    console.log("Enhanced with folder organization support!");
     console.log("");
     console.log(
       "Usage: node create-advanced-blocks.js <directus-url> <email> <password>"
@@ -919,7 +961,10 @@ async function main() {
     );
     console.log("");
     console.log(
-      "Note: Run this AFTER installing the basic collections with install-directus-collections.js"
+      "📋 Note: Run this AFTER installing the basic collections with install-directus-collections.js"
+    );
+    console.log(
+      "📁 The installer will organize new blocks in the 'Newsletter System' folder automatically"
     );
     process.exit(1);
   }

@@ -1,25 +1,22 @@
 #!/usr/bin/env node
 
 /**
- * Automated Directus Collections Installer for Newsletter System
- * This script sets up all required collections, fields, and relationships
+ * Enhanced Directus Collections Installer for Newsletter System
+ * This script sets up all required collections, fields, relationships
+ * and organizes them into a "Newsletter System" folder for better UX
  */
 
 import {
-  createDirectus,
-  rest,
   authentication,
   createCollection,
+  createDirectus,
   createField,
-  createRelation,
   createItems,
-  readCollections, // Fixed: Added missing import
-  aggregate,
-  readItems,
+  createRelation,
+  readCollections,
+  rest,
   updateCollection,
 } from "@directus/sdk";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 class DirectusNewsletterInstaller {
   constructor(directusUrl, email, password) {
@@ -29,6 +26,7 @@ class DirectusNewsletterInstaller {
     this.email = email;
     this.password = password;
     this.existingCollections = new Set();
+    this.folderName = "Newsletter System";
   }
 
   async authenticate() {
@@ -53,18 +51,96 @@ class DirectusNewsletterInstaller {
     }
   }
 
-  async createCollectionSafely(collectionConfig) {
+  async createNewsletterFolder() {
+    console.log(`📁 Creating "${this.folderName}" folder...`);
+    
+    try {
+      // Check if folder already exists
+      const collections = await this.directus.request(readCollections());
+      const existingFolder = collections.find(c => 
+        c.meta?.group === null && 
+        c.meta?.display_template === this.folderName
+      );
+
+      if (existingFolder) {
+        console.log(`✅ Folder "${this.folderName}" already exists`);
+        return existingFolder.collection;
+      }
+
+      // Create the folder collection
+      const folderConfig = {
+        collection: 'newsletter_system_folder',
+        meta: {
+          accountability: 'all',
+          collection: 'newsletter_system_folder',
+          group: null,
+          hidden: false,
+          icon: 'folder',
+          note: 'Newsletter system collections folder',
+          display_template: this.folderName,
+          translations: null,
+          archive_field: null,
+          archive_app_filter: true,
+          archive_value: null,
+          unarchive_value: null,
+          singleton: false,
+          collapse: 'open',
+          item_duplication_fields: null,
+          sort: 1,
+          sort_field: null,
+          preview_url: null,
+          versioning: false
+        },
+        schema: {
+          name: 'newsletter_system_folder'
+        }
+      };
+
+      const folder = await this.directus.request(createCollection(folderConfig));
+      console.log(`✅ Created "${this.folderName}" folder`);
+      await this.delay(1000);
+      
+      return folder.collection;
+    } catch (error) {
+      console.error(`❌ Failed to create folder: ${error.message}`);
+      // Continue without folder if creation fails
+      return null;
+    }
+  }
+
+  async createCollectionSafely(collectionConfig, folderId = null) {
     const { collection } = collectionConfig;
 
     if (this.existingCollections.has(collection)) {
       console.log(`⏭️  Skipping ${collection} - already exists`);
+      
+      // Update existing collection to be in folder if folder exists
+      if (folderId) {
+        try {
+          await this.directus.request(updateCollection(collection, {
+            meta: {
+              ...collectionConfig.meta,
+              group: folderId
+            }
+          }));
+          console.log(`📁 Moved ${collection} to "${this.folderName}" folder`);
+        } catch (error) {
+          console.log(`⚠️  Could not move ${collection} to folder: ${error.message}`);
+        }
+      }
       return true;
     }
 
     try {
       console.log(`📝 Creating ${collection} collection...`);
+      
+      // Add folder assignment if folder exists
+      if (folderId) {
+        collectionConfig.meta.group = folderId;
+      }
+      
       await this.directus.request(createCollection(collectionConfig));
-      console.log(`✅ ${collection} collection created`);
+      console.log(`✅ ${collection} collection created${folderId ? ` in "${this.folderName}" folder` : ''}`);
       await this.delay(1000);
       return true;
     } catch (error) {
@@ -81,7 +157,7 @@ class DirectusNewsletterInstaller {
     try {
       await this.directus.request(createField(collection, fieldConfig));
       console.log(`✅ Added field: ${collection}.${fieldConfig.field}`);
-      await this.delay(1000);
+      await this.delay(500);
       return true;
     } catch (error) {
       if (
@@ -105,6 +181,9 @@ class DirectusNewsletterInstaller {
 
   async installCollections() {
     console.log("\n📦 Installing newsletter collections...");
+
+    // Create the folder first
+    const folderId = await this.createNewsletterFolder();
 
     const collections = [
       {
@@ -167,6 +246,7 @@ class DirectusNewsletterInstaller {
           hidden: true,
           icon: "link",
           note: "Junction table for mailing lists and subscribers",
+          sort: 5,
         },
         schema: { name: "mailing_lists_subscribers" },
       },
@@ -179,7 +259,7 @@ class DirectusNewsletterInstaller {
           icon: "mail",
           note: "Email newsletters",
           display_template: "{{title}} - {{status}} ({{category}})",
-          sort: 5,
+          sort: 6,
         },
         schema: { name: "newsletters" },
       },
@@ -192,7 +272,7 @@ class DirectusNewsletterInstaller {
           icon: "view_module",
           note: "Newsletter content blocks",
           display_template: "{{block_type.name}} (#{{sort}})",
-          sort: 6,
+          sort: 7,
         },
         schema: { name: "newsletter_blocks" },
       },
@@ -205,7 +285,7 @@ class DirectusNewsletterInstaller {
           icon: "extension",
           note: "Available MJML block types",
           display_template: "{{name}}",
-          sort: 7,
+          sort: 8,
         },
         schema: { name: "block_types" },
       },
@@ -219,11 +299,10 @@ class DirectusNewsletterInstaller {
           note: "Newsletter send history and analytics",
           display_template:
             "{{newsletter.title}} to {{mailing_list.name}} - {{status}}",
-          sort: 8,
+          sort: 9,
         },
         schema: { name: "newsletter_sends" },
       },
-      // Fixed: Added missing newsletter_analytics collection
       {
         collection: "newsletter_analytics",
         meta: {
@@ -233,17 +312,21 @@ class DirectusNewsletterInstaller {
           icon: "analytics",
           note: "Newsletter tracking events and analytics",
           display_template: "{{event_type}} - {{email}}",
-          sort: 9,
+          sort: 10,
         },
         schema: { name: "newsletter_analytics" },
       },
     ];
 
     for (const collection of collections) {
-      await this.createCollectionSafely(collection);
+      await this.createCollectionSafely(collection, folderId);
     }
 
     console.log("✅ Collections created successfully");
+    
+    if (folderId) {
+      console.log(`📁 All collections organized in "${this.folderName}" folder`);
+    }
   }
 
   async installFields() {
@@ -330,7 +413,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("newsletter_templates", field);
     }
 
-    // Fixed: Added Content Library fields
+    // Content Library fields
     const contentLibraryFields = [
       {
         field: "title",
@@ -386,7 +469,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("content_library", field);
     }
 
-    // Fixed: Added Subscribers fields
+    // Subscribers fields
     const subscriberFields = [
       {
         field: "email",
@@ -503,7 +586,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("subscribers", field);
     }
 
-    // Fixed: Added Mailing Lists fields
+    // Mailing Lists fields
     const mailingListFields = [
       {
         field: "name",
@@ -553,7 +636,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("mailing_lists", field);
     }
 
-    // Fixed: Added junction table fields
+    // Junction table fields
     const junctionFields = [
       {
         field: "mailing_lists_id",
@@ -659,7 +742,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("block_types", field);
     }
 
-    // Newsletter fields - Updated to match your types
+    // Newsletter fields
     const newsletterFields = [
       {
         field: "title",
@@ -854,7 +937,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("newsletters", field);
     }
 
-    // Newsletter Blocks fields - Updated
+    // Newsletter Blocks fields
     const blockFields = [
       {
         field: "newsletter_id",
@@ -986,7 +1069,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("newsletter_blocks", field);
     }
 
-    // Fixed: Added Newsletter Sends fields
+    // Newsletter Sends fields
     const sendFields = [
       {
         field: "newsletter_id",
@@ -1084,7 +1167,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("newsletter_sends", field);
     }
 
-    // Fixed: Added Newsletter Analytics fields
+    // Newsletter Analytics fields
     const analyticsFields = [
       {
         field: "newsletter_id",
@@ -1465,7 +1548,7 @@ class DirectusNewsletterInstaller {
   }
 
   async run() {
-    console.log("🚀 Starting Newsletter System Installation\n");
+    console.log("🚀 Starting Newsletter System Installation with Folder Organization\n");
 
     if (!(await this.authenticate())) {
       return false;
@@ -1482,6 +1565,7 @@ class DirectusNewsletterInstaller {
         "\n🎉 Newsletter system installation completed successfully!"
       );
       console.log("\n📋 What was installed:");
+      console.log("    • 📁 Newsletter System folder for organization");
       console.log("    • 10 Collections for newsletter management");
       console.log("    • All required fields and relationships");
       console.log("    • 4 Basic block types (Hero, Text, Image, Button)");
@@ -1489,9 +1573,10 @@ class DirectusNewsletterInstaller {
       console.log("    • Analytics tracking system");
 
       console.log("\n📋 Next steps:");
-      console.log("1. Install the Nuxt module in your project");
-      console.log("2. Configure your environment variables");
-      console.log("3. Start creating newsletters!");
+      console.log("1. Check your Directus admin panel - all collections are now organized!");
+      console.log("2. Install the Nuxt module in your project");
+      console.log("3. Configure your environment variables");
+      console.log("4. Start creating newsletters!");
 
       return true;
     } catch (error) {
@@ -1506,7 +1591,8 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length < 3) {
-    console.log("Newsletter System Installer");
+    console.log("Enhanced Newsletter System Installer");
+    console.log("Now with automatic folder organization in Directus!");
     console.log("");
     console.log(
       "Usage: node install-directus-collections.js <directus-url> <email> <password>"
@@ -1516,6 +1602,8 @@ async function main() {
     console.log(
       "  node install-directus-collections.js https://admin.example.com admin@example.com password123"
     );
+    console.log("");
+    console.log("✨ New: All collections will be organized in a 'Newsletter System' folder!");
     process.exit(1);
   }
 

@@ -87,6 +87,41 @@ export interface NewsletterModuleOptions {
    * @default false in production
    */
   dev?: boolean
+  /**
+   * Modern UI configuration
+   */
+  ui?: {
+    /**
+     * Icon library to use
+     * @default 'lucide'
+     */
+    icons?: 'lucide' | 'heroicons' | 'tabler'
+    /**
+     * Enable drag and drop functionality
+     * @default true
+     */
+    enableDragDrop?: boolean
+    /**
+     * Auto-install TailwindCSS if not present
+     * @default true
+     */
+    autoInstallTailwind?: boolean
+    /**
+     * Theme configuration
+     */
+    theme?: {
+      /**
+       * Primary color for the interface
+       * @default 'blue'
+       */
+      primaryColor?: string
+      /**
+       * Enable dark mode support
+       * @default false
+       */
+      darkMode?: boolean
+    }
+  }
 }
 
 export default defineNuxtModule<NewsletterModuleOptions>({
@@ -111,7 +146,16 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     },
     mjmlMode: 'client',
     prefix: 'Newsletter',
-    dev: false
+    dev: false,
+    ui: {
+      icons: 'lucide',
+      enableDragDrop: true,
+      autoInstallTailwind: true,
+      theme: {
+        primaryColor: 'blue',
+        darkMode: false
+      }
+    }
   },
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
@@ -166,7 +210,7 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
       `)
     }
 
-    // Enhanced runtime config
+    // Enhanced runtime config with modern UI options
     nuxt.options.runtimeConfig.public.newsletter = defu(
       nuxt.options.runtimeConfig.public.newsletter as NewsletterModuleOptions,
       {
@@ -183,7 +227,16 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
         },
         mjmlMode: options.mjmlMode || 'client',
         prefix: options.prefix || 'Newsletter',
-        dev: options.dev || nuxt.options.dev
+        dev: options.dev || nuxt.options.dev,
+        ui: {
+          icons: options.ui?.icons || 'lucide',
+          enableDragDrop: options.ui?.enableDragDrop ?? true,
+          autoInstallTailwind: options.ui?.autoInstallTailwind ?? true,
+          theme: {
+            primaryColor: options.ui?.theme?.primaryColor || 'blue',
+            darkMode: options.ui?.theme?.darkMode || false
+          }
+        }
       }
     )
 
@@ -192,11 +245,47 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
     nuxt.options.runtimeConfig.sendgridWebhookSecret = options.sendgrid?.webhookSecret || process.env.SENDGRID_WEBHOOK_SECRET || ''
     nuxt.options.runtimeConfig.directusAdminToken = process.env.DIRECTUS_ADMIN_TOKEN || ''
 
-    // Install required dependencies with error handling
+    // Install required dependencies with enhanced error handling
     try {
+      // Core dependencies
       await installModule('@vueuse/nuxt')
+      logger.info('✅ @vueuse/nuxt installed')
+
+      // Icon support
+      await installModule('@nuxt/icon')
+      logger.info(`✅ @nuxt/icon installed with ${options.ui?.icons || 'lucide'} icons`)
+      
+      // Auto-install TailwindCSS if enabled and not already present
+      if (options.ui?.autoInstallTailwind !== false) {
+        const hasTailwind = nuxt.options.modules.some(m => 
+          (typeof m === 'string' && m.includes('tailwindcss')) ||
+          (Array.isArray(m) && m[0]?.includes('tailwindcss'))
+        )
+        
+        if (!hasTailwind) {
+          await installModule('@nuxtjs/tailwindcss')
+          logger.info('✅ @nuxtjs/tailwindcss auto-installed for modern UI')
+        } else {
+          logger.info('✅ TailwindCSS already configured')
+        }
+      }
+
+      // Color mode support if dark mode is enabled
+      if (options.ui?.theme?.darkMode) {
+        const hasColorMode = nuxt.options.modules.some(m => 
+          (typeof m === 'string' && m.includes('color-mode')) ||
+          (Array.isArray(m) && m[0]?.includes('color-mode'))
+        )
+        
+        if (!hasColorMode) {
+          await installModule('@nuxtjs/color-mode')
+          logger.info('✅ @nuxtjs/color-mode installed for dark mode support')
+        }
+      }
+
     } catch (error) {
-      logger.error('Failed to install @vueuse/nuxt. Please install manually: npm install @vueuse/nuxt')
+      logger.error('Failed to install required dependencies. Please install manually:')
+      logger.error('npm install @vueuse/nuxt @nuxt/icon @nuxtjs/tailwindcss')
       throw error
     }
 
@@ -206,44 +295,64 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
       mode: 'all'
     })
 
-    // Add composables with better auto-completion
+    // Add composables with better auto-completion and descriptions
     addImports([
       { 
         name: 'useDirectusNewsletter', 
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
-          description: 'Access Directus newsletter operations (CRUD, templates, etc.)'
+          description: 'Access Directus newsletter operations (CRUD, templates, subscribers, etc.)'
         }
       },
       { 
         name: 'useMjmlCompiler', 
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
-          description: 'Compile newsletters to MJML and HTML'
+          description: 'Compile newsletters to MJML and HTML with Handlebars support'
         }
       },
       { 
         name: 'useNewsletter', 
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
-          description: 'Access newsletter module configuration'
+          description: 'Access newsletter module configuration and state'
         }
       },
       { 
         name: 'useNewsletterEditor', 
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
-          description: 'Newsletter editor state management'
+          description: 'Newsletter editor state management with drag-drop support'
         }
       },
       { 
         name: 'useSendGrid', 
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
-          description: 'SendGrid email operations'
+          description: 'SendGrid email operations and webhook handling'
+        }
+      },
+      { 
+        name: 'useNewsletterErrors', 
+        from: resolver.resolve('./runtime/composables/index'),
+        meta: {
+          description: 'User-friendly error handling and troubleshooting'
         }
       }
     ])
+
+    // Add drag and drop composable if enabled
+    if (options.ui?.enableDragDrop !== false) {
+      addImports([
+        { 
+          name: 'useDragAndDrop', 
+          from: resolver.resolve('./runtime/composables/useDragAndDrop'),
+          meta: {
+            description: 'Drag and drop functionality for newsletter blocks'
+          }
+        }
+      ])
+    }
 
     // Add components with better organization
     await addComponentsDir({
@@ -264,6 +373,7 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
         route: '/api/newsletter/compile-mjml',
         handler: resolver.resolve('./runtime/server/api/newsletter/compile-mjml.post')
       })
+      logger.info('✅ Server-side MJML compilation enabled')
     }
 
     // Enhanced development experience
@@ -275,10 +385,10 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
         }
       })
 
-      // Add helpful development logs
+      // Add helpful development logs with modern features
       nuxt.hook('build:before', () => {
         logger.success(`
-🎉 Newsletter Module Ready!
+🎉 Newsletter Module Ready! (Modern UI Edition)
 
 Configuration:
   • Directus: ${options.directus.url}
@@ -286,15 +396,23 @@ Configuration:
   • MJML: ${options.mjmlMode || 'client'} mode
   • SendGrid: ${sendgridKey ? '✅ configured' : '❌ not configured'}
 
+Modern UI Features:
+  • TailwindCSS: ${options.ui?.autoInstallTailwind !== false ? '✅ enabled' : '❌ disabled'}
+  • Icons: ${options.ui?.icons || 'lucide'}
+  • Drag & Drop: ${options.ui?.enableDragDrop !== false ? '✅ enabled' : '❌ disabled'}
+  • Theme: ${options.ui?.theme?.primaryColor || 'blue'} ${options.ui?.theme?.darkMode ? '(dark mode)' : '(light mode)'}
+
 Components available:
-  • <${options.prefix}Editor> - Main newsletter editor
-  • <${options.prefix}Preview> - Live preview component
-  • <${options.prefix}Block> - Individual block editor
+  • <${options.prefix}Editor> - Modern drag-drop newsletter editor
+  • <${options.prefix}Preview> - Live preview with device frames
+  • <${options.prefix}Block> - Dynamic block editor with validation
 
 Quick start:
   1. Set up Directus: npm run newsletter:setup
   2. Verify setup: npm run newsletter:verify
-  3. Add blocks: npm run newsletter:blocks
+  3. Add advanced blocks: npm run newsletter:blocks
+
+✨ Enjoy the modern newsletter editing experience!
         `)
       })
     }
@@ -310,6 +428,18 @@ Quick start:
       }
     })
 
-    logger.success('Newsletter module initialized successfully!')
+    // Add custom CSS for TailwindCSS if needed
+    if (options.ui?.autoInstallTailwind !== false) {
+      nuxt.options.css = nuxt.options.css || []
+      
+      // Add custom newsletter styles if they don't exist
+      const customCssPath = resolver.resolve('./runtime/assets/newsletter.css')
+      if (!nuxt.options.css.some(css => css.includes('newsletter.css'))) {
+        // Note: We'd need to create this CSS file with newsletter-specific styles
+        // nuxt.options.css.push(customCssPath)
+      }
+    }
+
+    logger.success('Modern Newsletter module initialized successfully! 🚀')
   }
 })
