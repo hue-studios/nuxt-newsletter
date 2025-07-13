@@ -25,5 +25,12 @@
     "types": ["@types/node", "@nuxt/types", "@nuxt/schema"]
   },
   "include": ["./src/**/*", "./src/types/**/*", "./test/**/*"],
-  "exclude": ["dist", "node_modules", ".nuxt", "playground"]
+  "exclude": [
+    "dist",
+    "node_modules",
+    ".nuxt",
+    "playground",
+    "test/fixtures",
+    "coverage"
+  ]
 }

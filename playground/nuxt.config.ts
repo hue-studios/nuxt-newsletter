@@ -15,7 +15,7 @@ export default defineNuxtConfig({
       defaultFromEmail: 'newsletter@example.com',
       defaultFromName: 'Test Newsletter'
     },
-    mjmlMode: 'client', // Use client-side compilation for development
+    mjmlMode: 'server', // Use client-side compilation for development
     prefix: 'Newsletter'
   },
 

@@ -1,39 +1,6 @@
-// test/module.test.ts
-import { $fetch, setup } from '@nuxt/test-utils'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
-
-describe('Newsletter Module', async () => {
-  await setup({
-    rootDir: fileURLToPath(new URL('./fixtures/basic', import.meta.url)),
-    modules: ['../../../src/module']
-  })
-
-  it('should load module', () => {
-    expect(true).toBe(true)
-  })
-
-  it('should register composables', async () => {
-    const html = await $fetch('/')
-    expect(html).toContain('Newsletter Module')
-  })
-
-  it('should create webhook endpoint', async () => {
-    // Test that the SendGrid webhook endpoint exists
-    try {
-      await $fetch('/api/newsletter/sendgrid-webhook', {
-        method: 'POST',
-        body: []
-      })
-    } catch (error: any) {
-      // Should fail with auth error if no secret configured
-      expect(error.statusCode).toBeDefined()
-    }
-  })
-})
-
-// test/composables.test.ts
-import { beforeEach } from 'vitest'
+// test/mjml-compiler.test.ts
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useMjmlCompiler } from '../src/runtime/composables/useMjmlCompiler'
 import { useNewsletterEditor } from '../src/runtime/composables/useNewsletterEditor'
 
 describe('useNewsletterEditor', () => {
@@ -116,9 +83,6 @@ describe('useNewsletterEditor', () => {
   })
 })
 
-// test/mjml-compiler.test.ts
-import { useMjmlCompiler } from '../src/runtime/composables/useMjmlCompiler'
-
 describe('useMjmlCompiler', () => {
   const { compileHandlebars } = useMjmlCompiler()
 
@@ -151,5 +115,34 @@ describe('useMjmlCompiler', () => {
     
     const result = compileHandlebars(template, data)
     expect(result).toBe('<mj-text><strong>Bold text</strong></mj-text>')
+  })
+
+  it('should handle nested conditionals', () => {
+    const template = `
+      {{#if showSection}}
+      <mj-section>
+        {{#if showTitle}}
+        <mj-text>{{title}}</mj-text>
+        {{/if}}
+      </mj-section>
+      {{/if}}
+    `
+    
+    const result = compileHandlebars(template, {
+      showSection: true,
+      showTitle: true,
+      title: 'Test Title'
+    })
+    
+    expect(result).toContain('<mj-section>')
+    expect(result).toContain('<mj-text>Test Title</mj-text>')
+  })
+
+  it('should handle missing variables gracefully', () => {
+    const template = '<mj-text>Hello {{name}}!</mj-text>'
+    const data = {}
+    
+    const result = compileHandlebars(template, data)
+    expect(result).toBe('<mj-text>Hello {{name}}!</mj-text>')
   })
 })

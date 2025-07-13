@@ -1,8 +1,12 @@
 // server/api/newsletter/sendgrid-webhook.post.ts
-import { createError, useRuntimeConfig } from '#app'
 import { createDirectus, createItem, readItem, readItems, rest, staticToken, updateItem } from '@directus/sdk'
 import crypto from 'crypto'
-import { defineEventHandler, getHeader, readBody, readRawBody } from 'h3'
+import { createError, defineEventHandler, getHeader, readBody, readRawBody } from 'h3'
+
+// Define minimal schema type
+type Schema = {
+  [key: string]: any
+}
 
 interface SendGridEvent {
   email: string
@@ -27,12 +31,14 @@ interface SendGridEvent {
 }
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
+  // Use environment variables directly
+  const webhookSecret = process.env.SENDGRID_WEBHOOK_SECRET
+  const directusUrl = process.env.DIRECTUS_URL
+  const directusToken = process.env.DIRECTUS_ADMIN_TOKEN
   
   // Verify webhook signature
   const signature = getHeader(event, 'x-twilio-email-event-webhook-signature')
   const timestamp = getHeader(event, 'x-twilio-email-event-webhook-timestamp')
-  const webhookSecret = config.sendgridWebhookSecret || process.env.SENDGRID_WEBHOOK_SECRET
 
   if (webhookSecret && signature && timestamp) {
     const payload = await readRawBody(event)
@@ -60,10 +66,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Initialize Directus client
-  const directusUrl = config.public.newsletter?.directus?.url || process.env.DIRECTUS_URL
-  const directusToken = config.directusAdminToken || process.env.DIRECTUS_ADMIN_TOKEN
-
+  // Initialize Directus client with Schema type
   if (!directusUrl || !directusToken) {
     throw createError({
       statusCode: 500,
@@ -71,9 +74,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const directus = createDirectus(directusUrl)
+  const directus = createDirectus<Schema>(directusUrl)
     .with(rest())
-    .with(staticToken(directusToken as string))
+    .with(staticToken(directusToken))
 
   // Process each event
   const results = []
@@ -85,7 +88,7 @@ export default defineEventHandler(async (event) => {
       const sendRecordId = sgEvent.send_record_id
 
       // Create analytics record
-      const analyticsData = {
+      const analyticsData: any = {
         newsletter_id: newsletterId,
         send_record_id: sendRecordId,
         event_type: mapEventType(sgEvent.event),
@@ -107,13 +110,13 @@ export default defineEventHandler(async (event) => {
       // Try to find subscriber by email
       try {
         const subscribers = await directus.request(
-          readItems('subscribers', {
+          readItems('subscribers' as any, {
             filter: {
               email: { _eq: sgEvent.email }
             },
             limit: 1
           })
-        )
+        ) as any[]
         
         if (subscribers.length > 0) {
           analyticsData.subscriber_id = subscribers[0].id
@@ -178,7 +181,7 @@ async function updateSendStatistics(directus: any, sendRecordId: string, eventTy
     // Get current statistics
     const sendRecord = await directus.request(
       readItem('newsletter_sends', sendRecordId)
-    )
+    ) as any
 
     if (!sendRecord) return
 
@@ -210,7 +213,7 @@ async function updateSendStatistics(directus: any, sendRecordId: string, eventTy
 
     if (Object.keys(updates).length > 0) {
       await directus.request(
-        updateItem('newsletter_sends', sendRecordId, updates)
+        updateItem('newsletter_sends' as any, sendRecordId, updates)
       )
     }
   } catch (error) {
@@ -221,13 +224,14 @@ async function updateSendStatistics(directus: any, sendRecordId: string, eventTy
 // Update subscriber status based on events
 async function updateSubscriberStatus(directus: any, subscriberId: string, eventType: string, timestamp: number) {
   try {
+    const subscriber = await directus.request(
+      readItem('subscribers' as any, subscriberId)
+    ) as any
+
     const updates: any = {}
 
     switch (eventType) {
       case 'bounce':
-        const subscriber = await directus.request(
-          readItem('subscribers', subscriberId)
-        )
         updates.bounce_count = (subscriber.bounce_count || 0) + 1
         if (updates.bounce_count >= 3) {
           updates.status = 'bounced'
@@ -257,7 +261,7 @@ async function updateSubscriberStatus(directus: any, subscriberId: string, event
 
     if (Object.keys(updates).length > 0) {
       await directus.request(
-        updateItem('subscribers', subscriberId, updates)
+        updateItem('subscribers' as any, subscriberId, updates)
       )
     }
   } catch (error) {

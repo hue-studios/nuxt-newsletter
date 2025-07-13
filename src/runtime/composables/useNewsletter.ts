@@ -1,5 +1,5 @@
 // src/runtime/composables/useNewsletter.ts
-import { useNuxtApp, useRuntimeConfig } from '#app'
+import { useNuxtApp, useRuntimeConfig } from '#imports'
 import { computed } from 'vue'
 
 export function useNewsletter() {

@@ -51,13 +51,15 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
+    "test:ci": "node scripts/run-tests.js",
     "setup:directus": "node scripts/install-directus-collections.js",
     "setup:blocks": "node scripts/create-advanced-blocks.js",
     "verify": "node scripts/verify-setup.js"
   },
   "dependencies": {
-    "@directus/sdk": "^17.0.0",
+    "@directus/sdk": "^20.0.0",
     "@nuxt/kit": "^3.17.0",
     "defu": "^6.1.4",
     "ofetch": "^1.4.1"
@@ -75,6 +77,7 @@
     "changelogen": "^0.6.2",
     "eslint": "^8.57.1",
     "eslint-plugin-vue": "^9.32.0",
+    "jsdom": "^26.1.0",
     "nuxt": "^3.17.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
