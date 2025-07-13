@@ -1,6 +1,6 @@
 import {
   addComponentsDir,
-  addImportsDir,
+  addImports,
   addPlugin,
   addServerHandler,
   createResolver,
@@ -131,8 +131,16 @@ export default defineNuxtModule<NewsletterModuleOptions>({
       mode: 'all'
     })
 
+     addImports([
+      { name: 'useDirectusNewsletter', from: resolver.resolve('./runtime/composables/index') },
+      { name: 'useMjmlCompiler', from: resolver.resolve('./runtime/composables/index') },
+      { name: 'useNewsletter', from: resolver.resolve('./runtime/composables/index') },
+      { name: 'useNewsletterEditor', from: resolver.resolve('./runtime/composables/index') },
+      { name: 'useSendGrid', from: resolver.resolve('./runtime/composables/index') }
+    ])
+
     // Add composables directory (this will auto-import all composables)
-    addImportsDir(resolver.resolve('./runtime/composables'))
+    // addImportsDir(resolver.resolve('./runtime/composables'))
 
     // Add components
     await addComponentsDir({
@@ -140,6 +148,8 @@ export default defineNuxtModule<NewsletterModuleOptions>({
       prefix: options.prefix,
       global: false
     })
+
+    
 
     // Add server handlers
     addServerHandler({
