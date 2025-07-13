@@ -1,26 +1,32 @@
 // test/setup.ts
 import { vi } from 'vitest'
 
+// Create a default runtime config that can be overridden
+const createMockRuntimeConfig = (overrides = {}) => ({
+  public: {
+    newsletter: {
+      directus: {
+        url: 'http://test.directus.com',
+        auth: { type: 'static', token: 'test-token' }
+      },
+      sendgrid: {
+        defaultFromEmail: 'test@example.com',
+        defaultFromName: 'Test Newsletter'
+      },
+      mjmlMode: 'client',
+      ...overrides.public?.newsletter
+    },
+    ...overrides.public
+  },
+  sendgridApiKey: 'test-api-key',
+  sendgridWebhookSecret: 'test-secret',
+  directusAdminToken: 'test-admin-token',
+  ...overrides
+})
+
 // Mock all Nuxt-specific imports
 vi.mock('#app', () => ({
-  useRuntimeConfig: () => ({
-    public: {
-      newsletter: {
-        directus: {
-          url: 'http://test.directus.com',
-          auth: { type: 'static', token: 'test-token' }
-        },
-        sendgrid: {
-          defaultFromEmail: 'test@example.com',
-          defaultFromName: 'Test Newsletter'
-        },
-        mjmlMode: 'client'
-      }
-    },
-    sendgridApiKey: 'test-api-key',
-    sendgridWebhookSecret: 'test-secret',
-    directusAdminToken: 'test-admin-token'
-  }),
+  useRuntimeConfig: vi.fn(() => createMockRuntimeConfig()),
   useState: vi.fn((key: string, init?: () => any) => {
     const state = init ? init() : null
     return [state, vi.fn()]
@@ -39,7 +45,7 @@ vi.mock('#app', () => ({
   readRawBody: vi.fn()
 }))
 
-// Mock ofetch
+// Mock ofetch with a spy that can be overridden
 vi.mock('ofetch', () => ({
   $fetch: vi.fn().mockResolvedValue({})
 }))
@@ -59,7 +65,7 @@ vi.mock('h3', () => ({
 vi.mock('@directus/sdk', () => ({
   createDirectus: vi.fn(() => ({
     with: vi.fn().mockReturnThis(),
-    request: vi.fn()
+    request: vi.fn().mockResolvedValue([])
   })),
   rest: vi.fn(),
   authentication: vi.fn(),
@@ -79,3 +85,6 @@ vi.mock('@directus/sdk', () => ({
 global.window = {
   mjml2html: undefined
 } as any
+
+// Export helper for creating custom runtime configs in tests
+export { createMockRuntimeConfig }
