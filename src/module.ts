@@ -160,28 +160,31 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     }
   },
   async setup(options, nuxt) {
-    const resolver = createResolver(import.meta.url)
-    const logger = useLogger('@hue-studios/nuxt-newsletter')
+  const resolver = createResolver(import.meta.url)
+  const logger = useLogger('@hue-studios/nuxt-newsletter')
 
-    const hasDirectusUrl = !!(options.directus.url || process.env.DIRECTUS_URL)
-
-     // Only validate strictly in production builds
-  if (!hasDirectusUrl && nuxt.options.dev) {
-    logger.info('Directus URL not set. Using default: http://localhost:8055')
-    options.directus.url = options.directus.url || 'http://localhost:8055'
-  } else if (!hasDirectusUrl) {
-    logger.error('Directus URL is required in production!')
-    throw new Error('Directus URL is required for the newsletter module')
-  }
-
-    // Skip validation during build/prepare phase in development
+  // Skip validation during build/prepare phase
   const isBuilding = process.env.NODE_ENV === 'prerender' || 
                     process.argv.includes('prepare') || 
-                    process.argv.includes('build')
+                    process.argv.includes('build') ||
+                    process.argv.includes('dev:prepare')
 
-    // Enhanced validation with helpful error messages
-    if (!options.directus.url && !isBuilding) {
-      logger.error(`
+  const hasDirectusUrl = !!(options.directus.url || process.env.DIRECTUS_URL)
+
+  // Handle different scenarios
+  if (isBuilding) {
+    // During build/prepare, just use a placeholder if no URL is set
+    if (!hasDirectusUrl) {
+      logger.info('Build phase: Using placeholder Directus URL')
+      options.directus.url = 'http://localhost:8055'
+    }
+  } else if (nuxt.options.dev && !hasDirectusUrl) {
+    // In dev mode without URL, use default
+    logger.info('Development mode: Using default Directus URL http://localhost:8055')
+    options.directus.url = 'http://localhost:8055'
+  } else if (!nuxt.options.dev && !hasDirectusUrl) {
+    // Only in production runtime do we strictly require the URL
+    logger.error(`
 🚨 Newsletter Module Setup Error:
 
 Directus URL is required! Please add to your nuxt.config.ts:
@@ -199,19 +202,14 @@ newsletter: {
 Or set the DIRECTUS_URL environment variable.
 
 📚 Need help? Visit: https://github.com/hue-studios/nuxt-newsletter#setup
-      `)
-      throw new Error('Directus URL is required for the newsletter module')
-    }
-
-    // For development/prepare phase, just warn
-  if (!options.directus.url && isBuilding) {
-    logger.info('Directus URL will be required at runtime. Skipping validation during build...')
+    `)
+    throw new Error('Directus URL is required for the newsletter module')
   }
 
-    // Check for required environment variables
-    const directusToken = options.directus.auth?.token || process.env.DIRECTUS_TOKEN
-    if (options.directus.auth?.type === 'static' && !directusToken) {
-      logger.warn(`
+  // Check for auth token (warning only)
+  const directusToken = options.directus.auth?.token || process.env.DIRECTUS_TOKEN
+  if (options.directus.auth?.type === 'static' && !directusToken && !isBuilding) {
+    logger.warn(`
 ⚠️  Newsletter Module Warning:
 
 No Directus token configured! You'll need to set either:
@@ -219,19 +217,19 @@ No Directus token configured! You'll need to set either:
 2. DIRECTUS_TOKEN environment variable
 
 Without this, the module won't be able to connect to Directus.
-      `)
-    }
+    `)
+  }
 
-    // Check SendGrid setup
-    const sendgridKey = options.sendgrid?.apiKey || process.env.SENDGRID_API_KEY
-    if (!sendgridKey) {
-      logger.info(`
+  // Check SendGrid setup (info only)
+  const sendgridKey = options.sendgrid?.apiKey || process.env.SENDGRID_API_KEY
+  if (!sendgridKey && !isBuilding) {
+    logger.info(`
 ℹ️  Newsletter Module Info:
 
 No SendGrid API key found. Email sending will be disabled.
 To enable email sending, set SENDGRID_API_KEY environment variable.
-      `)
-    }
+    `)
+  }
 
     // Enhanced runtime config with modern UI options
     nuxt.options.runtimeConfig.public.newsletter = defu(
@@ -291,8 +289,14 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
         )
         
         if (!hasColorMode) {
-          await installModule('@nuxtjs/color-mode')
-          logger.info('✅ @nuxtjs/color-mode installed for dark mode support')
+          try {
+            await installModule('@nuxtjs/color-mode')
+            logger.info('✅ @nuxtjs/color-mode installed for dark mode support')
+          } catch (error) {
+            logger.warn('⚠️  Dark mode is enabled but @nuxtjs/color-mode is not available')
+            logger.warn('   Install it manually: npm install @nuxtjs/color-mode')
+            // Don't throw - dark mode is optional
+          }
         }
       }
 

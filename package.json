@@ -75,6 +75,7 @@
     "@nuxt/module-builder": "^0.8.4",
     "@nuxt/schema": "^3.17.0",
     "@nuxt/test-utils": "^3.19.0",
+    "@nuxtjs/color-mode": "^3.5.1",
     "@tailwindcss/vite": "^1.0.0",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
