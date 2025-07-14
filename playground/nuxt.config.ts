@@ -18,7 +18,8 @@ export default defineNuxtConfig({
     sendgrid: {
       // API key will be read from runtimeConfig
       defaultFromEmail: 'newsletter@example.com',
-      defaultFromName: 'Test Newsletter'
+      defaultFromName: 'Test Newsletter',
+      apiKey: process.env.SENDGRID_API_KEY || '',
     },
     mjmlMode: 'server',
     prefix: 'Newsletter',

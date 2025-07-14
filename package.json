@@ -60,6 +60,7 @@
     "test:ci": "node scripts/run-tests.js",
     "setup:directus": "node scripts/install-directus-collections.js",
     "setup:blocks": "node scripts/create-advanced-blocks.js",
+    "setup:templates": "node scripts/create-templates.js",
     "setup:wizard": "node scripts/setup-wizard.js",
     "verify": "node scripts/verify-setup.js"
   },

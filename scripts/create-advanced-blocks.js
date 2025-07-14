@@ -4,6 +4,11 @@
  * Enhanced Advanced Block Types Creator
  * Creates more sophisticated MJML block types for newsletters
  * and ensures they're organized within the Newsletter System folder
+ *
+ * Updates:
+ * - 'author_avatar' field now uses Directus File Library interface (UUID).
+ * - Corrected MJML template and field visibility for 'Product Showcase' and 'Team Member'
+ * to use the 'image' field (assuming it's the primary image field from the main installer).
  */
 
 import {
@@ -39,11 +44,11 @@ class AdvancedBlocksInstaller {
 
   async checkNewsletterSystemFolder() {
     console.log(`📁 Checking for "${this.folderName}" folder...`);
-    
+
     try {
       const collections = await this.directus.request(readCollections());
-      const newsletterFolder = collections.find(c => 
-        c.meta?.group === null && 
+      const newsletterFolder = collections.find(c =>
+        c.meta?.group === null &&
         c.meta?.display_template === this.folderName
       );
 
@@ -245,9 +250,17 @@ class AdvancedBlocksInstaller {
         meta: { interface: "input", width: "half" },
       },
       {
-        field: "author_avatar",
-        type: "string",
-        meta: { interface: "input", width: "half" },
+        field: "author_avatar", // Changed to file interface
+        type: "uuid", // Stores the UUID of the file
+        meta: {
+          interface: "file-image", // Directus interface for image selection
+          special: ["file"], // Marks it as a file relationship
+          width: "half",
+          note: "Select an avatar image from the Directus File Library.",
+        },
+        schema: {
+          is_nullable: true, // Allow without an avatar
+        },
       },
 
       // Multi-column fields
@@ -348,7 +361,7 @@ class AdvancedBlocksInstaller {
         icon: "storefront",
         mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column width="40%">
-    <mj-image src="{{image_url}}" alt="{{image_alt_text}}" />
+    <mj-image src="{{image}}" alt="{{image_alt_text}}" />
   </mj-column>
   <mj-column width="60%">
     <mj-text font-size="24px" font-weight="bold" color="{{text_color}}">
@@ -373,7 +386,7 @@ class AdvancedBlocksInstaller {
         field_visibility_config: [
           "title",
           "text_content",
-          "image_url",
+          "image", // Changed from image_url to image
           "image_alt_text",
           "price",
           "button_text",
@@ -392,7 +405,7 @@ class AdvancedBlocksInstaller {
         icon: "person",
         mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column width="30%">
-    <mj-image src="{{image_url}}" alt="{{image_alt_text}}" border-radius="50%" width="120px" />
+    <mj-image src="{{image}}" alt="{{image_alt_text}}" border-radius="50%" width="120px" />
   </mj-column>
   <mj-column width="70%">
     <mj-text font-size="20px" font-weight="bold" color="{{text_color}}">
@@ -413,7 +426,7 @@ class AdvancedBlocksInstaller {
           "title",
           "subtitle",
           "text_content",
-          "image_url",
+          "image", // Changed from image_url to image
           "image_alt_text",
           "background_color",
           "text_color",

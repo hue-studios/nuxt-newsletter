@@ -4,6 +4,32 @@
  * Enhanced Directus Collections Installer for Newsletter System
  * This script sets up all required collections, fields, relationships
  * and organizes them into a "Newsletter System" folder for better UX
+ *
+ * Updates:
+ * - Adds 'sort', 'date_created', 'date_updated' default fields to all collections.
+ * - 'date_created' is auto-populated with current timestamp.
+ * - 'id' fields are set back to integers (auto-incrementing).
+ * - Relationship field types are adjusted to match integer IDs.
+ * - 'sort', 'date_created', 'date_updated' fields are now hidden on detail views.
+ * - 'status' field is moved to the top of each relevant collection's detail view.
+ * - 'image_url' field in 'newsletter_blocks' now uses Directus File Library interface (UUID) and is renamed to 'image'.
+ * - FIX: Removed duplicate 'sort' field definition for 'newsletter_blocks' to prevent creation errors.
+ * - FIX: Updated 'field_visibility_config' in sample 'Image Block' type to reference 'image' field.
+ * - NEW: Added explicit default values for all 'status' fields.
+ * - NEW: Moved 'slug' field to the bottom of the 'newsletters' collection.
+ * - FIX: Corrected 'mjml_template' and 'field_visibility_config' in 'Image Block' sample data to use 'image' field.
+ *
+ * IMPORTANT NOTE ON ID TYPE MIGRATION:
+ * If your Directus instance previously had these collections with UUID primary keys,
+ * merely running this script will NOT automatically convert existing 'id' fields
+ * or foreign key fields from UUID to integer. Directus's SDKs generally create
+ * new schemas but do not alter existing column types for primary/foreign keys
+ * to prevent data loss.
+ *
+ * For a clean transition back to integers, it is HIGHLY RECOMMENDED to:
+ * 1. Back up your Directus data (if any is important).
+ * 2. Delete the affected collections from your Directus instance (or drop tables directly).
+ * 3. Then, run this script on a clean slate.
  */
 
 import {
@@ -53,12 +79,12 @@ class DirectusNewsletterInstaller {
 
   async createNewsletterFolder() {
     console.log(`📁 Creating "${this.folderName}" folder...`);
-    
+
     try {
       // Check if folder already exists
       const collections = await this.directus.request(readCollections());
-      const existingFolder = collections.find(c => 
-        c.meta?.group === null && 
+      const existingFolder = collections.find(c =>
+        c.meta?.group === null &&
         c.meta?.display_template === this.folderName
       );
 
@@ -99,7 +125,7 @@ class DirectusNewsletterInstaller {
       const folder = await this.directus.request(createCollection(folderConfig));
       console.log(`✅ Created "${this.folderName}" folder`);
       await this.delay(1000);
-      
+
       return folder.collection;
     } catch (error) {
       console.error(`❌ Failed to create folder: ${error.message}`);
@@ -113,7 +139,7 @@ class DirectusNewsletterInstaller {
 
     if (this.existingCollections.has(collection)) {
       console.log(`⏭️  Skipping ${collection} - already exists`);
-      
+
       // Update existing collection to be in folder if folder exists
       if (folderId) {
         try {
@@ -133,12 +159,19 @@ class DirectusNewsletterInstaller {
 
     try {
       console.log(`📝 Creating ${collection} collection...`);
-      
+
       // Add folder assignment if folder exists
       if (folderId) {
         collectionConfig.meta.group = folderId;
       }
-      
+
+      // Revert primary key to integer (default behavior if primary_key_type is not set)
+      // For Directus 11, omitting primary_key_type or setting it to 'integer' will use auto-incrementing integers.
+      // We will remove the explicit 'primary_key_type: 'uuid'' line.
+      if (collectionConfig.schema && collectionConfig.schema.primary_key_type) {
+        delete collectionConfig.schema.primary_key_type;
+      }
+
       await this.directus.request(createCollection(collectionConfig));
       console.log(`✅ ${collection} collection created${folderId ? ` in "${this.folderName}" folder` : ''}`);
       await this.delay(1000);
@@ -323,7 +356,7 @@ class DirectusNewsletterInstaller {
     }
 
     console.log("✅ Collections created successfully");
-    
+
     if (folderId) {
       console.log(`📁 All collections organized in "${this.folderName}" folder`);
     }
@@ -332,8 +365,89 @@ class DirectusNewsletterInstaller {
   async installFields() {
     console.log("\n🔧 Installing fields...");
 
+    // Default fields to add to all collections
+    const defaultFields = [
+      {
+        field: "sort",
+        type: "integer",
+        meta: {
+          interface: "input",
+          options: {
+            min: 1,
+            step: 1,
+          },
+          note: "Manually sort items within the collection.",
+          hidden: true, // Hidden on detail
+        },
+        schema: {
+          is_nullable: true, // 'sort' can be null
+        },
+      },
+      {
+        field: "date_created",
+        type: "timestamp",
+        meta: {
+          interface: "datetime",
+          readonly: true,
+          width: "half",
+          note: "Timestamp when the item was created.",
+          hidden: true, // Hidden on detail
+        },
+        schema: {
+          default_value: "$NOW", // Directus special value for current timestamp
+          is_nullable: true, // Allow null if not auto-populated
+        },
+      },
+      {
+        field: "date_updated",
+        type: "timestamp",
+        meta: {
+          interface: "datetime",
+          readonly: true,
+          width: "half",
+          note: "Timestamp when the item was last updated.",
+          hidden: true, // Hidden on detail
+        },
+        schema: {
+          default_value: "$NOW", // Directus special value for current timestamp on update
+          on_update: true,
+          is_nullable: true, // Allow null if not auto-populated
+        },
+      },
+    ];
+
+    // Get all collection names to add default fields
+    const allCollectionNames = [
+      "newsletter_templates", "content_library", "subscribers",
+      "mailing_lists", "mailing_lists_subscribers", "newsletters",
+      "newsletter_blocks", "block_types", "newsletter_sends",
+      "newsletter_analytics"
+    ];
+
+    for (const collectionName of allCollectionNames) {
+      for (const field of defaultFields) {
+        await this.createFieldSafely(collectionName, field);
+      }
+    }
+
+
     // Newsletter Templates fields
     const templateFields = [
+      {
+        field: "status", // Moved to top
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          options: {
+            choices: [
+              { text: "Published", value: "published" },
+              { text: "Draft", value: "draft" },
+            ],
+          },
+          default_value: "published", // Explicit default
+          width: "full", // Make it full width for top placement
+        },
+      },
       {
         field: "name",
         type: "string",
@@ -387,20 +501,6 @@ class DirectusNewsletterInstaller {
         meta: { interface: "input", width: "half" },
       },
       {
-        field: "status",
-        type: "string",
-        meta: {
-          interface: "select-dropdown",
-          options: {
-            choices: [
-              { text: "Published", value: "published" },
-              { text: "Draft", value: "draft" },
-            ],
-          },
-          default_value: "published",
-        },
-      },
-      {
         field: "usage_count",
         type: "integer",
         meta: { interface: "input", readonly: true },
@@ -415,6 +515,22 @@ class DirectusNewsletterInstaller {
 
     // Content Library fields
     const contentLibraryFields = [
+      {
+        field: "status", // Moved to top, assuming a status field might be useful here
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          options: {
+            choices: [
+              { text: "Published", value: "published" },
+              { text: "Draft", value: "draft" },
+              { text: "Archived", value: "archived" },
+            ],
+          },
+          default_value: "published", // Explicit default
+          width: "full",
+        },
+      },
       {
         field: "title",
         type: "string",
@@ -472,6 +588,24 @@ class DirectusNewsletterInstaller {
     // Subscribers fields
     const subscriberFields = [
       {
+        field: "status", // Moved to top
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          width: "full", // Make it full width for top placement
+          options: {
+            choices: [
+              { text: "Active", value: "active" },
+              { text: "Unsubscribed", value: "unsubscribed" },
+              { text: "Bounced", value: "bounced" },
+              { text: "Pending", value: "pending" },
+              { text: "Suppressed", value: "suppressed" },
+            ],
+          },
+          default_value: "pending", // Explicit default
+        },
+      },
+      {
         field: "email",
         type: "string",
         meta: { interface: "input", required: true, width: "half" },
@@ -500,24 +634,6 @@ class DirectusNewsletterInstaller {
         field: "job_title",
         type: "string",
         meta: { interface: "input", width: "half" },
-      },
-      {
-        field: "status",
-        type: "string",
-        meta: {
-          interface: "select-dropdown",
-          width: "half",
-          options: {
-            choices: [
-              { text: "Active", value: "active" },
-              { text: "Unsubscribed", value: "unsubscribed" },
-              { text: "Bounced", value: "bounced" },
-              { text: "Pending", value: "pending" },
-              { text: "Suppressed", value: "suppressed" },
-            ],
-          },
-          default_value: "pending",
-        },
       },
       {
         field: "subscription_source",
@@ -589,6 +705,21 @@ class DirectusNewsletterInstaller {
     // Mailing Lists fields
     const mailingListFields = [
       {
+        field: "status", // Moved to top
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          options: {
+            choices: [
+              { text: "Active", value: "active" },
+              { text: "Archived", value: "archived" },
+            ],
+          },
+          default_value: "active", // Explicit default
+          width: "full", // Make it full width for top placement
+        },
+      },
+      {
         field: "name",
         type: "string",
         meta: { interface: "input", required: true, width: "half" },
@@ -610,20 +741,6 @@ class DirectusNewsletterInstaller {
         meta: { interface: "input", readonly: true, width: "half" },
         schema: { default_value: 0 },
       },
-      {
-        field: "status",
-        type: "string",
-        meta: {
-          interface: "select-dropdown",
-          options: {
-            choices: [
-              { text: "Active", value: "active" },
-              { text: "Archived", value: "archived" },
-            ],
-          },
-          default_value: "active",
-        },
-      },
       { field: "tags", type: "csv", meta: { interface: "tags" } },
       {
         field: "subscribers",
@@ -636,7 +753,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("mailing_lists", field);
     }
 
-    // Junction table fields
+    // Junction table fields (no status field here, but keeping consistent for completeness)
     const junctionFields = [
       {
         field: "mailing_lists_id",
@@ -654,7 +771,7 @@ class DirectusNewsletterInstaller {
         meta: { interface: "datetime" },
       },
       {
-        field: "status",
+        field: "status", // This status field is already here and will be full width
         type: "string",
         meta: {
           interface: "select-dropdown",
@@ -664,7 +781,8 @@ class DirectusNewsletterInstaller {
               { text: "Unsubscribed", value: "unsubscribed" },
             ],
           },
-          default_value: "subscribed",
+          default_value: "subscribed", // Explicit default
+          width: "full", // Make it full width for top placement
         },
       },
     ];
@@ -675,6 +793,21 @@ class DirectusNewsletterInstaller {
 
     // Block Types fields
     const blockTypeFields = [
+      {
+        field: "status", // Moved to top
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          options: {
+            choices: [
+              { text: "Published", value: "published" },
+              { text: "Draft", value: "draft" },
+            ],
+          },
+          default_value: "published", // Explicit default
+          width: "full", // Make it full width for top placement
+        },
+      },
       {
         field: "name",
         type: "string",
@@ -694,20 +827,6 @@ class DirectusNewsletterInstaller {
         field: "mjml_template",
         type: "text",
         meta: { interface: "input-code", options: { language: "xml" } },
-      },
-      {
-        field: "status",
-        type: "string",
-        meta: {
-          interface: "select-dropdown",
-          options: {
-            choices: [
-              { text: "Published", value: "published" },
-              { text: "Draft", value: "draft" },
-            ],
-          },
-          default_value: "published",
-        },
       },
       {
         field: "field_visibility_config",
@@ -745,12 +864,26 @@ class DirectusNewsletterInstaller {
     // Newsletter fields
     const newsletterFields = [
       {
-        field: "title",
+        field: "status", // Moved to top
         type: "string",
-        meta: { interface: "input", required: true, width: "half" },
+        meta: {
+          interface: "select-dropdown",
+          options: {
+            choices: [
+              { text: "Draft", value: "draft" },
+              { text: "Ready", value: "ready" },
+              { text: "Scheduled", value: "scheduled" },
+              { text: "Sending", value: "sending" },
+              { text: "Sent", value: "sent" },
+              { text: "Paused", value: "paused" },
+            ],
+          },
+          default_value: "draft", // Explicit default
+          width: "full", // Make it full width for top placement
+        },
       },
       {
-        field: "slug",
+        field: "title",
         type: "string",
         meta: { interface: "input", required: true, width: "half" },
       },
@@ -778,24 +911,6 @@ class DirectusNewsletterInstaller {
         field: "reply_to",
         type: "string",
         meta: { interface: "input", width: "third" },
-      },
-      {
-        field: "status",
-        type: "string",
-        meta: {
-          interface: "select-dropdown",
-          options: {
-            choices: [
-              { text: "Draft", value: "draft" },
-              { text: "Ready", value: "ready" },
-              { text: "Scheduled", value: "scheduled" },
-              { text: "Sending", value: "sending" },
-              { text: "Sent", value: "sent" },
-              { text: "Paused", value: "paused" },
-            ],
-          },
-          default_value: "draft",
-        },
       },
       {
         field: "category",
@@ -931,6 +1046,11 @@ class DirectusNewsletterInstaller {
           readonly: true,
         },
       },
+      {
+        field: "slug", // Moved to bottom
+        type: "string",
+        meta: { interface: "input", required: true, width: "half" },
+      },
     ];
 
     for (const field of newsletterFields) {
@@ -939,6 +1059,21 @@ class DirectusNewsletterInstaller {
 
     // Newsletter Blocks fields
     const blockFields = [
+      {
+        field: "status", // Added status field for Newsletter Blocks and moved to top
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          options: {
+            choices: [
+              { text: "Active", value: "active" },
+              { text: "Inactive", value: "inactive" },
+            ],
+          },
+          default_value: "active", // Explicit default
+          width: "full",
+        },
+      },
       {
         field: "newsletter_id",
         type: "integer",
@@ -953,12 +1088,7 @@ class DirectusNewsletterInstaller {
           width: "half",
         },
       },
-      {
-        field: "sort",
-        type: "integer",
-        meta: { interface: "input", width: "half" },
-        schema: { default_value: 1 },
-      },
+      // Removed duplicate 'sort' field definition here. It's handled by defaultFields.
       {
         field: "title",
         type: "string",
@@ -975,9 +1105,17 @@ class DirectusNewsletterInstaller {
         meta: { interface: "input-rich-text-html" },
       },
       {
-        field: "image_url",
-        type: "string",
-        meta: { interface: "input", width: "full" },
+        field: "image", // Renamed from image_url to image
+        type: "uuid", // Stores the UUID of the file
+        meta: {
+          interface: "file-image", // Directus interface for image selection
+          special: ["file"], // Marks it as a file relationship
+          width: "full",
+          note: "Select an image from the Directus File Library.",
+        },
+        schema: {
+          is_nullable: true, // Allow block without an image
+        },
       },
       {
         field: "image_alt_text",
@@ -1072,17 +1210,7 @@ class DirectusNewsletterInstaller {
     // Newsletter Sends fields
     const sendFields = [
       {
-        field: "newsletter_id",
-        type: "integer",
-        meta: { interface: "select-dropdown-m2o", required: true },
-      },
-      {
-        field: "mailing_list_id",
-        type: "integer",
-        meta: { interface: "select-dropdown-m2o", required: true },
-      },
-      {
-        field: "status",
+        field: "status", // Moved to top
         type: "string",
         meta: {
           interface: "select-dropdown",
@@ -1096,8 +1224,19 @@ class DirectusNewsletterInstaller {
               { text: "Cancelled", value: "cancelled" },
             ],
           },
-          default_value: "scheduled",
+          default_value: "scheduled", // Explicit default
+          width: "full", // Make it full width for top placement
         },
+      },
+      {
+        field: "newsletter_id",
+        type: "integer",
+        meta: { interface: "select-dropdown-m2o", required: true },
+      },
+      {
+        field: "mailing_list_id",
+        type: "integer",
+        meta: { interface: "select-dropdown-m2o", required: true },
       },
       {
         field: "scheduled_at",
@@ -1170,22 +1309,7 @@ class DirectusNewsletterInstaller {
     // Newsletter Analytics fields
     const analyticsFields = [
       {
-        field: "newsletter_id",
-        type: "integer",
-        meta: { interface: "select-dropdown-m2o" },
-      },
-      {
-        field: "subscriber_id",
-        type: "integer",
-        meta: { interface: "select-dropdown-m2o" },
-      },
-      {
-        field: "send_record_id",
-        type: "integer",
-        meta: { interface: "select-dropdown-m2o" },
-      },
-      {
-        field: "event_type",
+        field: "event_type", // Moved to top
         type: "string",
         meta: {
           interface: "select-dropdown",
@@ -1200,7 +1324,23 @@ class DirectusNewsletterInstaller {
               { text: "Dropped", value: "dropped" },
             ],
           },
+          width: "full", // Make it full width for top placement
         },
+      },
+      {
+        field: "newsletter_id",
+        type: "integer",
+        meta: { interface: "select-dropdown-m2o" },
+      },
+      {
+        field: "subscriber_id",
+        type: "integer",
+        meta: { interface: "select-dropdown-m2o" },
+      },
+      {
+        field: "send_record_id",
+        type: "integer",
+        meta: { interface: "select-dropdown-m2o" },
       },
       { field: "email", type: "string", meta: { interface: "input" } },
       {
@@ -1399,13 +1539,18 @@ class DirectusNewsletterInstaller {
           `✅ Created relation: ${relation.collection}.${relation.field} → ${relation.related_collection}`
         );
         await this.delay(1000);
-      } catch (error) {
+      }
+      catch (error) {
         if (error.message?.includes("already exists")) {
           console.log(
             `⏭️  Relation already exists: ${relation.collection}.${relation.field}`
           );
         } else {
-          console.error(`❌ Failed to create relation: ${error.message}`);
+          // Log the full error object for better debugging
+          console.error(
+            `❌ Failed to create relation: ${relation.collection}.${relation.field} → ${relation.related_collection}. Error:`,
+            error
+          );
         }
       }
     }
@@ -1486,9 +1631,9 @@ class DirectusNewsletterInstaller {
         mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     {{#if button_url}}
-    <mj-image src="{{image_url}}" alt="{{image_alt_text}}" align="{{text_align}}" href="{{button_url}}" />
+    <mj-image src="{{image}}" alt="{{image_alt_text}}" align="{{text_align}}" href="{{button_url}}" />
     {{else}}
-    <mj-image src="{{image_url}}" alt="{{image_alt_text}}" align="{{text_align}}" />
+    <mj-image src="{{image}}" alt="{{image_alt_text}}" align="{{text_align}}" />
     {{/if}}
     {{#if image_caption}}
     <mj-text align="{{text_align}}" font-size="12px" color="#666666" padding="10px 0 0 0">
@@ -1499,7 +1644,7 @@ class DirectusNewsletterInstaller {
 </mj-section>`,
         status: "published",
         field_visibility_config: [
-          "image_url",
+          "image", // Changed from image_url to image
           "image_alt_text",
           "image_caption",
           "button_url",
@@ -1568,6 +1713,8 @@ class DirectusNewsletterInstaller {
       console.log("    • 📁 Newsletter System folder for organization");
       console.log("    • 10 Collections for newsletter management");
       console.log("    • All required fields and relationships");
+      console.log("    • Default 'sort', 'date_created', 'date_updated' fields on all collections");
+      console.log("    • Integer (auto-incrementing) IDs for primary keys on new collections");
       console.log("    • 4 Basic block types (Hero, Text, Image, Button)");
       console.log("    • Proper O2M and M2M relationships");
       console.log("    • Analytics tracking system");

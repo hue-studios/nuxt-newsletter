@@ -277,6 +277,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       sendgridApiKey: sendgridApiKey || '',
       sendgridWebhookSecret: sendgridWebhookSecret || '',
       directusAdminToken: getEnvVar('DIRECTUS_ADMIN_TOKEN'),
+      directusToken: directusToken || '', // Add this for server access
       
       // Public (client-side accessible)
       public: {
@@ -290,7 +291,10 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           },
           sendgrid: {
             defaultFromEmail: options.sendgrid?.defaultFromEmail || 'newsletter@example.com',
-            defaultFromName: options.sendgrid?.defaultFromName || 'Newsletter'
+            defaultFromName: options.sendgrid?.defaultFromName || 'Newsletter',
+            // Add status indicators for client-side use
+            hasApiKey: !!sendgridApiKey,
+            hasWebhookSecret: !!sendgridWebhookSecret
           },
           mjmlMode: options.mjmlMode || 'client',
           prefix: options.prefix || 'Newsletter',
@@ -396,6 +400,13 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
         meta: {
           description: 'User-friendly error handling and troubleshooting'
         }
+      },
+      { 
+        name: 'useNewsletterSetup', 
+        from: resolver.resolve('./runtime/composables/useNewsletterSetup'),
+        meta: {
+          description: 'Setup validation and configuration helpers'
+        }
       }
     ])
 
@@ -424,6 +435,12 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
     addServerHandler({
       route: '/api/newsletter/sendgrid-webhook',
       handler: resolver.resolve('./runtime/server/api/newsletter/sendgrid-webhook.post')
+    })
+
+    // Add test connection endpoint
+    addServerHandler({
+      route: '/api/newsletter/test-connection',
+      handler: resolver.resolve('./runtime/server/api/newsletter/test-connection.post')
     })
 
     if (options.mjmlMode === 'server') {
@@ -456,6 +473,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           `  • <${options.prefix}Editor> - Modern drag-drop newsletter editor`,
           `  • <${options.prefix}Preview> - Live preview with device frames`,
           `  • <${options.prefix}Block> - Dynamic block editor with validation`,
+          `  • <${options.prefix}Setup> - Configuration and validation helper`,
           '',
           'Quick start:',
           '  1. Set up Directus: npm run newsletter:setup',
@@ -476,9 +494,8 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
   }
 })
 
-// Tailwind CSS 4 setup function (same as before)
+// Tailwind CSS 4 setup function
 async function setupTailwindCSS4(nuxt: any, logger: any, resolver: any) {
-  // Implementation stays the same as in your original code
   const rootDir = nuxt.options.rootDir
 
   // Check if Tailwind CSS 4 is already installed
