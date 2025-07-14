@@ -1,5 +1,5 @@
 // src/runtime/composables/useNewsletter.ts
-import { useNuxtApp, useRuntimeConfig } from '#imports'
+import { useNuxtApp, useRuntimeConfig } from '#app'
 import { computed } from 'vue'
 
 export function useNewsletter() {
@@ -10,15 +10,15 @@ export function useNewsletter() {
   const newsletterConfig = computed(() => config.public.newsletter || {})
 
   const isInitialized = computed(() => !!nuxtApp.$newsletter?.initialized)
-  
+
   const directusUrl = computed(() => {
     return newsletterConfig.value?.directus?.url || 'http://localhost:8055'
   })
-  
+
   const authType = computed(() => {
     return newsletterConfig.value?.directus?.auth?.type || 'static'
   })
-  
+
   const mjmlMode = computed(() => {
     return newsletterConfig.value?.mjmlMode || 'client'
   })
@@ -26,7 +26,7 @@ export function useNewsletter() {
   const defaultFromEmail = computed(() => {
     return newsletterConfig.value?.sendgrid?.defaultFromEmail || 'newsletter@example.com'
   })
-  
+
   const defaultFromName = computed(() => {
     return newsletterConfig.value?.sendgrid?.defaultFromName || 'Newsletter'
   })
@@ -49,24 +49,27 @@ export function useNewsletter() {
   })
 
   // Status checks for better developer experience
+  // This now directly uses the 'status' object exposed by the module.ts in public runtime config
   const connectionStatus = computed(() => {
-    const status = {
+    const statusFromModule = newsletterConfig.value?.status || {};
+    return {
       directus: {
-        configured: !!directusUrl.value && directusUrl.value !== 'http://localhost:8055',
-        url: directusUrl.value
+        configured: statusFromModule.directusConfigured || false,
+        url: directusUrl.value, // Still use directusUrl computed for actual URL
+        authConfigured: statusFromModule.directusAuthConfigured || false
       },
       sendgrid: {
-        configured: !!config.sendgridApiKey,
-        hasWebhook: !!config.sendgridWebhookSecret
+        configured: statusFromModule.sendgridConfigured || false,
+        hasWebhook: statusFromModule.sendgridWebhookConfigured || false
       },
       mjml: {
-        mode: mjmlMode.value,
-        serverSide: mjmlMode.value === 'server'
-      }
-    }
-
-    return status
-  })
+        mode: statusFromModule.mjmlMode || 'client',
+        serverSide: statusFromModule.mjmlMode === 'server'
+      },
+      // Expose admin token status if module.ts passes it
+      directusAdminTokenConfigured: statusFromModule.directusAdminTokenConfigured || false
+    };
+  });
 
   // Helper for checking if setup is complete
   const isSetupComplete = computed(() => {

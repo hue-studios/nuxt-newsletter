@@ -1,46 +1,28 @@
 // src/runtime/composables/useNewsletterEditor.ts
-import { computed, ref } from 'vue'
-
-export interface NewsletterBlock {
-  id: string
-  type: string // slug from block_types
-  content: Record<string, any>
-  sort?: number
-}
-
-export interface NewsletterData {
-  id?: string
-  subject: string
-  preheader?: string
-  from_name?: string
-  from_email?: string
-  reply_to?: string
-  blocks: NewsletterBlock[]
-  settings?: {
-    backgroundColor?: string
-    textColor?: string
-    fontFamily?: string
-  }
-  status?: 'draft' | 'ready' | 'scheduled' | 'sent'
-  scheduled_send_date?: string
-  mailing_list_id?: string
-  template_id?: string
-  compiled_mjml?: string
-  compiled_html?: string
-}
+import { computed, ref } from 'vue';
+import type { NewsletterBlock, NewsletterData } from '../../types'; // Ensure correct import path
 
 export function useNewsletterEditor(initialData?: NewsletterData) {
   const newsletter = ref<NewsletterData>(initialData || {
-    subject: '',
-    preheader: '',
+    title: '', // Initialize title
+    subject_line: '', // Initialize subject_line
+    preview_text: '', // Initialize preview_text
     blocks: [],
-    settings: {
-      backgroundColor: '#f5f5f5',
-      textColor: '#333333',
-      fontFamily: 'Arial, sans-serif'
-    },
+    // Removed 'settings' initialization as it's not in your Directus schema
     status: 'draft'
   })
+
+  // Expose subject and preheader as computed properties for convenience in components
+  // These will map to title/subject_line/preview_text for the Directus payload
+  const subject = computed({
+    get: () => newsletter.value.subject_line,
+    set: (value) => { newsletter.value.subject_line = value; newsletter.value.title = value; }
+  });
+
+  const preheader = computed({
+    get: () => newsletter.value.preview_text || '',
+    set: (value) => { newsletter.value.preview_text = value; }
+  });
 
   const blocks = computed({
     get: () => newsletter.value.blocks,
@@ -52,64 +34,56 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
   const addBlock = (type: string, index?: number) => {
     const newBlock: NewsletterBlock = {
       id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
+      type: type, // This is the slug string
       content: {},
-      sort: index !== undefined ? index : blocks.value.length
+      sort: blocks.value.length // Set initial sort order
     }
-
-    if (index !== undefined) {
+    if (index !== undefined && index >= 0 && index <= blocks.value.length) {
       blocks.value.splice(index, 0, newBlock)
-      // Update sort order for subsequent blocks
-      for (let i = index + 1; i < blocks.value.length; i++) {
-        blocks.value[i].sort = i
-      }
     } else {
       blocks.value.push(newBlock)
     }
-
+    // IMPORTANT: Removed the redundant forEach loop here.
+    // The sort order is handled by the initial 'sort' assignment and 'moveBlock'/'duplicateBlock'.
     return newBlock
   }
 
   const removeBlock = (id: string) => {
-    const index = blocks.value.findIndex(b => b.id === id)
-    if (index > -1) {
-      blocks.value.splice(index, 1)
-      // Update sort order
-      blocks.value.forEach((block, i) => {
-        block.sort = i
-      })
-    }
+    newsletter.value.blocks = newsletter.value.blocks.filter(block => block.id !== id)
+    // Update sort order for remaining blocks
+    newsletter.value.blocks.forEach((block, i) => { block.sort = i })
   }
 
   const updateBlock = (id: string, updates: Partial<NewsletterBlock>) => {
-    const block = blocks.value.find(b => b.id === id)
-    if (block) {
-      Object.assign(block, updates)
+    const blockIndex = newsletter.value.blocks.findIndex(block => block.id === id)
+    if (blockIndex !== -1) {
+      newsletter.value.blocks[blockIndex] = { ...newsletter.value.blocks[blockIndex], ...updates }
     }
   }
 
   const moveBlock = (fromIndex: number, toIndex: number) => {
-    const [removed] = blocks.value.splice(fromIndex, 1)
-    blocks.value.splice(toIndex, 0, removed)
-    // Update sort order
-    blocks.value.forEach((block, i) => {
-      block.sort = i
-    })
+    if (fromIndex < 0 || fromIndex >= blocks.value.length ||
+        toIndex < 0 || toIndex >= blocks.value.length) {
+      return
+    }
+    const [movedBlock] = blocks.value.splice(fromIndex, 1)
+    blocks.value.splice(toIndex, 0, movedBlock)
+    // Update sort order for all blocks after a move
+    blocks.value.forEach((block, i) => { block.sort = i })
   }
 
   const duplicateBlock = (id: string) => {
-    const block = blocks.value.find(b => b.id === id)
-    if (block) {
-      const index = blocks.value.findIndex(b => b.id === id)
-      const duplicate = {
-        ...block,
-        id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        content: { ...block.content },
-        sort: index + 1
+    const blockIndex = blocks.value.findIndex(block => block.id === id)
+    if (blockIndex !== -1) {
+      const original = blocks.value[blockIndex]
+      const duplicate: NewsletterBlock = {
+        ...original,
+        id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // New unique ID
+        sort: blockIndex + 1
       }
-      blocks.value.splice(index + 1, 0, duplicate)
-      // Update sort order for subsequent blocks
-      for (let i = index + 2; i < blocks.value.length; i++) {
+      blocks.value.splice(blockIndex + 1, 0, duplicate)
+      // Update sort order for subsequent blocks after a duplicate
+      for (let i = blockIndex + 2; i < blocks.value.length; i++) {
         blocks.value[i].sort = i
       }
     }
@@ -123,16 +97,16 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     if (template.blocks_config) {
       // Clear existing blocks
       clearBlocks()
-      
+
       // Load blocks from template
-      const templateBlocks = Array.isArray(template.blocks_config) 
-        ? template.blocks_config 
+      const templateBlocks = Array.isArray(template.blocks_config)
+        ? template.blocks_config
         : JSON.parse(template.blocks_config)
-      
+
       templateBlocks.forEach((blockConfig: any, index: number) => {
         const newBlock: NewsletterBlock = {
           id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: blockConfig.type,
+          type: blockConfig.type, // This should be the slug from the template
           content: blockConfig.content || {},
           sort: index
         }
@@ -142,7 +116,8 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
 
     // Apply template settings
     if (template.default_subject_pattern) {
-      newsletter.value.subject = template.default_subject_pattern
+      newsletter.value.subject_line = template.default_subject_pattern
+      newsletter.value.title = template.default_subject_pattern // Also update title
     }
     if (template.default_from_name) {
       newsletter.value.from_name = template.default_from_name
@@ -150,11 +125,20 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     if (template.default_from_email) {
       newsletter.value.from_email = template.default_from_email
     }
+    if (template.default_reply_to) {
+      newsletter.value.reply_to = template.default_reply_to
+    }
+    if (template.default_category) {
+      newsletter.value.category = template.default_category
+    }
+    // Removed default_settings application as 'settings' field is removed
   }
 
   return {
     newsletter,
     blocks,
+    subject, // Expose computed subject
+    preheader, // Expose computed preheader
     addBlock,
     removeBlock,
     updateBlock,

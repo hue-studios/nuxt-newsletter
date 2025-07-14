@@ -1,9 +1,17 @@
-// src/types.ts
+// src/runtime/types.ts
 
-// This is a .ts file (not .d.ts) because:
-// 1. It's a source file that gets built
-// 2. We can export both types AND constants/enums
-// 3. The build process will generate dist/types.d.ts
+// Directus Core Types (simplified for demonstration)
+export interface DirectusFile {
+  id: string;
+  filename_disk: string;
+  filename_download: string;
+  filesize: number;
+  type: string;
+  width?: number;
+  height?: number;
+  uploaded_on: string;
+  uploaded_by: string;
+}
 
 // Exported constants that can be used throughout the app
 export const NEWSLETTER_STATUS = {
@@ -26,141 +34,129 @@ export const BLOCK_CATEGORIES = {
 export type NewsletterStatus = typeof NEWSLETTER_STATUS[keyof typeof NEWSLETTER_STATUS]
 export type BlockCategory = typeof BLOCK_CATEGORIES[keyof typeof BLOCK_CATEGORIES]
 
-// Block type stored in Directus
+// Block Type Interface (from Directus 'block_types' collection)
 export interface BlockType {
-  id: string
-  name: string
-  slug: string
-  description?: string
-  mjml_template: string
-  status: 'published' | 'draft'
-  field_visibility_config: string[]
-  icon?: string
-  category: BlockCategory
-  date_created?: string
-  date_updated?: string
+  id: string;
+  name: string;
+  slug: string;
+  mjml_template: string; // MJML template for the block
+  field_visibility_config: string[]; // JSON array of field names to show in editor
+  category: BlockCategory; // Category for grouping blocks in editor
+  icon: string; // Icon name (e.g., 'lucide:layout-template')
+  description?: string;
+  status?: 'published' | 'draft' | 'archived';
 }
 
-// Newsletter template
-export interface NewsletterTemplate {
-  id: string
-  name: string
-  description?: string
-  category: 'company' | 'product' | 'weekly' | 'monthly' | 'event'
-  thumbnail_url?: string
-  blocks_config: any[] | string
-  default_subject_pattern?: string
-  default_from_name?: string
-  default_from_email?: string
-  status: 'published' | 'draft'
-  usage_count: number
-  tags?: string[]
-  date_created?: string
-  date_updated?: string
-}
-
-// Newsletter block instance
+// Newsletter Block Interface (for editor's internal representation)
+// This uses 'type' as slug, which will be mapped to block_type ID for Directus
 export interface NewsletterBlock {
-  id: string
-  newsletter_id?: string
-  block_type: BlockType | string
-  sort: number
-  title?: string
-  subtitle?: string
-  text_content?: string
-  image_url?: string
-  image_alt_text?: string
-  image_caption?: string
-  button_text?: string
-  button_url?: string
-  background_color?: string
-  text_color?: string
-  text_align?: 'left' | 'center' | 'right'
-  padding?: string
-  font_size?: string
-  content?: Record<string, any>
-  mjml_output?: string
-  date_created?: string
-  date_updated?: string
+  id: string;
+  type: string; // This is the slug of the block_type (e.g., 'hero', 'text')
+  content: Record<string, any>; // Flexible JSON content
+  sort?: number;
 }
 
-// Main newsletter
-export interface Newsletter {
-  id: string
-  title: string
-  slug: string
-  subject_line: string
-  preview_text?: string
-  from_name?: string
-  from_email?: string
-  reply_to?: string
-  status: NewsletterStatus
-  category: 'company' | 'product' | 'weekly' | 'monthly' | 'event' | 'offer' | 'story'
-  tags?: string[]
-  priority: 'low' | 'normal' | 'high' | 'urgent'
-  scheduled_send_date?: string
-  is_ab_test: boolean
-  ab_test_percentage?: number
-  ab_test_subject_b?: string
-  open_rate?: number
-  click_rate?: number
-  total_opens?: number
-  approval_status: 'pending' | 'approved' | 'rejected' | 'changes_requested'
-  approval_notes?: string
-  mailing_list_id?: string
-  test_emails?: string[]
-  blocks: NewsletterBlock[]
-  template_id?: string
-  compiled_mjml?: string
-  compiled_html?: string
-  date_created?: string
-  date_updated?: string
-  user_created?: string
-  user_updated?: string
+// Main Newsletter Interface (aligned with Directus 'newsletters' collection)
+export interface NewsletterData { // Renamed from 'Newsletter' to 'NewsletterData' for consistency
+  id?: string;
+  title: string; // Maps to Directus 'title'
+  subject_line: string; // Maps to Directus 'subject_line'
+  preview_text?: string; // Maps to Directus 'preview_text'
+  from_name?: string;
+  from_email?: string;
+  reply_to?: string;
+  blocks: NewsletterBlock[]; // Array of newsletter blocks
+  status?: NewsletterStatus; // Use the derived type
+  scheduled_send_date?: string; // ISO date string for scheduled send
+  mailing_list_id?: string; // UUID of the associated mailing list
+  template_id?: string; // UUID of the associated template
+  compiled_mjml?: string; // Compiled MJML content
+  compiled_html?: string; // Compiled HTML content
+  category?: string; // Category for the newsletter (e.g., 'company', 'product')
+  // Analytics fields (assuming they exist in Directus)
+  total_opens?: number;
+  total_clicks?: number;
+  open_rate?: number;
+  click_rate?: number;
+  // Audit fields (assuming they exist in Directus)
+  date_created?: string;
+  date_updated?: string;
+  user_created?: string; // Assuming these exist in Directus
+  user_updated?: string; // Assuming these exist in Directus
+  // Additional fields from your original Newsletter interface:
+  slug?: string;
+  tags?: string[];
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  is_ab_test?: boolean;
+  ab_test_percentage?: number;
+  ab_test_subject_b?: string;
+  approval_status?: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+  approval_notes?: string;
+  test_emails?: string[];
 }
 
-// Subscriber
+// Newsletter Template Interface (from Directus 'newsletter_templates' collection)
+export interface NewsletterTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  blocks_config: NewsletterBlock[] | string; // JSON array of blocks or JSON string
+  default_subject_pattern?: string;
+  default_from_name?: string;
+  default_from_email?: string;
+  default_reply_to?: string;
+  default_category?: string;
+  default_settings?: Record<string, any> | string; // JSON object or JSON string
+  usage_count?: number;
+  status?: 'published' | 'draft' | 'archived'; // Use derived status type if needed
+  thumbnail_url?: string; // Added from your original template interface
+  tags?: string[]; // Added from your original template interface
+  date_created?: string; // Added from your original template interface
+  date_updated?: string; // Added from your original template interface
+}
+
+// Subscriber Interface (from Directus 'subscribers' collection)
 export interface Subscriber {
-  id: string
-  email: string
-  name?: string
-  first_name?: string
-  last_name?: string
-  company?: string
-  job_title?: string
-  status: 'active' | 'unsubscribed' | 'bounced' | 'pending' | 'suppressed'
-  subscription_source: 'website' | 'import' | 'manual' | 'event' | 'api' | 'referral'
-  subscription_preferences?: string[]
-  custom_fields?: Record<string, any>
-  engagement_score: number
-  subscribed_at?: string
-  last_email_opened?: string
-  last_email_clicked?: string
-  unsubscribed_at?: string
-  bounce_count: number
-  date_created?: string
-  date_updated?: string
+  id: string;
+  email: string;
+  name?: string;
+  first_name?: string; // Added from your original subscriber interface
+  last_name?: string; // Added from your original subscriber interface
+  company?: string; // Added from your original subscriber interface
+  job_title?: string; // Added from your original subscriber interface
+  status: 'active' | 'unsubscribed' | 'bounced' | 'pending' | 'suppressed'; // More comprehensive status
+  subscription_source?: 'website' | 'import' | 'manual' | 'event' | 'api' | 'referral'; // Added
+  subscription_preferences?: string[]; // Added
+  custom_fields?: Record<string, any>; // Added
+  engagement_score?: number; // Added
+  subscribed_at?: string;
+  last_email_opened?: string; // Added
+  last_email_clicked?: string; // Added
+  unsubscribed_at?: string;
+  bounce_count?: number; // Added
+  date_created?: string;
+  date_updated?: string;
 }
 
-// Mailing list
+// Mailing List Interface (from Directus 'mailing_lists' collection)
 export interface MailingList {
-  id: string
-  name: string
-  description?: string
-  subscriber_count: number
-  active_count: number
-  status: 'active' | 'archived'
-  tags?: string[]
-  subscribers?: Subscriber[]
-  date_created?: string
-  date_updated?: string
+  id: string;
+  name: string;
+  description?: string;
+  subscriber_count?: number; // Count of subscribers in this list
+  active_count?: number; // Added from your original mailing list interface
+  status: 'active' | 'archived';
+  tags?: string[]; // Added from your original mailing list interface
+  subscribers?: Subscriber[]; // Added from your original mailing list interface
+  date_created?: string; // Added from your original mailing list interface
+  date_updated?: string; // Added from your original mailing list interface
 }
 
 // Newsletter send record
 export interface NewsletterSend {
   id: string
   newsletter_id: string
-  newsletter?: Newsletter
+  newsletter?: NewsletterData // Use NewsletterData
   mailing_list_id: string
   mailing_list?: MailingList
   status: 'scheduled' | 'sending' | 'sent' | 'failed' | 'paused' | 'cancelled'
@@ -184,7 +180,7 @@ export interface NewsletterSend {
 export interface NewsletterAnalytics {
   id: string
   newsletter_id?: string
-  newsletter?: Newsletter
+  newsletter?: NewsletterData // Use NewsletterData
   subscriber_id?: string
   subscriber?: Subscriber
   send_record_id?: string
@@ -208,11 +204,11 @@ export interface NewsletterAnalytics {
 }
 
 // Type guards (implementation code - this is why we use .ts!)
-export function isNewsletterSent(newsletter: Newsletter): boolean {
+export function isNewsletterSent(newsletter: NewsletterData): boolean {
   return newsletter.status === NEWSLETTER_STATUS.SENT
 }
 
-export function isNewsletterEditable(newsletter: Newsletter): boolean {
+export function isNewsletterEditable(newsletter: NewsletterData): boolean {
   return [NEWSLETTER_STATUS.DRAFT, NEWSLETTER_STATUS.READY].includes(newsletter.status)
 }
 
@@ -233,67 +229,24 @@ export function getBlockTypeIcon(category: BlockCategory): string {
 
 // SendGrid types
 export interface SendGridRecipient {
-  email: string
-  name?: string
-  substitutions?: Record<string, string>
-  custom_args?: Record<string, any>
+  email: string;
+  name?: string;
+  substitutions?: Record<string, string>;
+  custom_args?: Record<string, any>;
 }
 
 export interface SendGridSendOptions {
-  fromEmail?: string
-  fromName?: string
-  replyTo?: string
-  categories?: string[]
-  sendAt?: Date
-  batchId?: string
-  asmGroupId?: number
+  fromEmail?: string;
+  fromName?: string;
+  replyTo?: string;
+  categories?: string[];
+  sendAt?: Date;
+  batchId?: string;
+  asmGroupId?: number;
   trackingSettings?: {
-    clickTracking?: { enable: boolean; enableText?: boolean }
-    openTracking?: { enable: boolean; substitutionTag?: string }
-    subscriptionTracking?: { enable: boolean }
-  }
-  customArgs?: Record<string, string>
+    clickTracking?: { enable: boolean; enableText?: boolean };
+    openTracking?: { enable: boolean; substitutionTag?: string };
+    subscriptionTracking?: { enable: boolean };
+  };
+  customArgs?: Record<string, string>;
 }
-
-// Editor types
-export interface NewsletterData {
-  id?: string
-  subject: string
-  preheader?: string
-  from_name?: string
-  from_email?: string
-  reply_to?: string
-  blocks: NewsletterBlock[]
-  settings?: {
-    backgroundColor?: string
-    textColor?: string
-    fontFamily?: string
-  }
-  status?: NewsletterStatus
-  scheduled_send_date?: string
-  mailing_list_id?: string
-  template_id?: string
-  compiled_mjml?: string
-  compiled_html?: string
-}
-
-// Content library
-export interface ContentLibraryItem {
-  id: string
-  title: string
-  content_type: 'text' | 'hero' | 'button' | 'image' | 'html' | 'social' | 'footer'
-  content_data: Record<string, any>
-  preview_text?: string
-  tags?: string[]
-  category?: string
-  usage_count: number
-  is_global: boolean
-  date_created?: string
-  date_updated?: string
-}
-
-// When built, this file will generate:
-// - dist/types.d.ts (type declarations only)
-// - dist/types.mjs (runtime code like constants and functions)
-// - dist/types.cjs (CommonJS version)
-// This allows the module to work in both TypeScript and JavaScript projects

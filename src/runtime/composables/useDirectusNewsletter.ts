@@ -1,22 +1,19 @@
 // src/runtime/composables/useDirectusNewsletter.ts
 import { useRuntimeConfig, useState } from '#app'
-import { authentication, createDirectus, createItem, deleteItem, readItem, readItems, rest, staticToken, updateItem } from '@directus/sdk'
+import { createDirectus, createItem, deleteItem, readItem, readItems, rest, staticToken, updateItem, uploadFiles } from '@directus/sdk'
 import type {
   BlockType,
   MailingList,
-  Newsletter,
-  NewsletterData,
+  NewsletterData, // Use the updated NewsletterData interface
   NewsletterTemplate,
   Subscriber
-} from '../../types'
+} from '../../types'; // Assuming types.ts defines these, or update path
 
-interface DirectusNewsletter extends NewsletterData {
-  status: 'draft' | 'scheduled' | 'sent'
-  scheduled_at?: string
-  sent_at?: string
-  recipients?: number
-  opens?: number
-  clicks?: number
+// This interface should align with your Directus 'newsletters' collection schema
+interface DirectusNewsletterPayload extends NewsletterData {
+  // NewsletterData is now structured to directly match Directus fields for newsletter
+  // so no further transformation is needed here for top-level fields.
+  // The 'blocks' array will contain objects with 'block_type' as UUID.
 }
 
 export function useDirectusNewsletter() {
@@ -40,50 +37,52 @@ export function useDirectusNewsletter() {
       return client.with(staticToken(authConfig.token))
     } else if (authConfig?.type === 'middleware' && authToken.value) {
       return client.with(staticToken(authToken.value))
-    } else {
-      return client.with(authentication())
     }
+    // Fallback if no specific auth type is configured or token is missing
+    return client
   }
 
-  const setAuthToken = (token: string) => {
+  const setAuthToken = (token: string | null) => {
     authToken.value = token
   }
 
-  // Helper function to clean options object
-  const cleanOptions = (options: any) => {
-    const cleaned: any = {}
-    for (const [key, value] of Object.entries(options)) {
-      if (value !== undefined && value !== null) {
-        cleaned[key] = value
-      }
-    }
-    return cleaned
-  }
-
-  const fetchNewsletters = async (options?: {
-    limit?: number
-    offset?: number
-    filter?: Record<string, any>
-    sort?: string[]
-  }) => {
+  const fetchNewsletters = async (options?: { limit?: number; sort?: string[] }) => {
     try {
       const client = getClient()
-      
-      // Build clean request options
-      const requestOptions: any = {
-        limit: options?.limit || 10,
-        offset: options?.offset || 0,
+      const response = await client.request(readItems('newsletters', {
+        limit: options?.limit || 20,
         sort: options?.sort || ['-date_created'],
-        fields: ['*', 'blocks.*', 'blocks.block_type.*']
-      }
-
-      // Only add filter if it's defined and not empty
-      if (options?.filter && Object.keys(options.filter).length > 0) {
-        requestOptions.filter = options.filter
-      }
-
-      const response = await client.request(readItems('newsletters', requestOptions))
-      return response as Newsletter[]
+        fields: ['*', 'blocks.id', 'blocks.sort', 'blocks.content', 'blocks.block_type.slug', 'blocks.block_type.name'] // Request block_type slug and name for display
+      }))
+      // Transform Directus response to NewsletterData format
+      return response.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        subject_line: item.subject_line,
+        preview_text: item.preview_text,
+        from_name: item.from_name,
+        from_email: item.from_email,
+        reply_to: item.reply_to,
+        blocks: item.blocks?.map((block: any) => ({
+          id: block.id,
+          type: block.block_type?.slug || block.block_type, // Ensure 'type' is slug string
+          content: block.content,
+          sort: block.sort
+        })) || [],
+        status: item.status,
+        scheduled_send_date: item.scheduled_send_date,
+        mailing_list_id: item.mailing_list_id,
+        template_id: item.template_id,
+        compiled_mjml: item.compiled_mjml,
+        compiled_html: item.compiled_html,
+        category: item.category,
+        total_opens: item.total_opens, // Assuming these fields exist in Directus
+        total_clicks: item.total_clicks,
+        open_rate: item.open_rate,
+        click_rate: item.click_rate,
+        date_created: item.date_created,
+        date_updated: item.date_updated,
+      })) as NewsletterData[]
     } catch (error) {
       console.error('[Newsletter] Error fetching newsletters:', error)
       throw error
@@ -93,81 +92,65 @@ export function useDirectusNewsletter() {
   const fetchNewsletter = async (id: string) => {
     try {
       const client = getClient()
-      const response = await client.request(
-       readItem('newsletters', id, {
-          fields: ['*', 'blocks.*', 'blocks.block_type.*']
-        })
-      )
-      return response as Newsletter
+      const item: any = await client.request(readItem('newsletters', id, {
+        fields: ['*', 'blocks.id', 'blocks.sort', 'blocks.content', 'blocks.block_type.slug', 'blocks.block_type.name'] // Request block_type slug and name
+      }))
+
+      // Transform Directus response to NewsletterData format
+      return {
+        id: item.id,
+        title: item.title,
+        subject_line: item.subject_line,
+        preview_text: item.preview_text,
+        from_name: item.from_name,
+        from_email: item.from_email,
+        reply_to: item.reply_to,
+        blocks: item.blocks?.map((block: any) => ({
+          id: block.id,
+          type: block.block_type?.slug || block.block_type, // Ensure 'type' is slug string
+          content: block.content,
+          sort: block.sort
+        })) || [],
+        status: item.status,
+        scheduled_send_date: item.scheduled_send_date,
+        mailing_list_id: item.mailing_list_id,
+        template_id: item.template_id,
+        compiled_mjml: item.compiled_mjml,
+        compiled_html: item.compiled_html,
+        category: item.category,
+        total_opens: item.total_opens,
+        total_clicks: item.total_clicks,
+        open_rate: item.open_rate,
+        click_rate: item.click_rate,
+        date_created: item.date_created,
+        date_updated: item.date_updated,
+      } as NewsletterData
     } catch (error) {
       console.error('[Newsletter] Error fetching newsletter:', error)
       throw error
     }
   }
 
-  const createNewsletter = async (data: NewsletterData) => {
+  const createNewsletter = async (payload: NewsletterData) => {
     try {
       const client = getClient()
-      
-      // Create newsletter with blocks
-      const newsletterData = {
-        title: data.subject,
-        subject_line: data.subject,
-        preview_text: data.preheader,
-        from_name: data.from_name,
-        from_email: data.from_email,
-        reply_to: data.reply_to,
-        status: data.status || 'draft',
-        blocks: data.blocks.map((block, index) => ({
-          block_type: block.type,
-          sort: index + 1,
-          content: block.content,
-          ...block.content // Flatten content fields
-        }))
-      }
-      
-      const response = await client.request(
-        createItem('newsletters', newsletterData)
-      )
-      return response as Newsletter
+      // payload.blocks should already be transformed with block_type ID by the caller (index.vue)
+      // payload is already of type DirectusNewsletterPayload (which is NewsletterData)
+      const response = await client.request(createItem('newsletters', payload))
+      return response as NewsletterData
     } catch (error) {
       console.error('[Newsletter] Error creating newsletter:', error)
       throw error
     }
   }
 
-  const updateNewsletter = async (id: string, data: Partial<NewsletterData>) => {
+  const updateNewsletter = async (id: string, payload: NewsletterData) => {
     try {
       const client = getClient()
-      
-      const updateData: any = {}
-      
-      if (data.subject) {
-        updateData.title = data.subject
-        updateData.subject_line = data.subject
-      }
-      if (data.preheader !== undefined) updateData.preview_text = data.preheader
-      if (data.from_name !== undefined) updateData.from_name = data.from_name
-      if (data.from_email !== undefined) updateData.from_email = data.from_email
-      if (data.reply_to !== undefined) updateData.reply_to = data.reply_to
-      if (data.status !== undefined) updateData.status = data.status
-      if (data.compiled_mjml !== undefined) updateData.compiled_mjml = data.compiled_mjml
-      if (data.compiled_html !== undefined) updateData.compiled_html = data.compiled_html
-      
-      if (data.blocks) {
-        // Handle blocks update - this is complex and might need a separate endpoint
-        updateData.blocks = data.blocks.map((block, index) => ({
-          block_type: typeof block.type === 'string' ? block.type : block.type.slug,
-          sort: index + 1,
-          content: block.content,
-          ...block.content
-        }))
-      }
-      
-      const response = await client.request(
-        updateItem('newsletters', id, updateData)
-      )
-      return response as Newsletter
+      // payload.blocks should already be transformed with block_type ID by the caller (index.vue)
+      // payload is already of type DirectusNewsletterPayload (which is NewsletterData)
+      const response = await client.request(updateItem('newsletters', id, payload))
+      return response as NewsletterData
     } catch (error) {
       console.error('[Newsletter] Error updating newsletter:', error)
       throw error
@@ -178,36 +161,18 @@ export function useDirectusNewsletter() {
     try {
       const client = getClient()
       await client.request(deleteItem('newsletters', id))
-      return true
     } catch (error) {
       console.error('[Newsletter] Error deleting newsletter:', error)
       throw error
     }
   }
 
-  const fetchBlockTypes = async (options?: {
-    limit?: number
-    filter?: Record<string, any>
-    sort?: string[]
-  }) => {
+  const fetchBlockTypes = async (options?: { limit?: number }) => {
     try {
       const client = getClient()
-      
-      const requestOptions: any = {
-        limit: options?.limit || 100,
-        sort: options?.sort || ['category', 'name']
-      }
-
-      // Default filter for published block types
-      const defaultFilter = { status: { _eq: 'published' } }
-      
-      if (options?.filter) {
-        requestOptions.filter = { ...defaultFilter, ...options.filter }
-      } else {
-        requestOptions.filter = defaultFilter
-      }
-
-      const response = await client.request(readItems('block_types', requestOptions))
+      const response = await client.request(readItems('block_types', {
+        limit: options?.limit || -1 // Fetch all block types
+      }))
       return response as BlockType[]
     } catch (error) {
       console.error('[Newsletter] Error fetching block types:', error)
@@ -215,31 +180,12 @@ export function useDirectusNewsletter() {
     }
   }
 
-  const fetchTemplates = async (options?: {
-    limit?: number
-    offset?: number
-    filter?: Record<string, any>
-    sort?: string[]
-  }) => {
+  const fetchTemplates = async (options?: { limit?: number }) => {
     try {
       const client = getClient()
-      
-      const requestOptions: any = {
-        limit: options?.limit || 20,
-        offset: options?.offset || 0,
-        sort: options?.sort || ['-usage_count', 'name']
-      }
-
-      // Default filter for published templates
-      const defaultFilter = { status: { _eq: 'published' } }
-      
-      if (options?.filter) {
-        requestOptions.filter = { ...defaultFilter, ...options.filter }
-      } else {
-        requestOptions.filter = defaultFilter
-      }
-
-      const response = await client.request(readItems('newsletter_templates', requestOptions))
+      const response = await client.request(readItems('newsletter_templates', {
+        limit: options?.limit || 20
+      }))
       return response as NewsletterTemplate[]
     } catch (error) {
       console.error('[Newsletter] Error fetching templates:', error)
@@ -250,9 +196,9 @@ export function useDirectusNewsletter() {
   const fetchTemplate = async (id: string) => {
     try {
       const client = getClient()
-      const response = await client.request(
-        readItem('newsletter_templates', id)
-      )
+      const response = await client.request(readItem('newsletter_templates', id, {
+        fields: ['*', 'blocks_config'] // Ensure blocks_config is fetched
+      }))
       return response as NewsletterTemplate
     } catch (error) {
       console.error('[Newsletter] Error fetching template:', error)
@@ -260,31 +206,13 @@ export function useDirectusNewsletter() {
     }
   }
 
-  const fetchSubscribers = async (options?: {
-    limit?: number
-    offset?: number
-    filter?: Record<string, any>
-    sort?: string[]
-  }) => {
+  const fetchSubscribers = async (options?: { limit?: number; offset?: number }) => {
     try {
       const client = getClient()
-      
-      const requestOptions: any = {
-        limit: options?.limit || 50,
-        offset: options?.offset || 0,
-        sort: options?.sort || ['-subscribed_at']
-      }
-
-      // Default filter for active subscribers
-      const defaultFilter = { status: { _eq: 'active' } }
-      
-      if (options?.filter) {
-        requestOptions.filter = { ...defaultFilter, ...options.filter }
-      } else {
-        requestOptions.filter = defaultFilter
-      }
-
-      const response = await client.request(readItems('subscribers', requestOptions))
+      const response = await client.request(readItems('subscribers', {
+        limit: options?.limit || 100,
+        offset: options?.offset || 0
+      }))
       return response as Subscriber[]
     } catch (error) {
       console.error('[Newsletter] Error fetching subscribers:', error)
@@ -292,28 +220,14 @@ export function useDirectusNewsletter() {
     }
   }
 
-  const fetchMailingLists = async (options?: {
-    limit?: number
-    filter?: Record<string, any>
-  }) => {
+  const fetchMailingLists = async (options?: { limit?: number; offset?: number }) => {
     try {
       const client = getClient()
-      
-      const requestOptions: any = {
+      const response = await client.request(readItems('mailing_lists', {
         limit: options?.limit || 100,
-        fields: ['*', 'subscriber_count']
-      }
-
-      // Default filter for active mailing lists
-      const defaultFilter = { status: { _eq: 'active' } }
-      
-      if (options?.filter) {
-        requestOptions.filter = { ...defaultFilter, ...options.filter }
-      } else {
-        requestOptions.filter = defaultFilter
-      }
-
-      const response = await client.request(readItems('mailing_lists', requestOptions))
+        offset: options?.offset || 0,
+        fields: ['*', 'subscriber_count'] // Assuming you have a count field or want to calculate
+      }))
       return response as MailingList[]
     } catch (error) {
       console.error('[Newsletter] Error fetching mailing lists:', error)
@@ -327,7 +241,7 @@ export function useDirectusNewsletter() {
   }) => {
     try {
       const client = getClient()
-      
+
       const requestOptions: any = {
         filter: {
           mailing_lists_id: { _eq: listId },
@@ -363,6 +277,25 @@ export function useDirectusNewsletter() {
     }
   }
 
+  // New function to upload files to Directus
+  const uploadFile = async (file: File) => {
+    try {
+      const client = getClient();
+      const formData = new FormData();
+      formData.append('file', file); // 'file' is the key Directus expects for the file itself
+
+      // You can add other properties to the file here if needed by Directus, e.g.:
+      // formData.append('title', file.name);
+      // formData.append('folder', 'your-folder-id');
+
+      const result = await client.request(uploadFiles(formData));
+      return result; // Directus uploadFiles typically returns an array of uploaded file objects
+    } catch (error) {
+      console.error('[Newsletter] Error uploading file:', error);
+      throw error;
+    }
+  };
+
   return {
     setAuthToken,
     fetchNewsletters,
@@ -376,6 +309,7 @@ export function useDirectusNewsletter() {
     fetchSubscribers,
     fetchMailingLists,
     fetchMailingListSubscribers,
-    sendTestEmail
+    sendTestEmail,
+    uploadFile // Expose the new upload function
   }
 }

@@ -21,7 +21,6 @@ export interface SendGridSendOptions {
   trackingSettings?: {
     clickTracking?: { enable: boolean; enableText?: boolean }
     openTracking?: { enable: boolean; substitutionTag?: string }
-    subscriptionTracking?: { enable: boolean }
   }
   customArgs?: Record<string, string>
 }
@@ -64,20 +63,27 @@ interface SendGridMessage {
 
 export function useSendGrid() {
   const config = useRuntimeConfig()
-  const apiKey = config.sendgridApiKey || process.env.SENDGRID_API_KEY
+  // The apiKey is only available on the server-side runtimeConfig.
+  // We'll rely on server routes to access it for actual sending.
+  // For client-side checks, we rely on the 'configured' status from module.ts.
+  const apiKey = config.sendgridApiKey; // This will be undefined on client, only available on server
 
   // Send newsletter via SendGrid
+  // This function is primarily intended to be called from a server-side Nuxt API route
+  // where the API key is accessible. If called client-side, it would need a proxy route.
   const sendNewsletter = async (
     newsletter: NewsletterData & { compiled_html: string },
     recipients: SendGridRecipient[],
     options?: SendGridSendOptions
   ) => {
+    // This check is for server-side execution or if a proxy is not used.
+    // For client-side calls, you'd typically have a server endpoint proxy this.
     if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
+      throw new Error('SendGrid API key not configured. This function should be called server-side or via a proxy.');
     }
 
     if (!newsletter.compiled_html) {
-      throw new Error('Newsletter must be compiled before sending')
+      throw new Error('Newsletter must be compiled before sending');
     }
 
     const message: SendGridMessage = {
@@ -91,20 +97,20 @@ export function useSendGrid() {
       categories: options?.categories || ['newsletter', newsletter.id || 'draft'],
       custom_args: {
         newsletter_id: newsletter.id || 'draft',
-        newsletter_slug: newsletter.slug || 'draft',
+        newsletter_slug: newsletter.slug || 'draft', // Assuming newsletter can have a slug
         ...options?.customArgs
       },
       tracking_settings: {
-        click_tracking: { 
+        click_tracking: {
           enable: options?.trackingSettings?.clickTracking?.enable ?? true,
           enable_text: options?.trackingSettings?.clickTracking?.enableText ?? false
         },
-        open_tracking: { 
+        open_tracking: {
           enable: options?.trackingSettings?.openTracking?.enable ?? true,
           substitution_tag: options?.trackingSettings?.openTracking?.substitutionTag ?? '%open_tracking_pixel%'
         },
-        subscription_tracking: { 
-          enable: options?.trackingSettings?.subscriptionTracking?.enable ?? true 
+        subscription_tracking: {
+          enable: options?.trackingSettings?.subscriptionTracking?.enable ?? true
         }
       }
     }
@@ -136,7 +142,7 @@ export function useSendGrid() {
           personalizations: [{
             to: recipients.map(r => ({ email: r.email, name: r.name })),
             custom_args: message.custom_args,
-            substitutions: recipients[0]?.substitutions || {}
+            substitutions: recipients[0]?.substitutions || {} // Assuming first recipient's substitutions apply to all
           }],
           from: message.from,
           reply_to: message.reply_to,
@@ -163,23 +169,25 @@ export function useSendGrid() {
     }
   }
 
-  // Send test email
+  // Send test email - now calls the server-side /api/newsletter/test-connection route
   const sendTestEmail = async (
-    newsletter: NewsletterData & { compiled_html: string },
-    testEmail: string
+    newsletter: NewsletterData & { compiled_html: string }, // These parameters are not used by the server route for key validation
+    testEmail: string // This parameter is not used by the server route for key validation
   ) => {
-    return sendNewsletter(
-      newsletter,
-      [{ email: testEmail, name: 'Test Recipient' }],
-      {
-        categories: ['test', 'newsletter-test'],
-        trackingSettings: {
-          clickTracking: { enable: false },
-          openTracking: { enable: false },
-          subscriptionTracking: { enable: false }
-        }
-      }
-    )
+    try {
+      // Call the server-side endpoint that performs the SendGrid API key validation
+      const response = await $fetch('/api/newsletter/test-connection', {
+        method: 'POST',
+        // No body needed for a simple key validation, as the server route
+        // accesses the API key directly from runtimeConfig.
+      });
+      // The server route returns a structured response with directus and sendgrid statuses
+      return response.sendgrid; // Return only the sendgrid part of the response
+    } catch (error: any) {
+      console.error('Client-side SendGrid test email error:', error);
+      // Re-throw to be caught by the settings page
+      throw new Error(error.data?.message || 'Failed to test SendGrid API via server.');
+    }
   }
 
   // Create batch for large sends
@@ -328,7 +336,7 @@ export function useSendGrid() {
 
   return {
     sendNewsletter,
-    sendTestEmail,
+    sendTestEmail, // This now calls the server route
     createBatch,
     getBatchStatus,
     cancelScheduledSend,

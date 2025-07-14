@@ -1,5 +1,5 @@
 // src/runtime/composables/useNewsletterSetup.ts
-import { useRuntimeConfig } from '#imports'
+import { useRuntimeConfig } from '#app'
 import { computed, ref } from 'vue'
 
 export interface SetupValidation {

@@ -1,145 +1,191 @@
 <!-- playground/pages/index.vue -->
 <template>
-  <div class="newsletter-editor-page">
-    <div class="editor-header">
-      <div class="header-left">
-        <NuxtLink to="/list" class="btn btn-secondary">
-          ← Back to List
+  <div class="flex flex-col h-screen bg-gray-100 font-sans antialiased">
+    <!-- Editor Header -->
+    <div class="flex items-center justify-between bg-white px-4 py-3 border-b border-gray-200 shadow-sm flex-shrink-0">
+      <div class="flex items-center space-x-4">
+        <NuxtLink to="/list" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:arrow-left" class="w-4 h-4 mr-2" />
+          Back to List
         </NuxtLink>
-        <div class="editor-title">
-          <h1>{{ isEditing ? 'Edit Newsletter' : 'Create Newsletter' }}</h1>
-          <p v-if="currentNewsletter?.subject" class="current-subject">
-            {{ currentNewsletter.subject }}
+        <div class="flex flex-col">
+          <h1 class="text-xl font-semibold text-gray-900">{{ isEditing ? 'Edit Newsletter' : 'Create Newsletter' }}</h1>
+          <p v-if="editorNewsletter?.subject_line" class="text-sm text-gray-500 italic mt-0.5">
+            {{ editorNewsletter.subject_line }}
           </p>
         </div>
       </div>
-      <div class="header-actions">
-        <button @click="saveNewsletter" :disabled="saving" class="btn btn-primary">
+      <div class="flex items-center space-x-3">
+        <button @click="saveNewsletter" :disabled="saving" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:save" class="w-4 h-4 mr-2" :class="{ 'animate-spin': saving }" />
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
-        <button 
-          v-if="currentNewsletter?.id && currentNewsletter?.compiled_html"
-          @click="sendTest" 
-          class="btn btn-secondary"
+        <button
+          v-if="editorNewsletter?.id && editorNewsletter?.compiled_html"
+          @click="sendTest"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
         >
+          <Icon name="lucide:mail" class="w-4 h-4 mr-2" />
           Send Test
         </button>
-        <select 
+        <select
           v-if="mailingLists.length > 0"
-          v-model="selectedMailingList" 
-          class="mailing-list-select"
+          v-model="selectedMailingList"
+          class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors min-w-[180px]"
         >
           <option value="">Select Mailing List</option>
-          <option 
-            v-for="list in mailingLists" 
+          <option
+            v-for="list in mailingLists"
             :key="list.id"
             :value="list.id"
           >
             {{ list.name }} ({{ list.subscriber_count }} subscribers)
           </option>
         </select>
-        <button 
-          v-if="currentNewsletter?.status === 'ready' && selectedMailingList"
-          @click="sendToList" 
-          class="btn btn-success"
+        <button
+          v-if="editorNewsletter?.status === 'ready' && selectedMailingList"
+          @click="sendToList"
+          class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
         >
+          <Icon name="lucide:send" class="w-4 h-4 mr-2" />
           Send to List
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>{{ loadingMessage }}</p>
+    <div v-if="loading" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50">
+      <Icon name="lucide:loader-2" class="w-12 h-12 text-blue-500 animate-spin mb-4" />
+      <p class="text-lg text-gray-700 font-medium">{{ loadingMessage }}</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="error-state">
-      <div class="error-icon">⚠️</div>
-      <h3>Error Loading Newsletter</h3>
-      <p>{{ error }}</p>
-      <button @click="initializeEditor" class="btn btn-primary">
+    <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50">
+      <Icon name="lucide:alert-triangle" class="w-12 h-12 text-red-500 mb-4" />
+      <h3 class="text-xl font-semibold text-gray-900 mb-2">Error Loading Newsletter</h3>
+      <p class="text-gray-600 mb-6">{{ error }}</p>
+      <button @click="initializeEditor" class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+        <Icon name="lucide:refresh-cw" class="w-5 h-5 mr-2" />
         Try Again
       </button>
     </div>
 
     <!-- Newsletter Editor -->
-    <div v-else-if="currentNewsletter" class="editor-wrapper">
-      <NewsletterEditor 
-        v-model="currentNewsletter" 
+    <div v-else-if="editorNewsletter" class="flex-1 overflow-hidden">
+      <NewsletterEditor
+        v-model="editorNewsletter"
         :show-preview="true"
         @update:compiled="handleCompiled"
       />
     </div>
 
     <!-- Test Email Modal -->
-    <div v-if="showTestModal" class="modal" @click.self="showTestModal = false">
-      <div class="modal-content">
-        <h3>Send Test Email</h3>
-        <p>Send test email for "{{ currentNewsletter?.subject || 'Newsletter' }}"</p>
-        <input 
-          v-model="testEmail" 
-          type="email" 
-          placeholder="Enter email address"
-          class="form-input"
+    <div v-if="showTestModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 transform scale-100 opacity-100 transition-all duration-300">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">Send Test Email</h3>
+        <p class="text-gray-600 mb-6">Send test email for "<span class="font-medium">{{ editorNewsletter?.subject_line || 'Newsletter' }}</span>"</p>
+        <input
+          v-model="testEmail"
+          type="email"
+          placeholder="Enter recipient email address"
+          class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
           @keyup.enter="confirmSendTest"
         />
-        <div class="modal-actions">
-          <button @click="confirmSendTest" class="btn btn-primary" :disabled="!testEmail">
-            Send Test
-          </button>
-          <button @click="showTestModal = false" class="btn btn-secondary">
+        <div class="flex justify-end space-x-3 mt-6">
+          <button @click="showTestModal = false" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
             Cancel
+          </button>
+          <button @click="confirmSendTest" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" :disabled="!testEmail">
+            Send Test
           </button>
         </div>
       </div>
     </div>
 
     <!-- Send to List Modal -->
-    <div v-if="showSendModal" class="modal" @click.self="showSendModal = false">
-      <div class="modal-content">
-        <h3>Send Newsletter</h3>
-        <p>
-          Send "{{ currentNewsletter?.subject || 'Newsletter' }}" to 
-          <strong>{{ selectedList?.name }}</strong> 
-          ({{ selectedList?.subscriber_count }} subscribers)?
+    <div v-if="showSendModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 transform scale-100 opacity-100 transition-all duration-300">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">Send Newsletter</h3>
+        <p class="text-gray-600 mb-6">
+          Send "<span class="font-medium">{{ editorNewsletter?.subject_line || 'Newsletter' }}</span>" to
+          <strong class="text-blue-600">{{ selectedList?.name }}</strong>
+          (<span class="font-medium">{{ selectedList?.subscriber_count }}</span> subscribers)?
         </p>
-        <div class="send-options">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="sendOptions.sendNow" />
-            <span>Send immediately</span>
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-6">
+          <label class="flex items-center space-x-2 cursor-pointer mb-4">
+            <input type="checkbox" v-model="sendOptions.sendNow" class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500 transition-colors" />
+            <span class="text-gray-700 font-medium">Send immediately</span>
           </label>
-          <div v-if="!sendOptions.sendNow" class="schedule-section">
-            <label class="field-label">Schedule for:</label>
-            <input 
-              type="datetime-local" 
+          <div v-if="!sendOptions.sendNow" class="mt-4 pt-4 border-t border-gray-200">
+            <label for="scheduledDate" class="block text-sm font-medium text-gray-700 mb-2">Schedule for:</label>
+            <input
+              id="scheduledDate"
+              type="datetime-local"
               v-model="sendOptions.scheduledDate"
-              class="form-input"
+              class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
               :min="minScheduleDate"
             />
           </div>
         </div>
-        <div class="modal-actions">
-          <button @click="confirmSendToList" class="btn btn-primary" :disabled="sendingToList">
-            {{ sendingToList ? 'Sending...' : (sendOptions.sendNow ? 'Send Now' : 'Schedule') }}
-          </button>
-          <button @click="showSendModal = false" class="btn btn-secondary">
+        <div class="flex justify-end space-x-3 mt-6">
+          <button @click="showSendModal = false" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
             Cancel
+          </button>
+          <button @click="confirmSendToList" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" :disabled="sendingToList">
+            <Icon v-if="sendingToList" name="lucide:loader-2" class="w-4 h-4 mr-2 animate-spin" />
+            {{ sendingToList ? 'Sending...' : (sendOptions.sendNow ? 'Send Now' : 'Schedule') }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Success/Error Messages -->
-    <div v-if="message.show" class="message-toast" :class="message.type">
-      {{ message.text }}
-    </div>
+    <!-- Success/Error Messages (Toast) -->
+    <Transition
+      enter-active-class="transform ease-out duration-300 transition"
+      enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="message.show"
+        class="fixed top-4 right-4 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden z-50"
+        :class="{
+          'bg-green-50 border border-green-200 text-green-800': message.type === 'success',
+          'bg-red-50 border border-red-200 text-red-800': message.type === 'error'
+        }"
+      >
+        <div class="p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <Icon
+                :name="message.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'"
+                :class="message.type === 'success' ? 'text-green-400' : 'text-red-400'"
+                class="w-6 h-6"
+              />
+            </div>
+            <div class="ml-3 w-0 flex-1 pt-0.5">
+              <p class="text-sm font-medium">{{ message.text }}</p>
+            </div>
+            <div class="ml-4 flex-shrink-0 flex">
+              <button
+                @click="message.show = false"
+                class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Icon name="lucide:x" class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { navigateTo, useRoute } from '#app'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 // Page metadata
 definePageMeta({
@@ -158,17 +204,7 @@ const error = ref(null)
 const saving = ref(false)
 const sendingToList = ref(false)
 const isEditing = ref(false)
-const currentNewsletter = ref({
-  subject: '',
-  preheader: '',
-  blocks: [],
-  settings: {
-    backgroundColor: '#f5f5f5',
-    textColor: '#333333',
-    fontFamily: 'Arial, sans-serif'
-  },
-  status: 'draft'
-})
+
 const mailingLists = ref([])
 const selectedMailingList = ref('')
 const showTestModal = ref(false)
@@ -185,7 +221,7 @@ const message = ref({
 })
 
 // Composables
-const { 
+const {
   fetchNewsletter,
   createNewsletter: createNewsletterInDirectus,
   updateNewsletter: updateNewsletterInDirectus,
@@ -196,9 +232,12 @@ const {
 
 const { sendNewsletter: sendViaGrid, sendTestEmail } = useSendGrid()
 const { compileNewsletterToMjml, compileMjmlToHtml } = useMjmlCompiler()
+// Use the NewsletterEditor composable, which now manages the newsletter data structure
+const { newsletter: editorNewsletter, blocks, addBlock, removeBlock, updateBlock, moveBlock, duplicateBlock, loadFromTemplate, subject, preheader } = useNewsletterEditor()
+
 
 // Computed
-const selectedList = computed(() => 
+const selectedList = computed(() =>
   mailingLists.value.find(list => list.id === selectedMailingList.value)
 )
 
@@ -222,40 +261,40 @@ const initializeEditor = async () => {
     if (editId.value) {
       loadingMessage.value = 'Loading newsletter...'
       isEditing.value = true
-      
+
       const fullNewsletter = await fetchNewsletter(editId.value)
-      
-      // Convert to editor format
-      const editorData = {
-        id: fullNewsletter.id,
-        subject: fullNewsletter.subject_line,
-        preheader: fullNewsletter.preview_text,
-        from_name: fullNewsletter.from_name,
-        from_email: fullNewsletter.from_email,
-        reply_to: fullNewsletter.reply_to,
-        blocks: fullNewsletter.blocks?.map(block => ({
-          id: block.id,
-          type: typeof block.block_type === 'object' ? block.block_type.slug : block.block_type,
-          content: block.content || {},
-          sort: block.sort
-        })) || [],
-        status: fullNewsletter.status,
-        mailing_list_id: fullNewsletter.mailing_list_id,
-        compiled_mjml: fullNewsletter.compiled_mjml,
-        compiled_html: fullNewsletter.compiled_html
-      }
-      
-      // Load into editor
-      const { newsletter: editorNewsletter } = useNewsletterEditor(editorData)
-      Object.assign(currentNewsletter.value, editorNewsletter.value)
+
+      // Map Directus fields to NewsletterData structure
+      editorNewsletter.value.id = fullNewsletter.id;
+      editorNewsletter.value.title = fullNewsletter.title; // Map Directus title
+      editorNewsletter.value.subject_line = fullNewsletter.subject_line; // Map Directus subject_line
+      editorNewsletter.value.preview_text = fullNewsletter.preview_text; // Map Directus preview_text
+      editorNewsletter.value.from_name = fullNewsletter.from_name;
+      editorNewsletter.value.from_email = fullNewsletter.from_email;
+      editorNewsletter.value.reply_to = fullNewsletter.reply_to;
+      editorNewsletter.value.status = fullNewsletter.status;
+      editorNewsletter.value.mailing_list_id = fullNewsletter.mailing_list_id;
+      editorNewsletter.value.compiled_mjml = fullNewsletter.compiled_mjml;
+      editorNewsletter.value.compiled_html = fullNewsletter.compiled_html;
+      editorNewsletter.value.category = fullNewsletter.category; // Ensure category is mapped
+
+      // Transform blocks for editor: Directus block_type object to slug string
+      editorNewsletter.value.blocks = fullNewsletter.blocks?.map(block => ({
+        id: block.id,
+        type: typeof block.block_type === 'object' ? block.block_type.slug : block.block_type,
+        content: block.content || {},
+        sort: block.sort
+      })) || [];
+
+
       selectedMailingList.value = fullNewsletter.mailing_list_id || ''
-      
+
       // Show send modal if requested
       if (shouldShowSendModal.value && fullNewsletter.status === 'ready') {
         showSendModal.value = true
       }
     } else {
-      // Create new newsletter - currentNewsletter is already initialized with defaults
+      // Create new newsletter - editorNewsletter is already initialized with defaults
       isEditing.value = false
     }
   } catch (err) {
@@ -271,32 +310,65 @@ const initializeEditor = async () => {
 const saveNewsletter = async () => {
   saving.value = true
   try {
-    // Compile MJML first
-    const blockTypes = await fetchBlockTypes()
-    const mjml = await compileNewsletterToMjml(currentNewsletter.value, blockTypes)
-    const { html } = await compileMjmlToHtml(mjml)
-    
-    currentNewsletter.value.compiled_mjml = mjml
-    currentNewsletter.value.compiled_html = html
-    currentNewsletter.value.mailing_list_id = selectedMailingList.value
-    
-    if (currentNewsletter.value.id) {
-      await updateNewsletterInDirectus(currentNewsletter.value.id, currentNewsletter.value)
-      showMessage('Newsletter updated successfully!', 'success')
+    // 1. Fetch block types if not already loaded (important for mapping slugs to IDs)
+    // This is managed by NewsletterEditor.vue now, but we need the data here.
+    // Assuming blockTypes in NewsletterEditor.vue is already populated.
+    // If not, we'd need to fetch it here or pass it from NewsletterEditor.vue.
+    // For simplicity, let's re-fetch block types here to ensure we have the latest.
+    const blockTypesData = await fetchBlockTypes();
+
+
+    // 2. Compile MJML first using the editor's newsletter data
+    const mjml = await compileNewsletterToMjml(editorNewsletter.value, blockTypesData);
+    const { html } = await compileMjmlToHtml(mjml);
+
+    editorNewsletter.value.compiled_mjml = mjml;
+    editorNewsletter.value.compiled_html = html;
+    editorNewsletter.value.mailing_list_id = selectedMailingList.value;
+
+    // 3. Transform blocks for Directus: map block.type (slug) to block_type ID
+    const blocksForDirectus = editorNewsletter.value.blocks.map(block => {
+      const foundBlockType = blockTypesData.find(bt => bt.slug === block.type);
+      if (!foundBlockType) {
+        console.warn(`Block type with slug '${block.type}' not found. Skipping block.`, block);
+        // If block type not found, return a structure that Directus can handle,
+        // e.g., by omitting the block_type or setting it to null if allowed.
+        // For now, we'll return null and filter it out.
+        return null;
+      }
+      return {
+        id: block.id, // Keep existing ID for updates
+        block_type: foundBlockType.id, // Send the UUID of the block_type
+        content: block.content,
+        sort: block.sort
+      };
+    }).filter(Boolean); // Remove any nulls if block types weren't found
+
+    // Create the payload for Directus API
+    const directusPayload = {
+      ...editorNewsletter.value, // Copy all fields from editorNewsletter
+      blocks: blocksForDirectus, // Override blocks with transformed ones
+      // Ensure Directus-specific field names are used if different from NewsletterData
+      // NewsletterData now directly uses Directus field names (title, subject_line, preview_text)
+    };
+
+    if (directusPayload.id) {
+      await updateNewsletterInDirectus(directusPayload.id, directusPayload);
+      showMessage('Newsletter updated successfully!', 'success');
     } else {
-      const created = await createNewsletterInDirectus(currentNewsletter.value)
-      currentNewsletter.value.id = created.id
-      isEditing.value = true
-      showMessage('Newsletter created successfully!', 'success')
-      
+      const created = await createNewsletterInDirectus(directusPayload);
+      editorNewsletter.value.id = created.id;
+      isEditing.value = true;
+      showMessage('Newsletter created successfully!', 'success');
+
       // Update URL to show we're now editing
-      await navigateTo(`/?edit=${created.id}`, { replace: true })
+      await navigateTo(`/?edit=${created.id}`, { replace: true });
     }
   } catch (err) {
-    showMessage('Error saving newsletter: ' + err.message, 'error')
-    console.error('Save error:', err)
+    showMessage('Error saving newsletter: ' + err.message, 'error');
+    console.error('Save error:', err);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
@@ -307,11 +379,16 @@ const sendTest = () => {
 }
 
 const confirmSendTest = async () => {
-  if (!testEmail.value || !currentNewsletter.value.compiled_html) return
-  
+  if (!testEmail.value || !editorNewsletter.value.compiled_html) return
+
   try {
-    await sendTestEmail(currentNewsletter.value, testEmail.value)
-    showMessage('Test email sent to ' + testEmail.value, 'success')
+    // Call the updated sendTestEmail from useSendGrid
+    const response = await sendTestEmail(editorNewsletter.value, testEmail.value)
+    if (response.status === 'success') {
+      showMessage('Test email sent successfully!', 'success')
+    } else {
+      showMessage(`Test email failed: ${response.message}`, 'error')
+    }
     showTestModal.value = false
   } catch (err) {
     showMessage('Error sending test: ' + err.message, 'error')
@@ -324,63 +401,63 @@ const sendToList = () => {
     showMessage('Please select a mailing list', 'error')
     return
   }
-  
+
   // Set default schedule time to 30 minutes from now
   const defaultSchedule = new Date()
   defaultSchedule.setMinutes(defaultSchedule.getMinutes() + 30)
   sendOptions.value.scheduledDate = defaultSchedule.toISOString().slice(0, 16)
-  
+
   showSendModal.value = true
 }
 
 const confirmSendToList = async () => {
   sendingToList.value = true
-  
+
   try {
     // Get subscribers from the selected list
     const subscribers = await fetchMailingListSubscribers(selectedMailingList.value)
-    
+
     // Prepare recipients
     const recipients = subscribers.map(sub => ({
       email: sub.email,
       name: sub.name || sub.email,
       custom_args: {
         subscriber_id: sub.id,
-        newsletter_id: currentNewsletter.value.id,
+        newsletter_id: editorNewsletter.value.id,
         send_record_id: `send_${Date.now()}`
       }
     }))
-    
+
     // Send via SendGrid
     await sendViaGrid(
-      currentNewsletter.value,
+      editorNewsletter.value,
       recipients,
       {
-        fromEmail: currentNewsletter.value.from_email,
-        fromName: currentNewsletter.value.from_name,
-        replyTo: currentNewsletter.value.reply_to,
-        categories: ['newsletter', currentNewsletter.value.category || 'general'],
+        fromEmail: editorNewsletter.value.from_email,
+        fromName: editorNewsletter.value.from_name,
+        replyTo: editorNewsletter.value.reply_to,
+        categories: ['newsletter', editorNewsletter.value.category || 'general'],
         sendAt: sendOptions.value.sendNow ? undefined : new Date(sendOptions.value.scheduledDate),
         customArgs: {
-          newsletter_id: currentNewsletter.value.id,
+          newsletter_id: editorNewsletter.value.id,
           mailing_list_id: selectedMailingList.value
         }
       }
     )
-    
+
     // Update newsletter status
-    await updateNewsletterInDirectus(currentNewsletter.value.id, {
+    await updateNewsletterInDirectus(editorNewsletter.value.id, {
       status: sendOptions.value.sendNow ? 'sent' : 'scheduled',
       scheduled_send_date: sendOptions.value.scheduledDate || undefined
     })
-    
-    const message = sendOptions.value.sendNow 
+
+    const message = sendOptions.value.sendNow
       ? `Newsletter sent to ${recipients.length} subscribers!`
       : `Newsletter scheduled for ${new Date(sendOptions.value.scheduledDate).toLocaleString()}!`
-    
+
     showMessage(message, 'success')
     showSendModal.value = false
-    
+
     // Navigate back to list after successful send
     setTimeout(() => {
       navigateTo('/list')
@@ -395,9 +472,9 @@ const confirmSendToList = async () => {
 
 // Handle compiled newsletter from editor
 const handleCompiled = (compiled) => {
-  if (currentNewsletter.value) {
-    currentNewsletter.value.compiled_mjml = compiled.mjml
-    currentNewsletter.value.compiled_html = compiled.html
+  if (editorNewsletter.value) {
+    editorNewsletter.value.compiled_mjml = compiled.mjml
+    editorNewsletter.value.compiled_html = compiled.html
   }
 }
 
@@ -423,7 +500,7 @@ onMounted(() => {
 let autoSaveInterval
 onMounted(() => {
   autoSaveInterval = setInterval(() => {
-    if (currentNewsletter.value?.id && !saving.value) {
+    if (editorNewsletter.value?.id && !saving.value) {
       saveNewsletter()
     }
   }, 30000)
@@ -436,310 +513,3 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
-.newsletter-editor-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f8fafc;
-}
-
-.editor-header {
-  background: white;
-  padding: 1rem 2rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.editor-title h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.current-subject {
-  margin: 0.25rem 0 0;
-  font-size: 0.875rem;
-  color: #64748b;
-  font-style: italic;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.mailing-list-select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  background: white;
-  min-width: 200px;
-}
-
-.editor-wrapper {
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Loading and Error States */
-.loading-state,
-.error-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 1rem;
-  border: 3px solid #f3f4f6;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.error-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.error-state h3 {
-  margin: 0 0 0.5rem;
-  color: #1f2937;
-}
-
-.error-state p {
-  color: #6b7280;
-  margin-bottom: 1rem;
-}
-
-/* Buttons */
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: #6b7280;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #4b5563;
-}
-
-.btn-success {
-  background: #10b981;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #059669;
-}
-
-/* Modal Styles */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 2rem;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-}
-
-.modal-content h3 {
-  margin: 0 0 1rem;
-  font-size: 1.25rem;
-  color: #1f2937;
-}
-
-.modal-content p {
-  margin: 0.5rem 0 1rem;
-  color: #6b7280;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  margin-bottom: 1rem;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-/* Send Options */
-.send-options {
-  margin: 1rem 0;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-}
-
-.schedule-section {
-  margin-top: 1rem;
-}
-
-.field-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-/* Message Toast */
-.message-toast {
-  position: fixed;
-  top: 2rem;
-  right: 2rem;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  animation: slideIn 0.3s ease-out;
-  max-width: 400px;
-}
-
-.message-toast.success {
-  background: #d1fae5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-}
-
-.message-toast.error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .editor-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-    padding: 1rem;
-  }
-  
-  .header-left {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-  
-  .header-actions {
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-  
-  .mailing-list-select {
-    min-width: auto;
-    flex: 1;
-  }
-  
-  .modal {
-    padding: 1rem;
-  }
-  
-  .modal-actions {
-    flex-direction: column-reverse;
-  }
-}
-</style>

@@ -169,8 +169,8 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     }
 
     // Skip validation during build/prepare phase
-    const isBuilding = process.env.NODE_ENV === 'prerender' || 
-                      process.argv.includes('prepare') || 
+    const isBuilding = process.env.NODE_ENV === 'prerender' ||
+                      process.argv.includes('prepare') ||
                       process.argv.includes('build') ||
                       process.argv.includes('dev:prepare')
 
@@ -179,6 +179,7 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     const directusToken = options.directus.auth?.token || getEnvVar('DIRECTUS_TOKEN')
     const sendgridApiKey = options.sendgrid?.apiKey || getEnvVar('SENDGRID_API_KEY')
     const sendgridWebhookSecret = options.sendgrid?.webhookSecret || getEnvVar('SENDGRID_WEBHOOK_SECRET')
+    const directusAdminToken = getEnvVar('DIRECTUS_ADMIN_TOKEN')
 
     // Enhanced validation with better error messages
     if (!directusUrl && !isBuilding) {
@@ -205,7 +206,7 @@ Directus URL is required! Please configure it in one of these ways:
 📚 Quick setup: npm run newsletter:setup-wizard
 📚 Docs: https://github.com/hue-studios/nuxt-newsletter#setup
       `
-      
+
       if (nuxt.options.dev) {
         logger.warn(errorMessage)
         logger.info('Using fallback URL for development: http://localhost:8055')
@@ -215,7 +216,7 @@ Directus URL is required! Please configure it in one of these ways:
         throw new Error('Newsletter Module: Directus URL is required')
       }
     } else {
-      options.directus.url = directusUrl
+      options.directus.url = directusUrl as string
     }
 
     // Check authentication setup
@@ -271,29 +272,31 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       logger.info('✅ SendGrid configured - email sending enabled')
     }
 
-    // Enhanced runtime config setup
+    // Enhanced runtime config setup with proper client/server separation
     nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
-      // Private (server-side only)
+      // Private (server-side only) - these stay here for API handlers
       sendgridApiKey: sendgridApiKey || '',
       sendgridWebhookSecret: sendgridWebhookSecret || '',
-      directusAdminToken: getEnvVar('DIRECTUS_ADMIN_TOKEN'),
-      directusToken: directusToken || '', // Add this for server access
-      
-      // Public (client-side accessible)
+      directusAdminToken: directusAdminToken || '',
+      directusToken: directusToken || '', // Add for server-side access
+
+      // Public (client-side accessible) - configuration status only
       public: {
         newsletter: {
           directus: {
             url: options.directus.url,
             auth: {
               type: options.directus.auth?.type || 'static',
-              middleware: options.directus.auth?.middleware || 'auth'
+              middleware: options.directus.auth?.middleware || 'auth',
+              // Don't expose the actual token, just whether it's configured
+              hasToken: !!directusToken
             }
           },
           sendgrid: {
             defaultFromEmail: options.sendgrid?.defaultFromEmail || 'newsletter@example.com',
             defaultFromName: options.sendgrid?.defaultFromName || 'Newsletter',
-            // Add status indicators for client-side use
-            hasApiKey: !!sendgridApiKey,
+            // Don't expose actual keys, just configuration status
+            configured: !!sendgridApiKey,
             hasWebhookSecret: !!sendgridWebhookSecret
           },
           mjmlMode: options.mjmlMode || 'client',
@@ -307,6 +310,15 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
               primaryColor: options.ui?.theme?.primaryColor || 'blue',
               darkMode: options.ui?.theme?.darkMode || false
             }
+          },
+          // Configuration status for client-side checks
+          status: {
+            directusConfigured: !!directusUrl && directusUrl !== 'http://localhost:8055',
+            directusAuthConfigured: !!directusToken,
+            sendgridConfigured: !!sendgridApiKey,
+            sendgridWebhookConfigured: !!sendgridWebhookSecret,
+            mjmlMode: options.mjmlMode || 'client',
+            directusAdminTokenConfigured: !!directusAdminToken // Expose admin token status
           }
         }
       }
@@ -321,7 +333,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       // Icon support
       await installModule('@nuxt/icon')
       logger.info(`✅ @nuxt/icon installed with ${options.ui?.icons || 'lucide'} icons`)
-      
+
       // Auto-install TailwindCSS 4 if enabled and not already present
       if (options.ui?.autoInstallTailwind !== false) {
         await setupTailwindCSS4(nuxt, logger, resolver)
@@ -329,11 +341,11 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
 
       // Color mode support if dark mode is enabled
       if (options.ui?.theme?.darkMode) {
-        const hasColorMode = nuxt.options.modules.some(m => 
+        const hasColorMode = nuxt.options.modules.some(m =>
           (typeof m === 'string' && m.includes('color-mode')) ||
           (Array.isArray(m) && m[0]?.includes('color-mode'))
         )
-        
+
         if (!hasColorMode) {
           try {
             await installModule('@nuxtjs/color-mode')
@@ -357,55 +369,55 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       mode: 'all'
     })
 
-    // Add composables
+    // Add composables with enhanced descriptions
     addImports([
-      { 
-        name: 'useDirectusNewsletter', 
+      {
+        name: 'useDirectusNewsletter',
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
           description: 'Access Directus newsletter operations (CRUD, templates, subscribers, etc.)'
         }
       },
-      { 
-        name: 'useMjmlCompiler', 
+      {
+        name: 'useMjmlCompiler',
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
           description: 'Compile newsletters to MJML and HTML with Handlebars support'
         }
       },
-      { 
-        name: 'useNewsletter', 
+      {
+        name: 'useNewsletter',
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
           description: 'Access newsletter module configuration and state'
         }
       },
-      { 
-        name: 'useNewsletterEditor', 
+      {
+        name: 'useNewsletterEditor',
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
           description: 'Newsletter editor state management with drag-drop support'
         }
       },
-      { 
-        name: 'useSendGrid', 
+      {
+        name: 'useSendGrid',
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
           description: 'SendGrid email operations and webhook handling'
         }
       },
-      { 
-        name: 'useNewsletterErrors', 
+      {
+        name: 'useNewsletterErrors',
         from: resolver.resolve('./runtime/composables/index'),
         meta: {
           description: 'User-friendly error handling and troubleshooting'
         }
       },
-      { 
-        name: 'useNewsletterSetup', 
-        from: resolver.resolve('./runtime/composables/useNewsletterSetup'),
+      {
+        name: 'useNewsletterSetup',
+        from: resolver.resolve('./runtime/composables/index'),
         meta: {
-          description: 'Setup validation and configuration helpers'
+          description: 'Newsletter module setup validation and configuration helpers'
         }
       }
     ])
@@ -413,8 +425,8 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
     // Add drag and drop composable if enabled
     if (options.ui?.enableDragDrop !== false) {
       addImports([
-        { 
-          name: 'useDragAndDrop', 
+        {
+          name: 'useDragAndDrop',
           from: resolver.resolve('./runtime/composables/useDragAndDrop'),
           meta: {
             description: 'Drag and drop functionality for newsletter blocks'
@@ -437,7 +449,6 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       handler: resolver.resolve('./runtime/server/api/newsletter/sendgrid-webhook.post')
     })
 
-    // Add test connection endpoint
     addServerHandler({
       route: '/api/newsletter/test-connection',
       handler: resolver.resolve('./runtime/server/api/newsletter/test-connection.post')
@@ -473,7 +484,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           `  • <${options.prefix}Editor> - Modern drag-drop newsletter editor`,
           `  • <${options.prefix}Preview> - Live preview with device frames`,
           `  • <${options.prefix}Block> - Dynamic block editor with validation`,
-          `  • <${options.prefix}Setup> - Configuration and validation helper`,
+          `  • <${options.prefix}Setup> - Configuration and status checker`,
           '',
           'Quick start:',
           '  1. Set up Directus: npm run newsletter:setup',
@@ -482,7 +493,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           '',
           '✨ Enjoy the modern newsletter editing experience!'
         ]
-        
+
         logger.success('\n' + statusLines.join('\n  '))
       })
     }
@@ -506,12 +517,12 @@ async function setupTailwindCSS4(nuxt: any, logger: any, resolver: any) {
   if (existsSync(packageJsonPath)) {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
     const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies }
-    
+
     hasTailwind4 = dependencies.tailwindcss && dependencies.tailwindcss.includes('4.')
     hasVitePlugin = !!dependencies['@tailwindcss/vite']
   }
 
-  const hasTailwindViteConfig = nuxt.options.vite?.plugins?.some((plugin: any) => 
+  const hasTailwindViteConfig = nuxt.options.vite?.plugins?.some((plugin: any) =>
     plugin?.name?.includes('tailwind') || plugin?.toString?.()?.includes('tailwind')
   )
 
@@ -521,14 +532,14 @@ async function setupTailwindCSS4(nuxt: any, logger: any, resolver: any) {
   }
 
   logger.info('📦 Installing Tailwind CSS 4...')
-  
+
   try {
     const { execSync } = await import('child_process')
-    
+
     if (!hasTailwind4 || !hasVitePlugin) {
-      execSync('npm install tailwindcss@^4.0.0 @tailwindcss/vite', { 
-        stdio: 'inherit', 
-        cwd: rootDir 
+      execSync('npm install tailwindcss@^4.0.0 @tailwindcss/vite', {
+        stdio: 'inherit',
+        cwd: rootDir
       })
       logger.info('✅ Tailwind CSS 4 packages installed')
     }

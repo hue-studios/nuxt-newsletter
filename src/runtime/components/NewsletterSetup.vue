@@ -1,74 +1,83 @@
 <template>
-  <div class="newsletter-setup-guide">
+  <div class="max-w-4xl mx-auto p-6 font-sans antialiased">
     <!-- Success State -->
-    <div v-if="overallValidation.isValid && !overallValidation.hasWarnings" class="setup-card success">
-      <div class="setup-header">
-        <Icon name="lucide:check-circle" class="w-6 h-6 text-green-500" />
-        <h3>Newsletter Module Ready!</h3>
-      </div>
-      <p>Your newsletter module is fully configured and ready to use.</p>
-      <div class="setup-actions">
-        <button @click="testConnection" :disabled="isChecking" class="btn btn-primary">
-          <Icon name="lucide:refresh-cw" class="w-4 h-4" :class="{ 'animate-spin': isChecking }" />
-          {{ isChecking ? 'Testing...' : 'Test Connection' }}
-        </button>
-      </div>
+    <div v-if="overallValidation.isValid && !overallValidation.hasWarnings" class="bg-green-50 border border-green-300 rounded-xl p-8 shadow-md text-center">
+      <Icon name="lucide:check-circle" class="w-12 h-12 text-green-600 mx-auto mb-4" />
+      <h3 class="text-2xl font-bold text-green-800 mb-2">Newsletter Module Ready!</h3>
+      <p class="text-green-700 text-lg mb-6">Your newsletter module is fully configured and ready to use.</p>
+      <button @click="runConnectionTest" :disabled="isChecking" class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+        <Icon name="lucide:refresh-cw" class="w-5 h-5 mr-2" :class="{ 'animate-spin': isChecking }" />
+        {{ isChecking ? 'Testing...' : 'Test Connection' }}
+      </button>
     </div>
 
     <!-- Setup Required State -->
-    <div v-else class="setup-card">
-      <div class="setup-header">
-        <Icon name="lucide:settings" class="w-6 h-6 text-blue-500" />
-        <h3>Newsletter Module Setup</h3>
+    <div v-else class="bg-white border border-gray-200 rounded-xl p-8 shadow-md">
+      <div class="flex items-center space-x-3 mb-4">
+        <Icon name="lucide:settings" class="w-8 h-8 text-blue-600" />
+        <h3 class="text-2xl font-bold text-gray-900">Newsletter Module Setup</h3>
       </div>
-      
-      <p class="setup-description">
+
+      <p class="text-gray-600 mb-8 leading-relaxed">
         Let's get your newsletter module configured! Follow these steps to enable all features.
       </p>
 
       <!-- Validation Results -->
-      <div class="validation-results">
+      <div class="space-y-4 mb-8">
         <!-- Directus -->
-        <div class="validation-item" :class="directusValidation.severity">
-          <div class="validation-icon">
-            <Icon v-if="directusValidation.isValid" name="lucide:check" class="w-5 h-5" />
-            <Icon v-else name="lucide:x" class="w-5 h-5" />
+        <div class="flex items-start p-4 rounded-lg" :class="{
+          'bg-red-50 border border-red-300': directusValidation.severity === 'error',
+          'bg-yellow-50 border border-yellow-300': directusValidation.severity === 'warning',
+          'bg-blue-50 border border-blue-300': directusValidation.severity === 'info',
+        }">
+          <div class="flex-shrink-0 mr-3 mt-0.5">
+            <Icon v-if="directusValidation.isValid" name="lucide:check-circle" class="w-6 h-6 text-green-500" />
+            <Icon v-else-if="directusValidation.severity === 'warning'" name="lucide:alert-triangle" class="w-6 h-6 text-yellow-500" />
+            <Icon v-else name="lucide:x-circle" class="w-6 h-6 text-red-500" />
           </div>
-          <div class="validation-content">
-            <h4>Directus Configuration</h4>
-            <p>{{ directusValidation.message }}</p>
-            <p v-if="directusValidation.solution" class="validation-solution">
+          <div>
+            <h4 class="text-lg font-semibold text-gray-900 mb-1">Directus Configuration</h4>
+            <p class="text-gray-700 text-sm">{{ directusValidation.message }}</p>
+            <p v-if="directusValidation.solution" class="text-gray-600 text-xs italic mt-1">
               {{ directusValidation.solution }}
             </p>
           </div>
         </div>
 
         <!-- SendGrid -->
-        <div class="validation-item" :class="sendgridValidation.severity">
-          <div class="validation-icon">
-            <Icon v-if="sendgridValidation.isValid && sendgridValidation.severity !== 'warning'" name="lucide:check" class="w-5 h-5" />
-            <Icon v-else-if="sendgridValidation.severity === 'warning'" name="lucide:alert-triangle" class="w-5 h-5" />
-            <Icon v-else name="lucide:x" class="w-5 h-5" />
+        <div class="flex items-start p-4 rounded-lg" :class="{
+          'bg-red-50 border border-red-300': sendgridValidation.severity === 'error',
+          'bg-yellow-50 border border-yellow-300': sendgridValidation.severity === 'warning',
+          'bg-blue-50 border border-blue-300': sendgridValidation.severity === 'info',
+        }">
+          <div class="flex-shrink-0 mr-3 mt-0.5">
+            <Icon v-if="sendgridValidation.isValid && sendgridValidation.severity !== 'warning'" name="lucide:check-circle" class="w-6 h-6 text-green-500" />
+            <Icon v-else-if="sendgridValidation.severity === 'warning'" name="lucide:alert-triangle" class="w-6 h-6 text-yellow-500" />
+            <Icon v-else name="lucide:x-circle" class="w-6 h-6 text-red-500" />
           </div>
-          <div class="validation-content">
-            <h4>SendGrid Configuration</h4>
-            <p>{{ sendgridValidation.message }}</p>
-            <p v-if="sendgridValidation.solution" class="validation-solution">
+          <div>
+            <h4 class="text-lg font-semibold text-gray-900 mb-1">SendGrid Configuration</h4>
+            <p class="text-gray-700 text-sm">{{ sendgridValidation.message }}</p>
+            <p v-if="sendgridValidation.solution" class="text-gray-600 text-xs italic mt-1">
               {{ sendgridValidation.solution }}
             </p>
           </div>
         </div>
 
         <!-- MJML -->
-        <div class="validation-item" :class="mjmlValidation.severity">
-          <div class="validation-icon">
-            <Icon v-if="mjmlValidation.severity === 'info'" name="lucide:check" class="w-5 h-5" />
-            <Icon v-else name="lucide:alert-triangle" class="w-5 h-5" />
+        <div class="flex items-start p-4 rounded-lg" :class="{
+          'bg-red-50 border border-red-300': mjmlValidation.severity === 'error',
+          'bg-yellow-50 border border-yellow-300': mjmlValidation.severity === 'warning',
+          'bg-blue-50 border border-blue-300': mjmlValidation.severity === 'info',
+        }">
+          <div class="flex-shrink-0 mr-3 mt-0.5">
+            <Icon v-if="mjmlValidation.severity === 'info'" name="lucide:check-circle" class="w-6 h-6 text-green-500" />
+            <Icon v-else name="lucide:alert-triangle" class="w-6 h-6 text-yellow-500" />
           </div>
-          <div class="validation-content">
-            <h4>MJML Configuration</h4>
-            <p>{{ mjmlValidation.message }}</p>
-            <p v-if="mjmlValidation.solution" class="validation-solution">
+          <div>
+            <h4 class="text-lg font-semibold text-gray-900 mb-1">MJML Configuration</h4>
+            <p class="text-gray-700 text-sm">{{ mjmlValidation.message }}</p>
+            <p v-if="mjmlValidation.solution" class="text-gray-600 text-xs italic mt-1">
               {{ mjmlValidation.solution }}
             </p>
           </div>
@@ -76,86 +85,95 @@
       </div>
 
       <!-- Setup Steps -->
-      <div v-if="setupSteps.length > 0" class="setup-steps">
-        <h4>Setup Steps</h4>
-        <div class="steps-list">
-          <div v-for="(step, index) in setupSteps" :key="index" class="setup-step" :class="step.priority">
-            <div class="step-number">{{ index + 1 }}</div>
-            <div class="step-content">
-              <h5>{{ step.title }}</h5>
-              <p>{{ step.description }}</p>
-              <code class="step-action">{{ step.action }}</code>
+      <div v-if="setupSteps.length > 0" class="mb-8">
+        <h4 class="text-xl font-semibold text-gray-900 mb-4">Setup Steps</h4>
+        <div class="space-y-4">
+          <div v-for="(step, index) in setupSteps" :key="index" class="flex items-start p-4 rounded-lg border" :class="{
+            'bg-red-50 border-red-300': step.priority === 'high',
+            'bg-yellow-50 border-yellow-300': step.priority === 'medium',
+            'bg-blue-50 border-blue-300': step.priority === 'low',
+          }">
+            <div class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm mr-4">
+              {{ index + 1 }}
+            </div>
+            <div>
+              <h5 class="text-lg font-semibold text-gray-900 mb-1">{{ step.title }}</h5>
+              <p class="text-gray-700 text-sm mb-2">{{ step.description }}</p>
+              <code class="block bg-gray-900 text-white p-3 rounded-md text-xs overflow-x-auto font-mono">{{ step.action }}</code>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Quick Fixes -->
-      <div v-if="quickFixes.length > 0" class="quick-fixes">
-        <h4>Quick Fixes</h4>
-        <div class="fixes-list">
-          <div v-for="(fix, index) in quickFixes" :key="index" class="quick-fix">
-            <div class="fix-content">
-              <h5>{{ fix.issue }}</h5>
-              <p>{{ fix.description }}</p>
-              <div class="fix-command">
-                <code>{{ fix.command }}</code>
-                <button @click="copyToClipboard(fix.command)" class="copy-btn">
-                  <Icon name="lucide:copy" class="w-4 h-4" />
-                </button>
-              </div>
+      <div v-if="quickFixes.length > 0" class="mb-8">
+        <h4 class="text-xl font-semibold text-gray-900 mb-4">Quick Fixes</h4>
+        <div class="space-y-4">
+          <div v-for="(fix, index) in quickFixes" :key="index" class="p-4 rounded-lg bg-gray-50 border border-gray-200">
+            <h5 class="text-lg font-semibold text-gray-900 mb-1">{{ fix.issue }}</h5>
+            <p class="text-gray-700 text-sm mb-2">{{ fix.description }}</p>
+            <div class="flex items-center space-x-2">
+              <code class="flex-1 bg-gray-900 text-white p-3 rounded-md text-xs overflow-x-auto font-mono">{{ fix.command }}</code>
+              <button @click="copyToClipboard(fix.command)" class="p-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+                <Icon name="lucide:copy" class="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Actions -->
-      <div class="setup-actions">
-        <button @click="testConnection" :disabled="isChecking" class="btn btn-primary">
-          <Icon name="lucide:refresh-cw" class="w-4 h-4" :class="{ 'animate-spin': isChecking }" />
+      <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+        <button @click="runConnectionTest" :disabled="isChecking" class="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:refresh-cw" class="w-5 h-5 mr-2" :class="{ 'animate-spin': isChecking }" />
           {{ isChecking ? 'Testing...' : 'Test Connection' }}
         </button>
-        
-        <button @click="openDocs" class="btn btn-secondary">
-          <Icon name="lucide:book-open" class="w-4 h-4" />
+
+        <button @click="openDocs" class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:book-open" class="w-5 h-5 mr-2" />
           Documentation
         </button>
 
-        <button @click="runSetupWizard" class="btn btn-secondary">
-          <Icon name="lucide:wand-2" class="w-4 h-4" />
+        <button @click="runSetupWizard" class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:wand-2" class="w-5 h-5 mr-2" />
           Setup Wizard
         </button>
       </div>
 
       <!-- Connection Test Results -->
-      <div v-if="connectionTestResult" class="connection-test-result">
-        <div class="test-header">
-          <Icon :name="connectionTestResult.overall.success ? 'lucide:check-circle' : 'lucide:x-circle'" 
-                class="w-5 h-5" 
-                :class="connectionTestResult.overall.success ? 'text-green-500' : 'text-red-500'" />
-          <h4>Connection Test Results</h4>
+      <div v-if="connectionTestResult" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
+        <div class="flex items-center space-x-2 mb-4">
+          <Icon :name="connectionTestResult.overall.success ? 'lucide:check-circle' : 'lucide:x-circle'"
+                class="w-6 h-6"
+                :class="connectionTestResult.overall.success ? 'text-green-600' : 'text-red-600'" />
+          <h4 class="text-xl font-semibold text-gray-900">Connection Test Results</h4>
         </div>
-        
-        <div class="test-results">
-          <div class="test-item" :class="connectionTestResult.directus.status">
-            <strong>Directus:</strong> {{ connectionTestResult.directus.message }}
-            <div v-if="connectionTestResult.directus.details" class="test-details">
-              {{ typeof connectionTestResult.directus.details === 'string' 
-                 ? connectionTestResult.directus.details 
-                 : JSON.stringify(connectionTestResult.directus.details, null, 2) }}
-            </div>
+
+        <div class="space-y-3 mb-6">
+          <div class="p-3 rounded-md" :class="{
+            'bg-green-100 text-green-800': connectionTestResult.directus.status === 'success',
+            'bg-red-100 text-red-800': connectionTestResult.directus.status === 'error',
+            'bg-yellow-100 text-yellow-800': connectionTestResult.directus.status === 'warning',
+          }">
+            <strong class="font-medium">Directus:</strong> {{ connectionTestResult.directus.message }}
+            <pre v-if="connectionTestResult.directus.details" class="mt-2 p-2 bg-gray-800 text-gray-100 rounded-md text-xs overflow-x-auto font-mono">{{ typeof connectionTestResult.directus.details === 'string' ? connectionTestResult.directus.details : JSON.stringify(connectionTestResult.directus.details, null, 2) }}</pre>
           </div>
-          
-          <div class="test-item" :class="connectionTestResult.sendgrid.status">
-            <strong>SendGrid:</strong> {{ connectionTestResult.sendgrid.message }}
+
+          <div class="p-3 rounded-md" :class="{
+            'bg-green-100 text-green-800': connectionTestResult.sendgrid.status === 'success',
+            'bg-red-100 text-red-800': connectionTestResult.sendgrid.status === 'error',
+            'bg-yellow-100 text-yellow-800': connectionTestResult.sendgrid.status === 'warning',
+          }">
+            <strong class="font-medium">SendGrid:</strong> {{ connectionTestResult.sendgrid.message }}
+            <pre v-if="connectionTestResult.sendgrid.details" class="mt-2 p-2 bg-gray-800 text-gray-100 rounded-md text-xs overflow-x-auto font-mono">{{ typeof connectionTestResult.sendgrid.details === 'string' ? connectionTestResult.sendgrid.details : JSON.stringify(connectionTestResult.sendgrid.details, null, 2) }}</pre>
           </div>
         </div>
 
         <div v-if="connectionTestResult.recommendations?.length > 0" class="recommendations">
-          <h5>Recommendations:</h5>
-          <div v-for="(rec, index) in connectionTestResult.recommendations" :key="index" class="recommendation">
-            <h6>{{ rec.title }}</h6>
-            <ul>
+          <h5 class="text-lg font-semibold text-gray-900 mb-3">Recommendations:</h5>
+          <div v-for="(rec, index) in connectionTestResult.recommendations" :key="index" class="mb-4">
+            <h6 class="text-base font-semibold text-gray-800 mb-1">{{ rec.title }}</h6>
+            <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
               <li v-for="step in rec.steps" :key="step">{{ step }}</li>
             </ul>
           </div>
@@ -164,10 +182,51 @@
     </div>
 
     <!-- Toast Notification -->
-    <div v-if="toast.show" class="toast" :class="toast.type">
-      <Icon :name="toast.type === 'success' ? 'lucide:check' : 'lucide:x'" class="w-4 h-4" />
-      {{ toast.message }}
-    </div>
+    <Transition
+      enter-active-class="transform ease-out duration-300 transition"
+      enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="toast.show"
+        class="fixed top-4 right-4 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden z-50"
+        :class="{
+          'bg-green-50 border border-green-200 text-green-800': toast.type === 'success',
+          'bg-red-50 border border-red-200 text-red-800': toast.type === 'error',
+          'bg-blue-50 border border-blue-200 text-blue-800': toast.type === 'info'
+        }"
+      >
+        <div class="p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <Icon
+                :name="toast.type === 'success' ? 'lucide:check-circle' : (toast.type === 'error' ? 'lucide:alert-circle' : 'lucide:info')"
+                :class="{
+                  'text-green-400': toast.type === 'success',
+                  'text-red-400': toast.type === 'error',
+                  'text-blue-400': toast.type === 'info'
+                }"
+                class="w-6 h-6"
+              />
+            </div>
+            <div class="ml-3 w-0 flex-1 pt-0.5">
+              <p class="text-sm font-medium">{{ toast.message }}</p>
+            </div>
+            <div class="ml-4 flex-shrink-0 flex">
+              <button
+                @click="toast.show = false"
+                class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Icon name="lucide:x" class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -182,7 +241,7 @@ const {
   overallValidation,
   getSetupSteps,
   getQuickFixes,
-  testConnection,
+  testConnection, // This is the server-side test connection
   isChecking
 } = useNewsletterSetup()
 
@@ -191,7 +250,7 @@ const connectionTestResult = ref(null)
 const toast = ref({
   show: false,
   message: '',
-  type: 'success'
+  type: 'success' as 'success' | 'error' | 'info'
 })
 
 // Computed
@@ -203,7 +262,7 @@ const runConnectionTest = async () => {
   try {
     const result = await testConnection()
     connectionTestResult.value = result
-    
+
     if (result?.overall.success) {
       showToast('Connection test successful!', 'success')
     } else {
@@ -217,7 +276,14 @@ const runConnectionTest = async () => {
 
 const copyToClipboard = async (text: string) => {
   try {
-    await navigator.clipboard.writeText(text)
+    // Use document.execCommand('copy') for better iframe compatibility
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+
     showToast('Copied to clipboard!', 'success')
   } catch (error) {
     showToast('Failed to copy', 'error')
@@ -239,388 +305,5 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'succes
   }, 3000)
 }
 
-// Alias for template
-// const testConnection = runConnectionTest
 </script>
 
-<style scoped>
-.newsletter-setup-guide {
-  max-width: 800px;
-  margin: 0 auto;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-
-.setup-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.setup-card.success {
-  border-color: #10b981;
-  background: #f0fdf4;
-}
-
-.setup-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.setup-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.setup-description {
-  margin-bottom: 2rem;
-  color: #6b7280;
-  line-height: 1.6;
-}
-
-.validation-results {
-  margin-bottom: 2rem;
-}
-
-.validation-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-.validation-item.error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-}
-
-.validation-item.warning {
-  background: #fffbeb;
-  border: 1px solid #fed7aa;
-}
-
-.validation-item.info {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-}
-
-.validation-icon {
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-}
-
-.validation-content h4 {
-  margin: 0 0 0.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.validation-content p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.validation-solution {
-  margin-top: 0.5rem !important;
-  font-style: italic;
-  color: #4b5563 !important;
-}
-
-.setup-steps, .quick-fixes {
-  margin-bottom: 2rem;
-}
-
-.setup-steps h4, .quick-fixes h4 {
-  margin: 0 0 1rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.steps-list, .fixes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.setup-step, .quick-fix {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
-
-.setup-step.high {
-  border-color: #ef4444;
-  background: #fef2f2;
-}
-
-.setup-step.medium {
-  border-color: #f59e0b;
-  background: #fffbeb;
-}
-
-.setup-step.low {
-  border-color: #3b82f6;
-  background: #eff6ff;
-}
-
-.step-number {
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  background: #3b82f6;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.step-content h5, .fix-content h5 {
-  margin: 0 0 0.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.step-content p, .fix-content p {
-  margin: 0 0 0.5rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.step-action, .fix-command code {
-  display: block;
-  padding: 0.5rem;
-  background: #111827;
-  color: #f9fafb;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 0.75rem;
-  overflow-x: auto;
-}
-
-.fix-command {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.fix-command code {
-  flex: 1;
-  margin: 0;
-}
-
-.copy-btn {
-  padding: 0.5rem;
-  background: #6b7280;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.copy-btn:hover {
-  background: #4b5563;
-}
-
-.setup-actions {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.btn-secondary:hover {
-  background: #e5e7eb;
-}
-
-.connection-test-result {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
-
-.test-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.test-header h4 {
-  margin: 0;
-  font-weight: 600;
-}
-
-.test-results {
-  margin-bottom: 1rem;
-}
-
-.test-item {
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-}
-
-.test-item.success {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.test-item.error {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.test-item.warning {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.test-details {
-  margin-top: 0.5rem;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 0.75rem;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 0.5rem;
-  border-radius: 4px;
-  white-space: pre-wrap;
-}
-
-.recommendations h5 {
-  margin: 0 0 0.5rem;
-  font-weight: 600;
-}
-
-.recommendation {
-  margin-bottom: 1rem;
-}
-
-.recommendation h6 {
-  margin: 0 0 0.5rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-.recommendation ul {
-  margin: 0;
-  padding-left: 1.5rem;
-}
-
-.recommendation li {
-  margin-bottom: 0.25rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.toast {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  animation: slideIn 0.3s ease-out;
-}
-
-.toast.success {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-}
-
-.toast.error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-.toast.info {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #93c5fd;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Responsive */
-@media (max-width: 640px) {
-  .newsletter-setup-guide {
-    padding: 1rem;
-  }
-  
-  .setup-card {
-    padding: 1rem;
-  }
-  
-  .setup-actions {
-    flex-direction: column;
-  }
-  
-  .btn {
-    width: 100%;
-    justify-content: center;
-  }
-}
-</style>

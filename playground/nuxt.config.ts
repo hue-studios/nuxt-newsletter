@@ -2,6 +2,7 @@
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
+  css: ["~/assets/css/tailwind.css"],
   modules: ['../src/module'],
   
   // Tailwind CSS 4 Vite plugin

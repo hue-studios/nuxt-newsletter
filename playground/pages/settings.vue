@@ -217,6 +217,7 @@
 </template>
 
 <script setup>
+import { useNuxtApp } from '#app'
 import { computed, onMounted, ref } from 'vue'
 
 // Page metadata
@@ -245,7 +246,7 @@ const sendgridStatus = ref({
 
 const collectionsInfo = ref({
   installed: 0,
-  total: 10
+  total: 10 // Assuming a total of 10 collections for now (basic + advanced)
 })
 
 const healthChecks = ref([
@@ -263,14 +264,14 @@ const notification = ref({
 })
 
 // Composables
-const { config, isInitialized, directusUrl, mjmlMode, authType, defaultFromEmail, defaultFromName } = useNewsletter()
+const { config, isInitialized, directusUrl, mjmlMode, authType, defaultFromEmail, defaultFromName, connectionStatus } = useNewsletter()
 const { fetchNewsletters, fetchBlockTypes } = useDirectusNewsletter()
 const { sendTestEmail } = useSendGrid()
 const { compileMjmlToHtml } = useMjmlCompiler()
 
 // Module info
 const moduleInfo = computed(() => ({
-  version: '1.0.1',
+  version: '1.0.1', // Hardcoded for now, but could be dynamic from module options
   initialized: isInitialized.value
 }))
 
@@ -284,60 +285,45 @@ const moduleConfig = computed(() => {
   }
 })
 
-// SendGrid configuration status
+// SendGrid configuration status - now derived from connectionStatus
 const sendgridConfig = computed(() => {
-  try {
-    const runtimeConfig = useRuntimeConfig()
-    return {
-      apiKey: !!runtimeConfig.sendgridApiKey,
-      webhookSecret: !!runtimeConfig.sendgridWebhookSecret
-    }
-  } catch (error) {
-    return {
-      apiKey: false,
-      webhookSecret: false
-    }
+  return {
+    apiKey: connectionStatus.value.sendgrid.configured,
+    webhookSecret: connectionStatus.value.sendgrid.hasWebhook
   }
 })
 
-// Environment variables checklist
+// Environment variables checklist - now derived from connectionStatus
 const environmentVariables = computed(() => {
-  let runtimeConfig
-  try {
-    runtimeConfig = useRuntimeConfig()
-  } catch (error) {
-    runtimeConfig = {}
-  }
-  
   return [
     {
       name: 'DIRECTUS_URL',
-      configured: !!(directusUrl.value),
-      status: directusUrl.value ? 'success' : 'error',
+      configured: connectionStatus.value.directus.configured,
+      status: connectionStatus.value.directus.configured ? 'success' : 'error',
       description: 'Your Directus instance URL'
     },
     {
       name: 'DIRECTUS_TOKEN',
-      configured: !!(config.value?.directus?.auth?.token),
-      status: config.value?.directus?.auth?.token ? 'success' : 'error',
+      configured: connectionStatus.value.directus.authConfigured,
+      status: connectionStatus.value.directus.authConfigured ? 'success' : 'error',
       description: 'Directus authentication token'
     },
     {
       name: 'SENDGRID_API_KEY',
-      configured: sendgridConfig.value.apiKey,
-      status: sendgridConfig.value.apiKey ? 'success' : 'error',
+      configured: connectionStatus.value.sendgrid.configured,
+      status: connectionStatus.value.sendgrid.configured ? 'success' : 'error',
       description: 'SendGrid API key for sending emails'
     },
     {
       name: 'SENDGRID_WEBHOOK_SECRET',
-      configured: sendgridConfig.value.webhookSecret,
-      status: sendgridConfig.value.webhookSecret ? 'success' : 'warning',
+      configured: connectionStatus.value.sendgrid.hasWebhook,
+      status: connectionStatus.value.sendgrid.hasWebhook ? 'success' : 'warning',
       description: 'SendGrid webhook verification secret (optional)'
     },
     {
       name: 'DIRECTUS_ADMIN_TOKEN',
-      configured: !!runtimeConfig.directusAdminToken,
-      status: runtimeConfig.directusAdminToken ? 'success' : 'warning',
+      configured: connectionStatus.value.directusAdminTokenConfigured,
+      status: connectionStatus.value.directusAdminTokenConfigured ? 'success' : 'warning',
       description: 'Admin token for system operations (optional)'
     }
   ]
@@ -349,27 +335,28 @@ const testDirectusConnection = async () => {
   directusStatus.value = { text: 'Testing...', class: 'pending', error: null }
 
   try {
-    const newsletters = await fetchNewsletters({ limit: 1 })
-    directusStatus.value = { 
-      text: '✅ Connected', 
-      class: 'success', 
-      error: null 
+    // Attempt to fetch something simple to test connection
+    await fetchNewsletters({ limit: 1 })
+    directusStatus.value = {
+      text: '✅ Connected',
+      class: 'success',
+      error: null
     }
-    
-    // Check collections
+
+    // Check collections by fetching block types
     try {
       const blockTypes = await fetchBlockTypes({ limit: 1 })
-      collectionsInfo.value.installed = blockTypes.length > 0 ? 8 : 6 // Rough estimate
+      collectionsInfo.value.installed = blockTypes.length > 0 ? 8 : 6 // Rough estimate, improve if needed
     } catch {
       collectionsInfo.value.installed = 0
     }
-    
+
     showNotification('Directus connection successful!', 'success')
   } catch (error) {
-    directusStatus.value = { 
-      text: '❌ Failed', 
-      class: 'error', 
-      error: error.message 
+    directusStatus.value = {
+      text: '❌ Failed',
+      class: 'error',
+      error: error.message
     }
     showNotification('Directus connection failed: ' + error.message, 'error')
   } finally {
@@ -382,42 +369,45 @@ const testSendGridConnection = async () => {
   sendgridStatus.value = { text: 'Testing...', class: 'pending', error: null }
 
   try {
-    // Test with a fake newsletter object
+    // This test uses a minimal newsletter object.
+    // The `sendTestEmail` function in useSendGrid will handle the API call.
     const testNewsletter = {
-      subject: 'Connection Test',
-      compiled_html: '<html><body>Test</body></html>'
+      subject: 'SendGrid Connection Test',
+      compiled_html: '<html><body>This is a test email from your Nuxt Newsletter module.</body></html>',
+      from_email: defaultFromEmail.value, // Use the configured default from email
+      from_name: defaultFromName.value,
+      blocks: [] // Empty blocks for a test newsletter
     }
-    
-    // This will fail but we can catch the specific error
-    await sendTestEmail(testNewsletter, 'test@example.com')
-    
-    sendgridStatus.value = { 
-      text: '✅ Connected', 
-      class: 'success', 
-      error: null 
+
+    await sendTestEmail(testNewsletter, 'test@example.com') // Send to a dummy email
+
+    sendgridStatus.value = {
+      text: '✅ API Key Valid (Test Email Sent)',
+      class: 'success',
+      error: null
     }
-    showNotification('SendGrid connection successful!', 'success')
+    showNotification('SendGrid API key is valid! Test email sent to test@example.com.', 'success')
   } catch (error) {
+    let errorMessage = 'Failed to send test email.'
+    let errorClass = 'error'
+
     if (error.message.includes('API key not configured')) {
-      sendgridStatus.value = { 
-        text: '❌ No API Key', 
-        class: 'error', 
-        error: 'API key not configured' 
-      }
+      errorMessage = 'SendGrid API key is missing.'
     } else if (error.message.includes('Forbidden') || error.message.includes('401')) {
-      sendgridStatus.value = { 
-        text: '❌ Invalid API Key', 
-        class: 'error', 
-        error: 'Invalid API key' 
-      }
+      errorMessage = 'SendGrid API key is invalid or unauthorized.'
+    } else if (error.message.includes('email address is not verified')) {
+      errorMessage = 'Sender email is not verified in SendGrid.'
+      errorClass = 'warning'
     } else {
-      sendgridStatus.value = { 
-        text: '⚠️ API Key Valid', 
-        class: 'warning', 
-        error: 'API key is valid but test email failed (expected)' 
-      }
-      showNotification('SendGrid API key is valid!', 'success')
+      errorMessage = `SendGrid test failed: ${error.message}`
     }
+
+    sendgridStatus.value = {
+      text: `❌ ${errorMessage}`,
+      class: errorClass,
+      error: errorMessage
+    }
+    showNotification(`SendGrid test failed: ${errorMessage}`, 'error')
   } finally {
     testing.value.sendgrid = false
   }
@@ -425,7 +415,7 @@ const testSendGridConnection = async () => {
 
 const runHealthChecks = async () => {
   testing.value.health = true
-  
+
   // Reset all checks
   healthChecks.value.forEach(check => {
     check.status = 'pending'
@@ -510,10 +500,17 @@ const runHealthChecks = async () => {
 
 const copyToClipboard = async (text) => {
   try {
-    await navigator.clipboard.writeText(text)
-    showNotification('Copied to clipboard!', 'success')
+    // Use document.execCommand('copy') for better iframe compatibility
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showNotification('Copied to clipboard!', 'success');
   } catch (error) {
-    showNotification('Failed to copy to clipboard', 'error')
+    console.error('Failed to copy to clipboard:', error);
+    showNotification('Failed to copy to clipboard', 'error');
   }
 }
 
@@ -526,9 +523,39 @@ const showNotification = (message, type = 'success') => {
 
 // Auto-run basic checks on mount
 onMounted(() => {
-  // Check collections info
+  // Update Directus status based on connectionStatus
+  if (connectionStatus.value.directus.configured) {
+    directusStatus.value = {
+      text: '✅ Configured',
+      class: 'success',
+      error: null
+    };
+  } else {
+    directusStatus.value = {
+      text: '❌ Not Configured',
+      class: 'error',
+      error: 'Directus URL is missing or default'
+    };
+  }
+
+  // Update SendGrid status based on connectionStatus
+  if (connectionStatus.value.sendgrid.configured) {
+    sendgridStatus.value = {
+      text: '✅ API Key Configured',
+      class: 'success',
+      error: null
+    };
+  } else {
+    sendgridStatus.value = {
+      text: '❌ API Key Missing',
+      class: 'error',
+      error: 'SendGrid API Key is not set'
+    };
+  }
+
+  // Initial check for collections info
   fetchBlockTypes({ limit: 1 }).then(blockTypes => {
-    collectionsInfo.value.installed = blockTypes.length > 0 ? 8 : 6
+    collectionsInfo.value.installed = blockTypes.length > 0 ? 8 : 6 // Rough estimate
   }).catch(() => {
     collectionsInfo.value.installed = 0
   })
@@ -904,23 +931,23 @@ onMounted(() => {
   .settings-page {
     padding: 1rem;
   }
-  
+
   .settings-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .card-header {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
-  
+
   .info-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
   }
-  
+
   .endpoint-item {
     flex-direction: column;
     align-items: flex-start;

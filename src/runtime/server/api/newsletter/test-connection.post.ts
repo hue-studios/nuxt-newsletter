@@ -1,10 +1,11 @@
 // src/runtime/server/api/newsletter/test-connection.post.ts
-import { createDirectus, readMe, rest, staticToken } from '@directus/sdk'
-import { defineEventHandler } from 'h3'
+import { createDirectus, readMe, rest, staticToken } from '@directus/sdk';
+import { defineEventHandler } from 'h3';
+import { $fetch } from 'ofetch'; // Import $fetch for making HTTP requests
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  
+
   const results = {
     directus: { status: 'unchecked', message: '', details: null },
     sendgrid: { status: 'unchecked', message: '', details: null },
@@ -16,11 +17,11 @@ export default defineEventHandler(async (event) => {
     const directusUrl = config.public.newsletter?.directus?.url
     const directusToken = config.directusToken || process.env.DIRECTUS_TOKEN
 
-    if (!directusUrl) {
+    if (!directusUrl || directusUrl === 'http://localhost:8055') { // Added check for default URL
       results.directus = {
         status: 'error',
-        message: 'Directus URL not configured',
-        details: 'Add DIRECTUS_URL to your environment variables'
+        message: 'Directus URL not configured or is default.',
+        details: 'Add DIRECTUS_URL to your environment variables or nuxt.config.ts'
       }
     } else if (!directusToken) {
       results.directus = {
@@ -71,16 +72,17 @@ export default defineEventHandler(async (event) => {
 
     if (!sendgridApiKey) {
       results.sendgrid = {
-        status: 'warning',
+        status: 'error', // Changed to error, as email sending won't work without it
         message: 'SendGrid API key not configured',
         details: 'Email sending is disabled. Add SENDGRID_API_KEY to enable.'
       }
     } else {
-      // Test SendGrid API key validity (simple check)
+      // Test SendGrid API key validity by fetching account details
       try {
         const response = await $fetch('https://api.sendgrid.com/v3/user/account', {
           headers: {
-            'Authorization': `Bearer ${sendgridApiKey}`
+            'Authorization': `Bearer ${sendgridApiKey}`,
+            'Content-Type': 'application/json'
           }
         })
 
@@ -89,18 +91,27 @@ export default defineEventHandler(async (event) => {
           message: 'SendGrid API key is valid',
           details: {
             hasWebhookSecret: !!sendgridWebhookSecret,
-            account: response
+            account: response // Can include account details for debugging if needed
           }
         }
 
         if (!sendgridWebhookSecret) {
           results.overall.warnings.push('SendGrid webhook secret not configured - email analytics will be limited')
         }
-      } catch (sendgridError) {
+      } catch (sendgridError: any) { // Explicitly type sendgridError as any to access .response
+        let errorMessage = 'SendGrid API key is invalid or has insufficient permissions.';
+        if (sendgridError.response?.status === 401 || sendgridError.response?.status === 403) {
+          errorMessage = 'SendGrid API key is invalid or unauthorized.';
+        } else if (sendgridError.message.includes('getaddrinfo ENOTFOUND')) {
+          errorMessage = 'Could not reach SendGrid API. Check network or SendGrid status.';
+        } else if (sendgridError.message) {
+          errorMessage = `SendGrid API test failed: ${sendgridError.message}`;
+        }
+
         results.sendgrid = {
           status: 'error',
-          message: 'SendGrid API key is invalid',
-          details: sendgridError instanceof Error ? sendgridError.message : 'Invalid API key'
+          message: errorMessage,
+          details: sendgridError instanceof Error ? sendgridError.message : 'Unknown error during SendGrid test'
         }
       }
     }
@@ -114,7 +125,7 @@ export default defineEventHandler(async (event) => {
 
   // Determine overall success
   const hasErrors = results.directus.status === 'error' || results.sendgrid.status === 'error'
-  
+
   results.overall = {
     success: !hasErrors,
     warnings: results.overall.warnings
@@ -142,19 +153,19 @@ export default defineEventHandler(async (event) => {
       title: 'Fix SendGrid Configuration',
       steps: [
         'Get API key from https://app.sendgrid.com/settings/api_keys',
-        'Ensure API key has "Mail Send" permission',
+        'Ensure API key has "Mail Send" permission (and "Account" if testing /v3/user/account)',
         'Add SENDGRID_API_KEY to your .env file'
       ]
     })
   }
 
-  if (results.sendgrid.status === 'warning') {
+  if (results.sendgrid.status === 'warning') { // This block will only run if sendgridApiKey is present but webhook is missing
     recommendations.push({
       type: 'info',
-      title: 'Optional: Enable Email Sending',
+      title: 'Optional: Enable Email Analytics',
       steps: [
-        'Add SENDGRID_API_KEY to your .env file',
-        'Optionally add SENDGRID_WEBHOOK_SECRET for analytics'
+        'Add SENDGRID_WEBHOOK_SECRET to your .env file',
+        'Configure SendGrid Inbound Parse Webhook for analytics'
       ]
     })
   }

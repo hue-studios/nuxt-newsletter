@@ -1,37 +1,39 @@
 <!-- playground/pages/list.vue -->
 <template>
-  <div class="newsletter-list-page">
-    <div class="list-header">
-      <div class="header-content">
-        <h1 class="uppercase">Newsletters</h1>
-        <p class="subtitle">Manage your email newsletters</p>
+  <div class="min-h-screen bg-gray-100 p-6 font-sans antialiased">
+    <!-- List Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 mb-6 border-b border-gray-200">
+      <div class="mb-4 sm:mb-0">
+        <h1 class="text-3xl font-bold text-gray-900 uppercase tracking-wide">Newsletters</h1>
+        <p class="text-lg text-gray-600 mt-1">Manage your email newsletters</p>
       </div>
-      <div class="header-actions">
-        <NuxtLink to="/" class="btn btn-primary">
+      <div class="flex-shrink-0">
+        <NuxtLink to="/" class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:plus-circle" class="w-5 h-5 mr-2" />
           Create Newsletter
         </NuxtLink>
       </div>
     </div>
 
     <!-- Filters and Search -->
-    <div class="filters-section">
-      <div class="search-bar">
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6 flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0">
+      <div class="flex-1 min-w-0">
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search newsletters..."
-          class="search-input"
+          placeholder="Search newsletters by title, subject, or preview text..."
+          class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
         />
       </div>
-      <div class="filters">
-        <select v-model="statusFilter" class="filter-select">
+      <div class="flex flex-wrap items-center space-x-3">
+        <select v-model="statusFilter" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
           <option value="">All Status</option>
           <option value="draft">Draft</option>
           <option value="ready">Ready</option>
           <option value="scheduled">Scheduled</option>
           <option value="sent">Sent</option>
         </select>
-        <select v-model="categoryFilter" class="filter-select">
+        <select v-model="categoryFilter" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
           <option value="">All Categories</option>
           <option value="company">Company</option>
           <option value="product">Product</option>
@@ -39,198 +41,258 @@
           <option value="monthly">Monthly</option>
           <option value="event">Event</option>
         </select>
-        <button @click="clearFilters" class="btn btn-secondary btn-sm">
+        <button @click="clearFilters" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <Icon name="lucide:x-circle" class="w-4 h-4 mr-2" />
           Clear Filters
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading newsletters...</p>
+    <div v-if="loading" class="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl shadow-md">
+      <Icon name="lucide:loader-2" class="w-12 h-12 text-blue-500 animate-spin mb-4" />
+      <p class="text-lg text-gray-700 font-medium">Loading newsletters...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="error-state">
-      <div class="error-icon">⚠️</div>
-      <h3>Error Loading Newsletters</h3>
-      <p>{{ error }}</p>
-      <button @click="refreshNewsletters" class="btn btn-primary">
+    <div v-else-if="error" class="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl shadow-md">
+      <Icon name="lucide:alert-triangle" class="w-12 h-12 text-red-500 mb-4" />
+      <h3 class="text-xl font-semibold text-gray-900 mb-2">Error Loading Newsletters</h3>
+      <p class="text-gray-600 mb-6">{{ error }}</p>
+      <button @click="refreshNewsletters" class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+        <Icon name="lucide:refresh-cw" class="w-5 h-5 mr-2" />
         Try Again
       </button>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredNewsletters.length === 0 && !loading" class="empty-state">
-      <div class="empty-icon">📧</div>
-      <h3>{{ newsletters.length === 0 ? 'No newsletters yet' : 'No newsletters match your filters' }}</h3>
-      <p>{{ newsletters.length === 0 ? 'Create your first newsletter to get started' : 'Try adjusting your search or filters' }}</p>
-      <NuxtLink v-if="newsletters.length === 0" to="/" class="btn btn-primary">
+    <div v-else-if="filteredNewsletters.length === 0 && !loading" class="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl shadow-md">
+      <Icon name="lucide:mail-open" class="w-12 h-12 text-gray-400 mb-4" />
+      <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ newsletters.length === 0 ? 'No newsletters yet' : 'No newsletters match your filters' }}</h3>
+      <p class="text-gray-600 mb-6">{{ newsletters.length === 0 ? 'Create your first newsletter to get started' : 'Try adjusting your search or filters' }}</p>
+      <NuxtLink v-if="newsletters.length === 0" to="/" class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+        <Icon name="lucide:plus-circle" class="w-5 h-5 mr-2" />
         Create Your First Newsletter
       </NuxtLink>
     </div>
 
     <!-- Newsletter Grid -->
-    <div v-else class="newsletters-container">
-      <div class="results-info">
+    <div v-else class="bg-white rounded-xl shadow-md overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 text-gray-600 text-sm">
         <p>{{ filteredNewsletters.length }} of {{ newsletters.length }} newsletters</p>
       </div>
 
-      <div class="newsletters-grid">
-        <div 
-          v-for="newsletter in paginatedNewsletters" 
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+        <div
+          v-for="newsletter in paginatedNewsletters"
           :key="newsletter.id"
-          class="newsletter-card"
-          :class="`newsletter-${newsletter.status}`"
+          class="bg-white border rounded-xl shadow-sm overflow-hidden transform transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+          :class="{
+            'border-l-4 border-gray-400': newsletter.status === 'draft',
+            'border-l-4 border-blue-500': newsletter.status === 'ready',
+            'border-l-4 border-purple-500': newsletter.status === 'scheduled',
+            'border-l-4 border-green-500': newsletter.status === 'sent',
+          }"
         >
           <!-- Card Header -->
-          <div class="card-header">
-            <div class="title-section">
-              <h3>{{ newsletter.title }}</h3>
-              <div class="meta-info">
-                <span class="category">{{ newsletter.category || 'General' }}</span>
-                <span class="date">{{ formatDate(newsletter.date_created) }}</span>
+          <div class="p-4 border-b border-gray-200 flex items-start justify-between">
+            <div class="flex-1 pr-4">
+              <h3 class="text-lg font-semibold text-gray-900 leading-tight mb-1">{{ newsletter.title }}</h3>
+              <div class="flex items-center space-x-3 text-sm text-gray-500">
+                <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-medium text-xs">{{ newsletter.category || 'General' }}</span>
+                <span class="text-xs">{{ formatDate(newsletter.date_created) }}</span>
               </div>
             </div>
-            <div class="status-section">
-              <span class="status" :class="`status-${newsletter.status}`">
+            <div class="flex-shrink-0 flex flex-col items-end space-y-2">
+              <span
+                class="px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide"
+                :class="{
+                  'bg-gray-200 text-gray-700': newsletter.status === 'draft',
+                  'bg-blue-100 text-blue-800': newsletter.status === 'ready',
+                  'bg-purple-100 text-purple-800': newsletter.status === 'scheduled',
+                  'bg-green-100 text-green-800': newsletter.status === 'sent',
+                  'bg-yellow-100 text-yellow-800': newsletter.status === 'sending',
+                }"
+              >
                 {{ formatStatus(newsletter.status) }}
               </span>
-              <div class="card-menu">
-                <button @click="toggleMenu(newsletter.id)" class="menu-btn">⋮</button>
-                <div v-if="openMenuId === newsletter.id" class="dropdown-menu">
-                  <button @click="editNewsletter(newsletter)" class="menu-item">
-                    <span class="icon">✏️</span> Edit
-                  </button>
-                  <button @click="duplicateNewsletter(newsletter)" class="menu-item">
-                    <span class="icon">📋</span> Duplicate
-                  </button>
-                  <button @click="sendTestEmail(newsletter)" class="menu-item" :disabled="newsletter.status === 'draft'">
-                    <span class="icon">📤</span> Send Test
-                  </button>
-                  <hr class="menu-divider">
-                  <button @click="deleteNewsletterConfirm(newsletter)" class="menu-item danger">
-                    <span class="icon">🗑️</span> Delete
-                  </button>
+              <div class="relative">
+                <button @click="toggleMenu(newsletter.id)" class="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+                  <Icon name="lucide:more-horizontal" class="w-5 h-5" />
+                </button>
+                <div v-if="openMenuId === newsletter.id" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                  <div class="py-1">
+                    <button @click="editNewsletter(newsletter)" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Icon name="lucide:edit" class="w-4 h-4 mr-3" /> Edit
+                    </button>
+                    <button @click="duplicateNewsletter(newsletter)" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Icon name="lucide:copy" class="w-4 h-4 mr-3" /> Duplicate
+                    </button>
+                    <button @click="sendTestEmail(newsletter)" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" :disabled="newsletter.status === 'draft'">
+                      <Icon name="lucide:mail" class="w-4 h-4 mr-3" /> Send Test
+                    </button>
+                    <hr class="my-1 border-gray-100">
+                    <button @click="deleteNewsletterConfirm(newsletter)" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                      <Icon name="lucide:trash-2" class="w-4 h-4 mr-3" /> Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Card Body -->
-          <div class="card-body">
-            <div class="subject-line">
-              <strong>Subject:</strong> {{ newsletter.subject_line }}
-            </div>
-            <div v-if="newsletter.preview_text" class="preview-text">
-              <strong>Preview:</strong> {{ newsletter.preview_text }}
-            </div>
-            <div class="newsletter-stats">
-              <div class="stat">
-                <span class="stat-label">Blocks:</span>
-                <span class="stat-value">{{ newsletter.blocks?.length || 0 }}</span>
+          <div class="p-4">
+            <p class="text-sm text-gray-700 mb-2"><strong>Subject:</strong> {{ newsletter.subject_line }}</p>
+            <p v-if="newsletter.preview_text" class="text-sm text-gray-600 line-clamp-2">{{ newsletter.preview_text }}</p>
+            <div class="flex items-center space-x-4 mt-4 pt-4 border-t border-gray-100">
+              <div class="flex flex-col items-center text-center">
+                <span class="text-xs text-gray-500 uppercase font-medium mb-0.5">Blocks</span>
+                <span class="text-lg font-semibold text-gray-900">{{ newsletter.blocks?.length || 0 }}</span>
               </div>
-              <div v-if="newsletter.total_opens !== undefined" class="stat">
-                <span class="stat-label">Opens:</span>
-                <span class="stat-value">{{ newsletter.total_opens || 0 }}</span>
+              <div v-if="newsletter.total_opens !== undefined" class="flex flex-col items-center text-center">
+                <span class="text-xs text-gray-500 uppercase font-medium mb-0.5">Opens</span>
+                <span class="text-lg font-semibold text-gray-900">{{ newsletter.total_opens || 0 }}</span>
               </div>
-              <div v-if="newsletter.open_rate" class="stat">
-                <span class="stat-label">Open Rate:</span>
-                <span class="stat-value">{{ newsletter.open_rate.toFixed(1) }}%</span>
+              <div v-if="newsletter.open_rate" class="flex flex-col items-center text-center">
+                <span class="text-xs text-gray-500 uppercase font-medium mb-0.5">Open Rate</span>
+                <span class="text-lg font-semibold text-gray-900">{{ newsletter.open_rate.toFixed(1) }}%</span>
               </div>
             </div>
           </div>
 
           <!-- Card Actions -->
-          <div class="card-actions">
-            <button @click="editNewsletter(newsletter)" class="btn btn-primary btn-sm">
-              Edit
+          <div class="p-4 bg-gray-50 border-t border-gray-200 flex space-x-3 justify-end">
+            <button @click="editNewsletter(newsletter)" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <Icon name="lucide:edit" class="w-4 h-4 mr-2" /> Edit
             </button>
-            <button 
+            <button
               v-if="newsletter.status === 'ready'"
-              @click="sendNewsletter(newsletter)" 
-              class="btn btn-success btn-sm"
+              @click="sendNewsletter(newsletter)"
+              class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
             >
-              Send
+              <Icon name="lucide:send" class="w-4 h-4 mr-2" /> Send
             </button>
-            <button 
+            <button
               v-else-if="newsletter.status === 'draft'"
-              @click="markReady(newsletter)" 
-              class="btn btn-secondary btn-sm"
+              @click="markReady(newsletter)"
+              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Mark Ready
+              <Icon name="lucide:check-circle" class="w-4 h-4 mr-2" /> Mark Ready
             </button>
           </div>
         </div>
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="pagination">
-        <button 
+      <div v-if="totalPages > 1" class="flex items-center justify-center p-6 border-t border-gray-200 bg-gray-50">
+        <button
           @click="currentPage = Math.max(1, currentPage - 1)"
           :disabled="currentPage === 1"
-          class="btn btn-secondary btn-sm"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Previous
+          <Icon name="lucide:chevron-left" class="w-4 h-4 mr-2" /> Previous
         </button>
-        <span class="page-info">
+        <span class="text-gray-700 text-sm mx-4">
           Page {{ currentPage }} of {{ totalPages }}
         </span>
-        <button 
+        <button
           @click="currentPage = Math.min(totalPages, currentPage + 1)"
           :disabled="currentPage === totalPages"
-          class="btn btn-secondary btn-sm"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Next
+          Next <Icon name="lucide:chevron-right" class="w-4 h-4 ml-2" />
         </button>
       </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="modal" @click.self="showDeleteModal = false">
-      <div class="modal-content">
-        <h3>Delete Newsletter</h3>
-        <p>Are you sure you want to delete "{{ newsletterToDelete?.title }}"?</p>
-        <p class="warning-text">This action cannot be undone.</p>
-        <div class="modal-actions">
-          <button @click="confirmDelete" class="btn btn-danger">
-            Delete
-          </button>
-          <button @click="showDeleteModal = false" class="btn btn-secondary">
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 transform scale-100 opacity-100 transition-all duration-300">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">Delete Newsletter</h3>
+        <p class="text-gray-600 mb-2">Are you sure you want to delete "<span class="font-medium">{{ newsletterToDelete?.title }}</span>"?</p>
+        <p class="text-red-600 text-sm font-medium mb-6">This action cannot be undone.</p>
+        <div class="flex justify-end space-x-3 mt-6">
+          <button @click="showDeleteModal = false" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
             Cancel
+          </button>
+          <button @click="confirmDelete" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+            <Icon name="lucide:trash-2" class="w-4 h-4 mr-2" /> Delete
           </button>
         </div>
       </div>
     </div>
 
     <!-- Test Email Modal -->
-    <div v-if="showTestModal" class="modal" @click.self="showTestModal = false">
-      <div class="modal-content">
-        <h3>Send Test Email</h3>
-        <p>Send test email for "{{ testNewsletter?.title }}"</p>
-        <input 
-          v-model="testEmail" 
-          type="email" 
+    <div v-if="showTestModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 transform scale-100 opacity-100 transition-all duration-300">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4">Send Test Email</h3>
+        <p class="text-gray-600 mb-6">Send test email for "<span class="font-medium">{{ testNewsletter?.title }}</span>"</p>
+        <input
+          v-model="testEmail"
+          type="email"
           placeholder="Enter email address"
-          class="form-input"
+          class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
           @keyup.enter="confirmSendTest"
         />
-        <div class="modal-actions">
-          <button @click="confirmSendTest" class="btn btn-primary" :disabled="!testEmail">
-            Send Test
-          </button>
-          <button @click="showTestModal = false" class="btn btn-secondary">
+        <div class="flex justify-end space-x-3 mt-6">
+          <button @click="showTestModal = false" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
             Cancel
+          </button>
+          <button @click="confirmSendTest" class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" :disabled="!testEmail">
+            Send Test
           </button>
         </div>
       </div>
     </div>
+
+    <!-- Notification Toast (re-using the one from index.vue or similar pattern) -->
+    <Transition
+      enter-active-class="transform ease-out duration-300 transition"
+      enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="message.show"
+        class="fixed top-4 right-4 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden z-50"
+        :class="{
+          'bg-green-50 border border-green-200 text-green-800': message.type === 'success',
+          'bg-red-50 border border-red-200 text-red-800': message.type === 'error'
+        }"
+      >
+        <div class="p-4">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <Icon
+                :name="message.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'"
+                :class="message.type === 'success' ? 'text-green-400' : 'text-red-400'"
+                class="w-6 h-6"
+              />
+            </div>
+            <div class="ml-3 w-0 flex-1 pt-0.5">
+              <p class="text-sm font-medium">{{ message.text }}</p>
+            </div>
+            <div class="ml-4 flex-shrink-0 flex">
+              <button
+                @click="message.show = false"
+                class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Icon name="lucide:x" class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { navigateTo } from '#app'; // Import navigateTo
+import { computed, onMounted, ref } from 'vue';
 
 // Page metadata
 definePageMeta({
@@ -252,10 +314,15 @@ const newsletterToDelete = ref(null)
 const showTestModal = ref(false)
 const testNewsletter = ref(null)
 const testEmail = ref('')
+const message = ref({ // Added for notifications
+  show: false,
+  text: '',
+  type: 'success'
+})
 
 // Composables
-const { 
-  fetchNewsletters, 
+const {
+  fetchNewsletters,
   deleteNewsletter: deleteNewsletterFromDirectus,
   updateNewsletter: updateNewsletterInDirectus,
   createNewsletter: createNewsletterInDirectus,
@@ -271,7 +338,7 @@ const filteredNewsletters = computed(() => {
   // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(newsletter => 
+    filtered = filtered.filter(newsletter =>
       newsletter.title?.toLowerCase().includes(query) ||
       newsletter.subject_line?.toLowerCase().includes(query) ||
       newsletter.preview_text?.toLowerCase().includes(query)
@@ -309,7 +376,7 @@ const refreshNewsletters = async () => {
   loading.value = true
   error.value = null
   try {
-    newsletters.value = await fetchNewsletters({ 
+    newsletters.value = await fetchNewsletters({
       limit: 100,
       sort: ['-date_created']
     })
@@ -353,14 +420,14 @@ const duplicateNewsletter = async (newsletter) => {
         id: undefined // Remove ID so Directus creates new ones
       })) || []
     }
-    
+
     await createNewsletterInDirectus(copy)
     await refreshNewsletters()
-    
+
     // Show success message
-    alert('Newsletter duplicated successfully!')
+    showMessage('Newsletter duplicated successfully!', 'success')
   } catch (err) {
-    alert('Error duplicating newsletter: ' + err.message)
+    showMessage('Error duplicating newsletter: ' + err.message, 'error')
   }
 }
 
@@ -376,12 +443,13 @@ const confirmDelete = async () => {
     await refreshNewsletters()
     showDeleteModal.value = false
     newsletterToDelete.value = null
+    showMessage('Newsletter deleted successfully!', 'success')
   } catch (err) {
-    alert('Error deleting newsletter: ' + err.message)
+    showMessage('Error deleting newsletter: ' + err.message, 'error')
   }
 }
 
-const sendTestEmail = (newsletter) => {
+const sendTestEmail = async (newsletter) => {
   testNewsletter.value = newsletter
   testEmail.value = ''
   showTestModal.value = true
@@ -390,21 +458,25 @@ const sendTestEmail = (newsletter) => {
 
 const confirmSendTest = async () => {
   if (!testEmail.value) return
-  
+
   try {
     // Get full newsletter data with compiled HTML
     const fullNewsletter = await fetchNewsletter(testNewsletter.value.id)
-    
+
     if (!fullNewsletter.compiled_html) {
-      alert('Newsletter must be compiled first. Please edit and save the newsletter.')
+      showMessage('Newsletter must be compiled first. Please edit and save the newsletter.', 'error')
       return
     }
-    
-    await sendTestViaGrid(fullNewsletter, testEmail.value)
-    alert('Test email sent to ' + testEmail.value)
+
+    const response = await sendTestViaGrid(fullNewsletter, testEmail.value) // Call the updated composable
+    if (response.status === 'success') {
+      showMessage('Test email sent to ' + testEmail.value, 'success')
+    } else {
+      showMessage(`Test email failed: ${response.message}`, 'error')
+    }
     showTestModal.value = false
   } catch (err) {
-    alert('Error sending test: ' + err.message)
+    showMessage('Error sending test: ' + err.message, 'error')
   }
 }
 
@@ -412,8 +484,9 @@ const markReady = async (newsletter) => {
   try {
     await updateNewsletterInDirectus(newsletter.id, { status: 'ready' })
     await refreshNewsletters()
+    showMessage('Newsletter marked as ready!', 'success')
   } catch (err) {
-    alert('Error updating newsletter status: ' + err.message)
+    showMessage('Error updating newsletter status: ' + err.message, 'error')
   }
 }
 
@@ -443,526 +516,20 @@ const formatStatus = (status) => {
   return statusMap[status] || status
 }
 
+const showMessage = (text, type = 'success') => {
+  message.value = { show: true, text, type }
+  setTimeout(() => {
+    message.value.show = false
+  }, 4000)
+}
+
 // Close menu when clicking outside
 onMounted(() => {
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.card-menu')) {
+    if (openMenuId.value && !e.target.closest('.card-menu')) {
       openMenuId.value = null
     }
   })
 })
 </script>
 
-<style scoped>
-.newsletter-list-page {
-  min-height: 100vh;
-  background: #f8fafc;
-  padding: 2rem;
-}
-
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.header-content h1 {
-  margin: 0;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.subtitle {
-  margin: 0.5rem 0 0;
-  color: #64748b;
-  font-size: 1.125rem;
-}
-
-.filters-section {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.search-bar {
-  flex: 1;
-  min-width: 300px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.filters {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.filter-select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
-  font-size: 0.875rem;
-}
-
-.newsletters-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.results-info {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-.newsletters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
-
-.newsletter-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.newsletter-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-
-.newsletter-draft {
-  border-left: 4px solid #94a3b8;
-}
-
-.newsletter-ready {
-  border-left: 4px solid #3b82f6;
-}
-
-.newsletter-scheduled {
-  border-left: 4px solid #8b5cf6;
-}
-
-.newsletter-sent {
-  border-left: 4px solid #10b981;
-}
-
-.card-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.title-section h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.4;
-}
-
-.meta-info {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: #64748b;
-}
-
-.category {
-  background: #f1f5f9;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.status-section {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status {
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status-draft { background: #f1f5f9; color: #64748b; }
-.status-ready { background: #dbeafe; color: #1d4ed8; }
-.status-scheduled { background: #ede9fe; color: #7c3aed; }
-.status-sent { background: #d1fae5; color: #047857; }
-.status-sending { background: #fef3c7; color: #92400e; }
-
-.card-menu {
-  position: relative;
-}
-
-.menu-btn {
-  padding: 0.5rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 4px;
-  color: #64748b;
-  transition: all 0.2s;
-}
-
-.menu-btn:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  min-width: 160px;
-  overflow: hidden;
-}
-
-.menu-item {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #374151;
-  transition: background 0.2s;
-}
-
-.menu-item:hover:not(:disabled) {
-  background: #f9fafb;
-}
-
-.menu-item:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.menu-item.danger {
-  color: #dc2626;
-}
-
-.menu-item.danger:hover {
-  background: #fef2f2;
-}
-
-.menu-divider {
-  margin: 0;
-  border: none;
-  border-top: 1px solid #e5e7eb;
-}
-
-.card-body {
-  padding: 1.5rem;
-}
-
-.subject-line {
-  margin-bottom: 0.75rem;
-  color: #374151;
-  font-size: 0.875rem;
-}
-
-.preview-text {
-  margin-bottom: 1rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.newsletter-stats {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f1f5f9;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.stat-value {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.card-actions {
-  padding: 1rem 1.5rem;
-  background: #f8fafc;
-  display: flex;
-  gap: 0.75rem;
-}
-
-.pagination {
-  padding: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.page-info {
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-/* States */
-.loading-state,
-.error-state,
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 1rem;
-  border: 3px solid #f3f4f6;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.error-icon,
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.error-state h3,
-.empty-state h3 {
-  margin: 0 0 0.5rem;
-  color: #1f2937;
-}
-
-.warning-text {
-  color: #dc2626;
-  font-size: 0.875rem;
-  margin: 0.5rem 0;
-}
-
-/* Buttons */
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: #6b7280;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #4b5563;
-}
-
-.btn-success {
-  background: #10b981;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #059669;
-}
-
-.btn-danger {
-  background: #dc2626;
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-/* Modal */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 2rem;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-}
-
-.modal-content h3 {
-  margin: 0 0 1rem;
-  color: #1f2937;
-}
-
-.modal-content p {
-  margin: 0.5rem 0;
-  color: #6b7280;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  margin: 1rem 0;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .newsletter-list-page {
-    padding: 1rem;
-  }
-  
-  .list-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .filters-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .filters {
-    justify-content: space-between;
-  }
-  
-  .newsletters-grid {
-    grid-template-columns: 1fr;
-    padding: 1rem;
-    gap: 1rem;
-  }
-  
-  .card-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .status-section {
-    justify-content: space-between;
-    width: 100%;
-  }
-}
-</style>
