@@ -154,9 +154,19 @@
             :srcdoc="iframeContent"
             class="w-full h-full border-0 bg-white"
             :class="iframeClasses"
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts"
             @load="handleIframeLoad"
           />
+          <!-- Alternative approach if sandboxing still causes issues -->
+          <!-- You can also use this alternative without srcdoc -->
+          <!--
+          <iframe
+            ref="previewFrame"
+            :src="iframeSrc"
+            class="w-full h-full border-0 bg-white"
+            :class="iframeClasses"
+            @load="handleIframeLoad"
+          /> -->
         </div>
       </div>
     </div>

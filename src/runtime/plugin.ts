@@ -22,13 +22,18 @@ export default defineNuxtPlugin({
       }
     })
 
+    // Check if SendGrid is configured (only available server-side)
+    const sendgridConfigured = typeof window === 'undefined' 
+      ? !!nuxtApp.$config.sendgridApiKey 
+      : false // On client-side, we can't access private runtime config
+
     // Log initialization in development
     if (import.meta.dev) {
       console.log('[Newsletter] Module initialized v1.0.0', {
         directusUrl: config.directus?.url,
         authType: config.directus?.auth?.type,
         mjmlMode: config.mjmlMode || 'client',
-        sendgridConfigured: !!nuxtApp.$config.sendgridApiKey
+        sendgridConfigured
       })
     }
   }

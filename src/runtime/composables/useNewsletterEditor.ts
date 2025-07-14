@@ -99,13 +99,13 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     blocks.value = []
   }
 
-  const loadFromTemplate = (template: any) => {
-  if (template.blocks_config) {
-    // Clear existing blocks first
-    clearBlocks()
+const loadFromTemplate = (template: any) => {
+  // Clear existing blocks
+  blocks.value = []
 
-    // Parse template blocks safely
-    let templateBlocks
+  // Load blocks from template
+  if (template.blocks_config) {
+    let templateBlocks: any[]
     try {
       templateBlocks = Array.isArray(template.blocks_config)
         ? template.blocks_config
@@ -117,16 +117,19 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
 
     // Validate each block before adding
     templateBlocks.forEach((blockConfig: any, index: number) => {
+      // Handle different possible property names for the block type
+      const blockType = blockConfig.type || blockConfig.block_type_slug || blockConfig.blockType
+      
       // Ensure block has required properties
-      if (!blockConfig.type || typeof blockConfig.type !== 'string') {
+      if (!blockType || typeof blockType !== 'string') {
         console.warn('Invalid block config - missing or invalid type:', blockConfig)
         return
       }
 
       const newBlock: NewsletterBlock = {
         id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: blockConfig.type, // Ensure this is a string slug
-        content: blockConfig.content || {},
+        type: blockType, // Use the extracted block type
+        content: blockConfig.content || blockConfig.data || {}, // Handle both 'content' and 'data' properties
         sort: index
       }
       blocks.value.push(newBlock)

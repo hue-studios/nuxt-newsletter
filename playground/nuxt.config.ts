@@ -20,7 +20,6 @@ export default defineNuxtConfig({
       // API key will be read from runtimeConfig
       defaultFromEmail: 'newsletter@example.com',
       defaultFromName: 'Test Newsletter',
-      apiKey: process.env.SENDGRID_API_KEY || '',
     },
     mjmlMode: 'server',
     prefix: 'Newsletter',
@@ -37,7 +36,7 @@ export default defineNuxtConfig({
 
   // Properly configure runtime config for environment variables
   runtimeConfig: {
-    // Private keys (server-side only)
+    // Private keys (server-side only) - these will NOT be accessible on client
     sendgridApiKey: process.env.SENDGRID_API_KEY || '',
     sendgridWebhookSecret: process.env.SENDGRID_WEBHOOK_SECRET || '',
     directusAdminToken: process.env.DIRECTUS_ADMIN_TOKEN || '',
@@ -46,7 +45,16 @@ export default defineNuxtConfig({
     public: {
       newsletter: {
         dev: true,
-        siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+        siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+        directusUrl: process.env.DIRECTUS_URL || 'http://localhost:8055',
+        // Add flags for feature availability on client-side
+        features: {
+          sendgridEnabled: !!(process.env.SENDGRID_API_KEY),
+          directusEnabled: !!(process.env.DIRECTUS_URL),
+        },
+        // Default email settings that can be accessed client-side
+        defaultFromEmail: 'newsletter@example.com',
+        defaultFromName: 'Test Newsletter'
       }
     }
   },

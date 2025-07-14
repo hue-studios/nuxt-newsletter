@@ -1,4 +1,4 @@
-// src/runtime/composables/useSendGrid.ts
+// src/runtime/composables/useSendGrid.ts - Updated for proper client/server handling
 import { useRuntimeConfig } from '#app'
 import { $fetch } from 'ofetch'
 import type { NewsletterData } from './useNewsletterEditor'
@@ -21,85 +21,67 @@ export interface SendGridSendOptions {
   trackingSettings?: {
     clickTracking?: { enable: boolean; enableText?: boolean }
     openTracking?: { enable: boolean; substitutionTag?: string }
+    subscriptionTracking?: { enable: boolean }
   }
   customArgs?: Record<string, string>
 }
 
-interface SendGridMessage {
-  to: SendGridRecipient[]
-  from: {
-    email: string
-    name: string
-  }
-  reply_to?: {
-    email: string
-    name?: string
-  }
-  subject: string
-  html: string
-  text?: string
-  categories?: string[]
-  custom_args?: Record<string, string>
-  send_at?: number
-  batch_id?: string
-  asm?: {
-    group_id: number
-    groups_to_display?: number[]
-  }
-  tracking_settings?: {
-    click_tracking?: {
-      enable: boolean
-      enable_text?: boolean
-    }
-    open_tracking?: {
-      enable: boolean
-      substitution_tag?: string
-    }
-    subscription_tracking?: {
-      enable: boolean
-    }
-  }
-}
-
 export function useSendGrid() {
   const config = useRuntimeConfig()
-  // The apiKey is only available on the server-side runtimeConfig.
-  // We'll rely on server routes to access it for actual sending.
-  // For client-side checks, we rely on the 'configured' status from module.ts.
-  const apiKey = config.sendgridApiKey; // This will be undefined on client, only available on server
+  
+  // Check if we're on server side and have access to private config
+  const isServer = typeof window === 'undefined'
+  const apiKey = isServer ? config.sendgridApiKey : undefined
+  
+  // Check if SendGrid is configured based on public config flags
+  const isConfigured = config.public.newsletter?.features?.sendgridEnabled ?? false
 
-  // Send newsletter via SendGrid
-  // This function is primarily intended to be called from a server-side Nuxt API route
-  // where the API key is accessible. If called client-side, it would need a proxy route.
+  // Send newsletter via SendGrid (server-side only or via API route)
   const sendNewsletter = async (
     newsletter: NewsletterData & { compiled_html: string },
     recipients: SendGridRecipient[],
     options?: SendGridSendOptions
   ) => {
-    // This check is for server-side execution or if a proxy is not used.
-    // For client-side calls, you'd typically have a server endpoint proxy this.
+    // If we're on client side, use the API route proxy
+    if (!isServer) {
+      return await $fetch('/api/newsletter/send', {
+        method: 'POST',
+        body: {
+          newsletter,
+          recipients,
+          options
+        }
+      })
+    }
+
+    // Server-side direct SendGrid API call
     if (!apiKey) {
-      throw new Error('SendGrid API key not configured. This function should be called server-side or via a proxy.');
+      throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.')
     }
 
     if (!newsletter.compiled_html) {
-      throw new Error('Newsletter must be compiled before sending');
+      throw new Error('Newsletter must be compiled before sending')
     }
 
-    const message: SendGridMessage = {
-      to: recipients,
+    const message = {
+      personalizations: [{
+        to: recipients.map(r => ({ email: r.email, name: r.name })),
+        custom_args: {
+          newsletter_id: newsletter.id || 'draft',
+          newsletter_slug: newsletter.slug || 'draft',
+          ...options?.customArgs
+        },
+        substitutions: recipients[0]?.substitutions || {}
+      }],
       from: {
         email: options?.fromEmail || config.public.newsletter?.defaultFromEmail || 'newsletter@example.com',
         name: options?.fromName || config.public.newsletter?.defaultFromName || 'Newsletter'
       },
       subject: newsletter.subject,
-      html: newsletter.compiled_html,
+      content: [
+        { type: 'text/html', value: newsletter.compiled_html }
+      ],
       categories: options?.categories || ['newsletter', newsletter.id || 'draft'],
-      custom_args: {
-        newsletter_id: newsletter.id || 'draft',
-        newsletter_slug: newsletter.slug || 'draft', // Assuming newsletter can have a slug
-        ...options?.customArgs
-      },
       tracking_settings: {
         click_tracking: {
           enable: options?.trackingSettings?.clickTracking?.enable ?? true,
@@ -138,24 +120,7 @@ export function useSendGrid() {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        body: {
-          personalizations: [{
-            to: recipients.map(r => ({ email: r.email, name: r.name })),
-            custom_args: message.custom_args,
-            substitutions: recipients[0]?.substitutions || {} // Assuming first recipient's substitutions apply to all
-          }],
-          from: message.from,
-          reply_to: message.reply_to,
-          subject: message.subject,
-          content: [
-            { type: 'text/html', value: message.html }
-          ],
-          categories: message.categories,
-          tracking_settings: message.tracking_settings,
-          batch_id: message.batch_id,
-          send_at: message.send_at,
-          asm: message.asm
-        }
+        body: message
       })
 
       return {
@@ -169,179 +134,38 @@ export function useSendGrid() {
     }
   }
 
-  // Send test email - now calls the server-side /api/newsletter/test-connection route
-  const sendTestEmail = async (
-    newsletter: NewsletterData & { compiled_html: string }, // These parameters are not used by the server route for key validation
-    testEmail: string // This parameter is not used by the server route for key validation
-  ) => {
+  // Test SendGrid connection (always uses API route for security)
+  const testConnection = async () => {
     try {
-      // Call the server-side endpoint that performs the SendGrid API key validation
       const response = await $fetch('/api/newsletter/test-connection', {
-        method: 'POST',
-        // No body needed for a simple key validation, as the server route
-        // accesses the API key directly from runtimeConfig.
-      });
-      // The server route returns a structured response with directus and sendgrid statuses
-      return response.sendgrid; // Return only the sendgrid part of the response
-    } catch (error: any) {
-      console.error('Client-side SendGrid test email error:', error);
-      // Re-throw to be caught by the settings page
-      throw new Error(error.data?.message || 'Failed to test SendGrid API via server.');
-    }
-  }
-
-  // Create batch for large sends
-  const createBatch = async () => {
-    if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
-    }
-
-    try {
-      const response = await $fetch('https://api.sendgrid.com/v3/mail/batch', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        }
+        method: 'POST'
       })
-
-      return (response as any).batch_id
-    } catch (error) {
-      console.error('SendGrid batch creation error:', error)
-      throw error
-    }
-  }
-
-  // Get batch status
-  const getBatchStatus = async (batchId: string) => {
-    if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
-    }
-
-    try {
-      const response = await $fetch(`https://api.sendgrid.com/v3/mail/batch/${batchId}`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      })
-
       return response
     } catch (error) {
-      console.error('SendGrid batch status error:', error)
+      console.error('SendGrid test error:', error)
       throw error
     }
   }
 
-  // Cancel scheduled send
-  const cancelScheduledSend = async (batchId: string) => {
-    if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
-    }
-
+  // Send test email (uses API route)
+  const sendTestEmail = async (testEmail: string) => {
     try {
-      await $fetch(`https://api.sendgrid.com/v3/user/scheduled_sends`, {
+      const response = await $fetch('/api/newsletter/send-test', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: {
-          batch_id: batchId,
-          status: 'cancel'
-        }
+        body: { email: testEmail }
       })
-
-      return { success: true }
-    } catch (error) {
-      console.error('SendGrid cancel scheduled send error:', error)
-      throw error
-    }
-  }
-
-  // Get suppression lists
-  const getSuppressions = async (type: 'bounces' | 'blocks' | 'invalid_emails' | 'spam_reports' | 'unsubscribes') => {
-    if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
-    }
-
-    try {
-      const response = await $fetch(`https://api.sendgrid.com/v3/suppression/${type}`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      })
-
       return response
     } catch (error) {
-      console.error(`SendGrid get ${type} error:`, error)
-      throw error
-    }
-  }
-
-  // Add to suppression list
-  const addToSuppressionList = async (
-    type: 'bounces' | 'blocks' | 'invalid_emails' | 'spam_reports' | 'unsubscribes',
-    emails: string[]
-  ) => {
-    if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
-    }
-
-    try {
-      const response = await $fetch(`https://api.sendgrid.com/v3/suppression/${type}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: {
-          emails: emails.map(email => ({ email }))
-        }
-      })
-
-      return response
-    } catch (error) {
-      console.error(`SendGrid add to ${type} error:`, error)
-      throw error
-    }
-  }
-
-  // Remove from suppression list
-  const removeFromSuppressionList = async (
-    type: 'bounces' | 'blocks' | 'invalid_emails' | 'spam_reports' | 'unsubscribes',
-    emails: string[]
-  ) => {
-    if (!apiKey) {
-      throw new Error('SendGrid API key not configured')
-    }
-
-    try {
-      const response = await $fetch(`https://api.sendgrid.com/v3/suppression/${type}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: {
-          emails
-        }
-      })
-
-      return response
-    } catch (error) {
-      console.error(`SendGrid remove from ${type} error:`, error)
+      console.error('Test email error:', error)
       throw error
     }
   }
 
   return {
     sendNewsletter,
-    sendTestEmail, // This now calls the server route
-    createBatch,
-    getBatchStatus,
-    cancelScheduledSend,
-    getSuppressions,
-    addToSuppressionList,
-    removeFromSuppressionList
+    testConnection,
+    sendTestEmail,
+    isConfigured,
+    isServer
   }
 }
