@@ -1,13 +1,13 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-// import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   modules: ['../src/module'],
   
   // // Tailwind CSS 4 Vite plugin
-  // vite: {
-  //   plugins: [tailwindcss()],
-  // },
+  vite: {
+    plugins: [tailwindcss()],
+  },
   
   newsletter: {
     directus: {

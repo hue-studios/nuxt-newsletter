@@ -1,47 +1,33 @@
-# Complete Setup Guide for Nuxt Newsletter Module
+# @hue-studios/nuxt-newsletter
 
-## Prerequisites
+A modern, feature-rich newsletter module for Nuxt 3 with Directus CMS integration, SendGrid email delivery, drag-and-drop editing, and Tailwind CSS 4 support.
 
-- Nuxt 3.0+
-- Node.js 18+
-- Directus 11+ instance
-- SendGrid account with API key
+## ✨ Features
 
-## Installation
+- 🎨 **Modern Drag-Drop Editor** - Intuitive block-based newsletter creation
+- 📱 **Responsive Preview** - Real-time preview with device frames
+- 🎯 **MJML-based** - Industry-standard responsive email framework
+- 🗄️ **Directus CMS** - Complete newsletter management system
+- 📧 **SendGrid Integration** - Professional email delivery with analytics
+- 🎨 **Tailwind CSS 4** - Modern styling with automatic setup
+- 🔄 **Flexible Auth** - Static tokens or middleware-based authentication
+- 🌙 **Dark Mode** - Built-in dark mode support
+- 🚀 **Performance** - Server-side MJML compilation option
+- 🧩 **Extensible** - Easy to add custom block types
+- 🎯 **User-Friendly** - Designed for the best possible user experience
+
+## 📦 Installation
 
 ```bash
-# Install the module
 npm install @hue-studios/nuxt-newsletter
 
-# Install peer dependencies
-npm install @vueuse/nuxt @directus/sdk
-
-# For server-side MJML compilation (optional but recommended)
+# Optional: Install MJML for server-side compilation (recommended)
 npm install mjml
 ```
 
-## Configuration
+## 🚀 Quick Start
 
-### 1. Environment Variables
-
-Create `.env` file:
-
-```bash
-# Directus Configuration
-DIRECTUS_URL=https://your-directus.com
-DIRECTUS_TOKEN=your-static-token        # For static auth
-DIRECTUS_ADMIN_TOKEN=admin-token        # For webhooks & system operations
-
-# SendGrid Configuration
-SENDGRID_API_KEY=SG.your-api-key-here
-SENDGRID_WEBHOOK_SECRET=your-webhook-secret
-
-# Optional
-NUXT_PUBLIC_SITE_URL=https://your-site.com
-SESSION_SECRET=your-session-secret       # If using session auth
-```
-
-### 2. Nuxt Configuration
+### 1. Configure the Module
 
 ```typescript
 // nuxt.config.ts
@@ -49,21 +35,16 @@ export default defineNuxtConfig({
   modules: ['@hue-studios/nuxt-newsletter'],
   
   newsletter: {
-    // Directus configuration
+    // Directus configuration (required)
     directus: {
       url: process.env.DIRECTUS_URL!,
       auth: {
-        // Option 1: Static token (simple)
-        type: 'static',
-        token: process.env.DIRECTUS_TOKEN
-        
-        // Option 2: Middleware-based (secure)
-        // type: 'middleware',
-        // middleware: 'auth' // Your auth middleware name
+        type: 'static', // or 'middleware'
+        token: process.env.DIRECTUS_TOKEN // for static auth
       }
     },
     
-    // SendGrid configuration
+    // SendGrid configuration (optional but recommended)
     sendgrid: {
       apiKey: process.env.SENDGRID_API_KEY,
       webhookSecret: process.env.SENDGRID_WEBHOOK_SECRET,
@@ -75,167 +56,54 @@ export default defineNuxtConfig({
     mjmlMode: 'server', // 'server' or 'client'
     
     // Component prefix
-    prefix: 'Newsletter' // Components will be <NewsletterEditor>, etc.
+    prefix: 'Newsletter', // Creates <NewsletterEditor>, etc.
+    
+    // Modern UI configuration
+    ui: {
+      icons: 'lucide', // 'lucide', 'heroicons', or 'tabler'
+      enableDragDrop: true, // Enable drag and drop functionality
+      autoInstallTailwind: true, // Auto-install Tailwind CSS 4
+      theme: {
+        primaryColor: 'blue', // Primary color for the interface
+        darkMode: false // Enable dark mode support
+      }
+    },
+    
+    // Development mode
+    dev: false // Enable enhanced error messages and helpers
   }
 })
 ```
 
-### 3. TypeScript Configuration
-
-Add to `tsconfig.json`:
-
-```json
-{
-  "compilerOptions": {
-    "paths": {
-      "#newsletter/*": ["./node_modules/@hue-studios/nuxt-newsletter/dist/runtime/*"]
-    }
-  }
-}
-```
-
-## Directus Setup
-
-### 1. Run Setup Scripts
+### 2. Set Up Environment Variables
 
 ```bash
-# Install core collections
-node node_modules/@hue-studios/nuxt-newsletter/scripts/install-directus-collections.js \
-  https://your-directus.com admin@example.com your-password
+# .env
+DIRECTUS_URL=https://your-directus.com
+DIRECTUS_TOKEN=your-static-token
+SENDGRID_API_KEY=SG.your-api-key-here
+SENDGRID_WEBHOOK_SECRET=your-webhook-secret
 
-# Install advanced block types (optional)
-node node_modules/@hue-studios/nuxt-newsletter/scripts/create-advanced-blocks.js \
-  https://your-directus.com admin@example.com your-password
+# Optional
+DIRECTUS_ADMIN_TOKEN=admin-token
 ```
 
-### 2. Manual Collection Setup (if scripts fail)
+### 3. Run Setup Wizard (Recommended)
 
-Create these collections in Directus:
+```bash
+# Interactive setup wizard
+npm run newsletter:setup-wizard
 
-1. **newsletter_templates** - Reusable templates
-2. **block_types** - MJML block definitions
-3. **newsletters** - Main newsletter content
-4. **newsletter_blocks** - Newsletter content blocks
-5. **subscribers** - Email subscribers
-6. **mailing_lists** - Subscriber lists
-7. **mailing_lists_subscribers** - Junction table
-8. **newsletter_sends** - Send history
-9. **newsletter_analytics** - Event tracking
-
-### 3. Permissions Setup
-
-Grant appropriate permissions for your users:
-
-```javascript
-// Example permissions for 'Editor' role
-{
-  newsletters: { create: true, read: true, update: true, delete: true },
-  newsletter_blocks: { create: true, read: true, update: true, delete: true },
-  block_types: { read: true },
-  newsletter_templates: { read: true },
-  subscribers: { read: true },
-  mailing_lists: { read: true },
-  newsletter_analytics: { read: true }
-}
+# Or manual setup
+npm run newsletter:setup [directus-url] [email] [password]
+npm run newsletter:advanced-blocks [directus-url] [email] [password]
 ```
 
-## SendGrid Configuration
-
-### 1. Create API Key
-
-1. Go to SendGrid Settings → API Keys
-2. Create a new key with permissions:
-   - Mail Send: Full Access
-   - Suppressions: Full Access
-   - Stats: Read Access
-   - Webhook: Full Access
-
-### 2. Configure Event Webhook
-
-1. Go to Settings → Mail Settings → Event Webhook
-2. HTTP Post URL: `https://your-app.com/api/newsletter/sendgrid-webhook`
-3. Events to track:
-   - Delivered
-   - Opened
-   - Clicked
-   - Bounced
-   - Spam Reports
-   - Unsubscribe
-   - Dropped
-
-### 3. Set Webhook Verification
-
-1. Enable "Webhook Verification"
-2. Copy the verification key to `SENDGRID_WEBHOOK_SECRET`
-
-## Authentication Options
-
-### Option 1: Static Token (Simple)
-
-Best for internal tools or trusted environments:
-
-```typescript
-newsletter: {
-  directus: {
-    auth: {
-      type: 'static',
-      token: process.env.DIRECTUS_TOKEN
-    }
-  }
-}
-```
-
-### Option 2: Middleware-based (Secure)
-
-For public-facing apps with user authentication:
-
-```typescript
-// nuxt.config.ts
-newsletter: {
-  directus: {
-    auth: {
-      type: 'middleware',
-      middleware: 'auth' // Your middleware name
-    }
-  }
-}
-
-// middleware/auth.ts
-export default defineNuxtRouteMiddleware(async (to, from) => {
-  const { setAuthToken } = useDirectusNewsletter()
-  
-  // Get token from your auth system
-  const token = await getAuthToken()
-  
-  if (token) {
-    setAuthToken(token)
-  } else {
-    return navigateTo('/login')
-  }
-})
-
-// pages/admin/newsletter.vue
-<template>
-  <div>
-    <NewsletterEditor v-model="newsletter" />
-  </div>
-</template>
-
-<script setup>
-definePageMeta({
-  middleware: 'auth'
-})
-</script>
-```
-
-## Usage Examples
-
-### 1. Basic Newsletter Page
+### 4. Use in Your Pages
 
 ```vue
 <template>
   <div>
-    <h1>Create Newsletter</h1>
     <NewsletterEditor 
       v-model="newsletter" 
       :show-preview="true"
@@ -261,114 +129,369 @@ const save = async () => {
 
 const send = async () => {
   const recipients = [
-    { email: 'test@example.com', name: 'Test User' }
+    { email: 'subscriber@example.com', name: 'Subscriber' }
   ]
   await sendNewsletter(newsletter.value, recipients)
 }
 </script>
 ```
 
-### 2. With Templates
+## 🔧 Configuration Options
+
+### Core Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `directus.url` | `string` | **required** | Your Directus instance URL |
+| `directus.auth.type` | `'static' \| 'middleware'` | `'static'` | Authentication method |
+| `directus.auth.token` | `string` | - | Static auth token (when type is 'static') |
+| `directus.auth.middleware` | `string` | `'auth'` | Middleware name (when type is 'middleware') |
+| `sendgrid.apiKey` | `string` | - | SendGrid API key for email delivery |
+| `sendgrid.webhookSecret` | `string` | - | Webhook verification secret |
+| `sendgrid.defaultFromEmail` | `string` | `'newsletter@example.com'` | Default sender email |
+| `sendgrid.defaultFromName` | `string` | `'Newsletter'` | Default sender name |
+| `mjmlMode` | `'client' \| 'server'` | `'client'` | MJML compilation mode |
+| `prefix` | `string` | `'Newsletter'` | Component prefix |
+| `dev` | `boolean` | `false` | Enable development helpers |
+
+### UI Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `ui.icons` | `'lucide' \| 'heroicons' \| 'tabler'` | `'lucide'` | Icon library to use |
+| `ui.enableDragDrop` | `boolean` | `true` | Enable drag and drop functionality |
+| `ui.autoInstallTailwind` | `boolean` | `true` | Auto-install TailwindCSS 4 if not present |
+| `ui.theme.primaryColor` | `string` | `'blue'` | Primary color for the interface |
+| `ui.theme.darkMode` | `boolean` | `false` | Enable dark mode support |
+
+## 🎨 UI Customization
+
+### Icon Libraries
+
+Choose your preferred icon library:
+
+```typescript
+newsletter: {
+  ui: {
+    icons: 'heroicons' // Options: 'lucide', 'heroicons', 'tabler'
+  }
+}
+```
+
+### Dark Mode
+
+Enable dark mode support:
+
+```typescript
+newsletter: {
+  ui: {
+    theme: {
+      darkMode: true // Automatically installs @nuxtjs/color-mode
+    }
+  }
+}
+```
+
+### Tailwind CSS 4
+
+The module automatically sets up Tailwind CSS 4 by default. To disable:
+
+```typescript
+newsletter: {
+  ui: {
+    autoInstallTailwind: false // Manage Tailwind CSS manually
+  }
+}
+```
+
+### Custom Theme Colors
+
+```typescript
+newsletter: {
+  ui: {
+    theme: {
+      primaryColor: 'indigo' // Any Tailwind color
+    }
+  }
+}
+```
+
+## 🔐 Authentication Options
+
+### Static Token (Simple)
+
+Best for internal tools or trusted environments:
+
+```typescript
+newsletter: {
+  directus: {
+    auth: {
+      type: 'static',
+      token: process.env.DIRECTUS_TOKEN
+    }
+  }
+}
+```
+
+### Middleware-based (Secure)
+
+For public-facing apps with user authentication:
+
+```typescript
+// nuxt.config.ts
+newsletter: {
+  directus: {
+    auth: {
+      type: 'middleware',
+      middleware: 'auth' // Your middleware name
+    }
+  }
+}
+
+// middleware/auth.ts
+export default defineNuxtRouteMiddleware(async () => {
+  const { setAuthToken } = useDirectusNewsletter()
+  const token = await getAuthToken() // Your auth logic
+  
+  if (token) {
+    setAuthToken(token)
+  } else {
+    return navigateTo('/login')
+  }
+})
+```
+
+## 🧩 Available Composables
+
+### `useNewsletter()`
+Access module configuration and state:
+```typescript
+const { 
+  isInitialized,    // Module initialization status
+  config,           // Full module configuration
+  directusUrl,      // Directus URL
+  authType,         // Authentication type
+  mjmlMode,         // MJML compilation mode
+  defaultFromEmail, // Default sender email
+  defaultFromName   // Default sender name
+} = useNewsletter()
+```
+
+### `useNewsletterEditor()`
+Newsletter editor state management:
+```typescript
+const { 
+  newsletter,       // Reactive newsletter data
+  blocks,          // Newsletter blocks array
+  addBlock,        // Add new block
+  removeBlock,     // Remove block by ID
+  updateBlock,     // Update block content
+  moveBlock,       // Move block position
+  duplicateBlock,  // Duplicate a block
+  loadFromTemplate // Load from template
+} = useNewsletterEditor(initialData)
+```
+
+### `useDirectusNewsletter()`
+Directus operations:
+```typescript
+const { 
+  setAuthToken,              // Set auth token (middleware mode)
+  fetchNewsletters,          // Get newsletters list
+  fetchNewsletter,           // Get single newsletter
+  createNewsletter,          // Create new newsletter
+  updateNewsletter,          // Update existing newsletter
+  deleteNewsletter,          // Delete newsletter
+  fetchBlockTypes,           // Get available block types
+  fetchTemplates,            // Get newsletter templates
+  fetchSubscribers,          // Get subscribers
+  fetchMailingLists,         // Get mailing lists
+  fetchMailingListSubscribers // Get list subscribers
+} = useDirectusNewsletter()
+```
+
+### `useSendGrid()`
+Email operations:
+```typescript
+const { 
+  sendNewsletter,          // Send newsletter to recipients
+  sendTestEmail,           // Send test email
+  createBatch,             // Create batch for large sends
+  getBatchStatus,          // Check batch status
+  cancelScheduledSend,     // Cancel scheduled send
+  getSuppressions,         // Get suppression lists
+  addToSuppressionList,    // Add to suppression
+  removeFromSuppressionList // Remove from suppression
+} = useSendGrid()
+```
+
+### `useMjmlCompiler()`
+MJML compilation utilities:
+```typescript
+const { 
+  isCompiling,            // Compilation status
+  compilationError,       // Compilation errors
+  compileHandlebars,      // Compile Handlebars template
+  compileBlockToMjml,     // Compile single block
+  compileNewsletterToMjml,// Compile full newsletter
+  compileMjmlToHtml,      // Convert MJML to HTML
+  loadBlockTypes          // Load block types from Directus
+} = useMjmlCompiler()
+```
+
+### `useNewsletterErrors()`
+User-friendly error handling:
+```typescript
+const { 
+  currentError,          // Current error state
+  errorHistory,          // Error history
+  handleError,           // Handle error with context
+  clearError,            // Clear current error
+  parseError,            // Parse error to user-friendly message
+  isCritical,            // Check if error is critical
+  getSetupSuggestions    // Get setup suggestions for error
+} = useNewsletterErrors()
+```
+
+### `useDragAndDrop()` (when enabled)
+Drag and drop functionality:
+```typescript
+const { 
+  draggedIndex,         // Currently dragged item index
+  dragOverIndex,        // Current drop target index
+  isDragging,           // Dragging state
+  getDragAttributes,    // Get drag HTML attributes
+  getDragClasses,       // Get drag CSS classes
+  animateMove           // Animate element after drop
+} = useDragAndDrop({
+  onMove: (from, to) => moveBlock(from, to),
+  disabled: false
+})
+```
+
+## 📚 Components
+
+### `<NewsletterEditor>`
+Main editor component with drag-drop support:
+```vue
+<NewsletterEditor 
+  v-model="newsletter"
+  :show-preview="true"
+  @update:compiled="handleCompiled"
+/>
+```
+
+### `<NewsletterPreview>`
+Live preview with device frames:
+```vue
+<NewsletterPreview 
+  :newsletter="newsletter"
+  :block-types="blockTypes"
+/>
+```
+
+### `<NewsletterBlock>`
+Individual block editor:
+```vue
+<NewsletterBlock 
+  :block="block"
+  :block-type="blockType"
+  @update="updateBlock"
+/>
+```
+
+## 🛠️ Development Mode
+
+Enable development mode for enhanced debugging:
+
+```typescript
+newsletter: {
+  dev: true // or use nuxt.options.dev
+}
+```
+
+This enables:
+- Enhanced error messages with solutions
+- Detailed setup instructions in console
+- Development middleware for route debugging
+- Verbose logging for troubleshooting
+
+## 🚨 Error Handling
+
+The module includes user-friendly error handling:
 
 ```vue
 <script setup>
-const { fetchTemplates } = useDirectusNewsletter()
-const { loadFromTemplate } = useNewsletterEditor()
+const { handleError, currentError, getSetupSuggestions } = useNewsletterErrors()
 
-const templates = await fetchTemplates()
-
-const applyTemplate = (templateId) => {
-  const template = templates.find(t => t.id === templateId)
-  loadFromTemplate(template)
+try {
+  await someNewsletterOperation()
+} catch (error) {
+  const friendlyError = handleError(error, 'Creating newsletter')
+  
+  // friendlyError includes:
+  // - message: User-friendly error message
+  // - solution: How to fix the issue
+  // - severity: 'error' | 'warning' | 'info'
+  // - docs: Link to relevant documentation
 }
 </script>
+
+<template>
+  <div v-if="currentError" class="error-alert">
+    <h3>{{ currentError.message }}</h3>
+    <p>{{ currentError.solution }}</p>
+    <ul v-if="getSetupSuggestions(currentError).length">
+      <li v-for="suggestion in getSetupSuggestions(currentError)">
+        {{ suggestion }}
+      </li>
+    </ul>
+  </div>
+</template>
 ```
 
-### 3. Custom Block Type
+## 📋 Directus Collections
 
-Create in Directus `block_types` collection:
+The module creates these collections:
 
-```javascript
-{
-  name: "Custom CTA",
-  slug: "custom-cta",
-  category: "interactive",
-  icon: "ads_click",
-  mjml_template: `
-<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    <mj-text font-size="24px" color="{{text_color}}" align="center">
-      {{title}}
-    </mj-text>
-    <mj-button 
-      background-color="{{button_color}}" 
-      color="{{button_text_color}}"
-      href="{{button_url}}"
-      font-size="18px"
-      padding="20px"
-    >
-      {{button_text}}
-    </mj-button>
-  </mj-column>
-</mj-section>`,
-  field_visibility_config: [
-    "title",
-    "button_text",
-    "button_url",
-    "button_color",
-    "button_text_color",
-    "background_color",
-    "text_color",
-    "padding"
-  ]
-}
-```
+1. **newsletter_templates** - Reusable templates
+2. **block_types** - MJML block definitions
+3. **newsletters** - Main newsletter content
+4. **newsletter_blocks** - Newsletter content blocks
+5. **subscribers** - Email subscribers
+6. **mailing_lists** - Subscriber lists
+7. **newsletter_sends** - Send history
+8. **newsletter_analytics** - Event tracking
 
-## Troubleshooting
+All collections are organized in a "Newsletter System" folder in Directus.
 
-### Verify Setup
+## 🧪 Testing
 
 ```bash
-node node_modules/@hue-studios/nuxt-newsletter/scripts/verify-setup.js
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Verify setup
+npm run newsletter:verify
 ```
 
-### Common Issues
+## 🤝 Contributing
 
-1. **MJML not compiling**
-   - Install mjml: `npm install mjml`
-   - Or use client mode: `mjmlMode: 'client'`
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
 
-2. **Auth errors**
-   - Check DIRECTUS_TOKEN is set
-   - Verify token has correct permissions
+## 📄 License
 
-3. **SendGrid webhooks not working**
-   - Check webhook URL is accessible
-   - Verify webhook secret matches
+MIT License - see [LICENSE](LICENSE) for details.
 
-4. **Blocks not showing**
-   - Run block types setup script
-   - Check block_types collection has entries
+## 🆘 Support
 
-## Performance Tips
+- 📚 [Documentation](https://github.com/hue-studios/nuxt-newsletter)
+- 🐛 [Issue Tracker](https://github.com/hue-studios/nuxt-newsletter/issues)
+- 💬 [Discussions](https://github.com/hue-studios/nuxt-newsletter/discussions)
 
-1. **Use server-side MJML compilation** for better performance
-2. **Cache compiled templates** in Directus
-3. **Batch large sends** using SendGrid batch API
-4. **Implement pagination** for subscriber lists
-5. **Use webhook queues** for high-volume analytics
+---
 
-## Security Best Practices
-
-1. **Never expose API keys** in client-side code
-2. **Use middleware auth** for public apps
-3. **Validate webhook signatures** from SendGrid
-4. **Implement rate limiting** on send endpoints
-5. **Sanitize HTML content** in newsletters
-6. **Use CSP headers** to prevent XSS
-
-## Support
-
-- Issues: https://github.com/hue-studios/nuxt-newsletter/issues
-- Docs: https://github.com/hue-studios/nuxt-newsletter/wiki
-- Examples: https://github.com/hue-studios/nuxt-newsletter/tree/main/examples
+Made with ❤️ by [Hue Studios](https://huestudios.com)

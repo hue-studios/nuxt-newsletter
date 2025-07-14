@@ -69,10 +69,10 @@ class DirectusNewsletterInstaller {
 
       // Create the folder collection
       const folderConfig = {
-        collection: 'newsletter_system_folder',
+        collection: 'newsletter_system',
         meta: {
           accountability: 'all',
-          collection: 'newsletter_system_folder',
+          collection: 'newsletter_system',
           group: null,
           hidden: false,
           icon: 'folder',
@@ -92,7 +92,7 @@ class DirectusNewsletterInstaller {
           versioning: false
         },
         schema: {
-          name: 'newsletter_system_folder'
+          name: 'newsletter_system'
         }
       };
 
