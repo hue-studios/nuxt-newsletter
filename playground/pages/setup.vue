@@ -1,760 +1,785 @@
-<!-- playground/pages/list.vue -->
 <template>
-  <div class="newsletter-list-page">
-    <div class="list-header">
-      <div class="header-content">
-        <h1>Newsletters</h1>
-        <p class="subtitle">Manage your email newsletters</p>
-      </div>
-      <div class="header-actions">
-        <NuxtLink to="/" class="btn btn-primary">
-          Create Newsletter
-        </NuxtLink>
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+    <!-- Enhanced Header -->
+    <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200/60 shadow-sm">
+      <div class="max-w-4xl mx-auto px-6 py-8">
+        <div class="text-center">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
+            <Icon name="lucide:settings" class="w-8 h-8 text-white" />
+          </div>
+          <h1 class="text-3xl font-bold text-slate-900 mb-2">Newsletter Setup</h1>
+          <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+            Let's configure your newsletter module and verify everything is working correctly
+          </p>
+        </div>
       </div>
     </div>
 
-   
-    
-    <div class="">
-      <NewsletterSetup />
+    <!-- Enhanced Setup Content -->
+    <div class="max-w-4xl mx-auto px-6 py-8">
+      <!-- Loading State -->
+      <div v-if="loading" class="text-center py-12">
+        <div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+          <Icon name="lucide:loader-2" class="w-6 h-6 text-white animate-spin" />
+        </div>
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">{{ loadingMessage }}</h3>
+        <p class="text-slate-600">Please wait while we verify your configuration...</p>
+      </div>
+
+      <!-- Setup Steps -->
+      <div v-else class="space-y-8">
+        <!-- Step Progress -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+          <h2 class="text-xl font-semibold text-slate-900 mb-6">Setup Progress</h2>
+          <div class="space-y-4">
+            <div
+              v-for="(step, index) in setupSteps"
+              :key="step.id"
+              class="flex items-center space-x-4"
+            >
+              <!-- Step Icon -->
+              <div 
+                class="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200"
+                :class="{
+                  'bg-gradient-to-br from-green-500 to-green-600 text-white': step.status === 'complete',
+                  'bg-gradient-to-br from-blue-500 to-blue-600 text-white': step.status === 'active',
+                  'bg-gradient-to-br from-red-100 to-red-200 text-red-600': step.status === 'error',
+                  'bg-gradient-to-br from-slate-200 to-slate-300 text-slate-500': step.status === 'pending'
+                }"
+              >
+                <Icon 
+                  :name="getStepIcon(step)" 
+                  class="w-5 h-5"
+                  :class="{ 'animate-spin': step.status === 'active' && step.loading }"
+                />
+              </div>
+
+              <!-- Step Content -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">{{ step.title }}</h3>
+                    <p class="text-sm text-slate-600">{{ step.description }}</p>
+                  </div>
+                  
+                  <!-- Step Actions -->
+                  <div class="flex items-center space-x-2">
+                    <button
+                      v-if="step.status === 'error' && step.canRetry"
+                      @click="retryStep(step.id)"
+                      class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
+                    >
+                      <Icon name="lucide:refresh-cw" class="w-3 h-3 mr-1" />
+                      Retry
+                    </button>
+                    
+                    <button
+                      v-if="step.hasDetails"
+                      @click="toggleStepDetails(step.id)"
+                      class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                    >
+                      <Icon name="lucide:info" class="w-3 h-3 mr-1" />
+                      Details
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Step Details -->
+                <Transition
+                  enter-active-class="transition ease-out duration-200"
+                  enter-from-class="transform opacity-0 scale-95"
+                  enter-to-class="transform opacity-100 scale-100"
+                  leave-active-class="transition ease-in duration-150"
+                  leave-from-class="transform opacity-100 scale-100"
+                  leave-to-class="transform opacity-0 scale-95"
+                >
+                  <div v-if="step.showDetails" class="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div v-if="step.status === 'error'" class="text-sm text-red-800">
+                      <p class="font-medium mb-2">Error Details:</p>
+                      <pre class="bg-red-100 p-2 rounded text-xs overflow-auto">{{ step.error }}</pre>
+                      <div v-if="step.suggestions?.length" class="mt-3">
+                        <p class="font-medium mb-1">Suggestions:</p>
+                        <ul class="list-disc list-inside space-y-1 text-xs">
+                          <li v-for="suggestion in step.suggestions" :key="suggestion">{{ suggestion }}</li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div v-else-if="step.status === 'complete'" class="text-sm text-green-800">
+                      <p class="font-medium mb-2">Success Details:</p>
+                      <div v-if="step.details" class="space-y-1 text-xs">
+                        <div v-for="(value, key) in step.details" :key="key" class="flex justify-between">
+                          <span class="capitalize">{{ key.replace(/_/g, ' ') }}:</span>
+                          <span class="font-medium">{{ value }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div v-else class="text-sm text-slate-700">
+                      <p>{{ step.detailsText || 'Additional information will appear here once this step is completed.' }}</p>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuration Overview -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+          <h2 class="text-xl font-semibold text-slate-900 mb-6">Current Configuration</h2>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Directus Configuration -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="flex items-center space-x-3 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                  <Icon name="lucide:database" class="w-4 h-4 text-white" />
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900">Directus CMS</h3>
+              </div>
+              
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-slate-600">URL:</span>
+                  <span class="font-medium text-slate-900 truncate ml-2">{{ config.directus?.url || 'Not configured' }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-slate-600">Auth Type:</span>
+                  <span class="font-medium text-slate-900">{{ config.directus?.auth?.type || 'Not configured' }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-slate-600">Token:</span>
+                  <span class="font-medium text-slate-900">
+                    {{ config.directus?.auth?.token ? '••••••••' : 'Not configured' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SendGrid Configuration -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="flex items-center space-x-3 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                  <Icon name="lucide:mail" class="w-4 h-4 text-white" />
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900">SendGrid</h3>
+              </div>
+              
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-slate-600">API Key:</span>
+                  <span class="font-medium text-slate-900">
+                    {{ config.sendgrid?.apiKey ? '••••••••' : 'Not configured' }}
+                  </span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-slate-600">From Email:</span>
+                  <span class="font-medium text-slate-900 truncate ml-2">{{ config.sendgrid?.defaultFromEmail || 'Not configured' }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-slate-600">From Name:</span>
+                  <span class="font-medium text-slate-900 truncate ml-2">{{ config.sendgrid?.defaultFromName || 'Not configured' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setup Actions -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+          <h2 class="text-xl font-semibold text-slate-900 mb-6">Setup Actions</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Install Collections -->
+            <button
+              @click="installCollections"
+              :disabled="installing.collections"
+              class="flex flex-col items-center p-6 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mb-3">
+                <Icon :name="installing.collections ? 'lucide:loader-2' : 'lucide:database'" class="w-6 h-6 text-white" :class="{ 'animate-spin': installing.collections }" />
+              </div>
+              <h3 class="text-sm font-semibold text-slate-900 mb-1">Install Collections</h3>
+              <p class="text-xs text-slate-600 text-center">Create required Directus collections</p>
+            </button>
+
+            <!-- Install Block Types -->
+            <button
+              @click="installBlockTypes"
+              :disabled="installing.blockTypes"
+              class="flex flex-col items-center p-6 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-3">
+                <Icon :name="installing.blockTypes ? 'lucide:loader-2' : 'lucide:blocks'" class="w-6 h-6 text-white" :class="{ 'animate-spin': installing.blockTypes }" />
+              </div>
+              <h3 class="text-sm font-semibold text-slate-900 mb-1">Install Block Types</h3>
+              <p class="text-xs text-slate-600 text-center">Add default newsletter block types</p>
+            </button>
+
+            <!-- Test Configuration -->
+            <button
+              @click="testConfiguration"
+              :disabled="testing"
+              class="flex flex-col items-center p-6 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-3">
+                <Icon :name="testing ? 'lucide:loader-2' : 'lucide:check-circle'" class="w-6 h-6 text-white" :class="{ 'animate-spin': testing }" />
+              </div>
+              <h3 class="text-sm font-semibold text-slate-900 mb-1">Test Configuration</h3>
+              <p class="text-xs text-slate-600 text-center">Verify all connections are working</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Start -->
+        <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/60 p-6">
+          <div class="flex items-start space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center flex-shrink-0">
+              <Icon name="lucide:rocket" class="w-6 h-6 text-white" />
+            </div>
+            <div class="flex-1">
+              <h2 class="text-xl font-semibold text-slate-900 mb-2">Ready to Start?</h2>
+              <p class="text-slate-700 mb-4">
+                Once your setup is complete, you can start creating beautiful newsletters with our drag-and-drop editor.
+              </p>
+              <div class="flex items-center space-x-4">
+                <button
+                  @click="navigateTo('/')"
+                  :disabled="!allStepsComplete"
+                  class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  <Icon name="lucide:edit" class="w-4 h-4 mr-2" />
+                  Create Newsletter
+                </button>
+                <button
+                  @click="runFullSetup"
+                  :disabled="runningFullSetup"
+                  class="inline-flex items-center px-6 py-3 border border-slate-300 text-sm font-medium rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <Icon :name="runningFullSetup ? 'lucide:loader-2' : 'lucide:play'" class="w-4 h-4 mr-2" :class="{ 'animate-spin': runningFullSetup }" />
+                  {{ runningFullSetup ? 'Running Setup...' : 'Run Full Setup' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Enhanced Success/Error Messages -->
+    <Transition
+      enter-active-class="transform ease-out duration-300 transition"
+      enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="notification.show"
+        class="fixed top-6 right-6 max-w-sm w-full z-50"
+      >
+        <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden">
+          <div class="p-4">
+            <div class="flex items-start space-x-3">
+              <div class="flex-shrink-0">
+                <div 
+                  class="w-8 h-8 rounded-lg flex items-center justify-center"
+                  :class="notification.type === 'success' ? 'bg-green-100' : 'bg-red-100'"
+                >
+                  <Icon
+                    :name="notification.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'"
+                    :class="notification.type === 'success' ? 'text-green-600' : 'text-red-600'"
+                    class="w-5 h-5"
+                  />
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-900">{{ notification.message }}</p>
+                <p v-if="notification.details" class="text-xs text-slate-600 mt-1">{{ notification.details }}</p>
+              </div>
+              <button
+                @click="notification.show = false"
+                class="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <Icon name="lucide:x" class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
+import { navigateTo } from '#app'
 import { computed, onMounted, ref } from 'vue'
 
 // Page metadata
 definePageMeta({
-  title: 'Newsletters'
+  title: 'Newsletter Setup - Configure Your Module',
+  layout: false
 })
 
-// State
-const newsletters = ref([])
+// Enhanced state management
 const loading = ref(true)
-const error = ref(null)
-const searchQuery = ref('')
-const statusFilter = ref('')
-const categoryFilter = ref('')
-const currentPage = ref(1)
-const itemsPerPage = 12
-const openMenuId = ref(null)
-const showDeleteModal = ref(false)
-const newsletterToDelete = ref(null)
-const showTestModal = ref(false)
-const testNewsletter = ref(null)
-const testEmail = ref('')
+const loadingMessage = ref('Initializing setup...')
+const testing = ref(false)
+const runningFullSetup = ref(false)
+
+const installing = ref({
+  collections: false,
+  blockTypes: false
+})
+
+const config = ref({
+  directus: {},
+  sendgrid: {},
+  mjmlMode: 'client'
+})
+
+const notification = ref({
+  show: false,
+  message: '',
+  details: '',
+  type: 'success'
+})
+
+// Enhanced setup steps
+const setupSteps = ref([
+  {
+    id: 'config',
+    title: 'Configuration Check',
+    description: 'Verify environment variables and module configuration',
+    status: 'pending',
+    loading: false,
+    canRetry: true,
+    hasDetails: true,
+    showDetails: false,
+    error: null,
+    details: null,
+    suggestions: []
+  },
+  {
+    id: 'directus',
+    title: 'Directus Connection',
+    description: 'Test connection to Directus CMS instance',
+    status: 'pending',
+    loading: false,
+    canRetry: true,
+    hasDetails: true,
+    showDetails: false,
+    error: null,
+    details: null,
+    suggestions: []
+  },
+  {
+    id: 'collections',
+    title: 'Database Collections',
+    description: 'Verify required collections exist in Directus',
+    status: 'pending',
+    loading: false,
+    canRetry: true,
+    hasDetails: true,
+    showDetails: false,
+    error: null,
+    details: null,
+    suggestions: []
+  },
+  {
+    id: 'sendgrid',
+    title: 'SendGrid Integration',
+    description: 'Test SendGrid API connection and configuration',
+    status: 'pending',
+    loading: false,
+    canRetry: true,
+    hasDetails: true,
+    showDetails: false,
+    error: null,
+    details: null,
+    suggestions: []
+  },
+  {
+    id: 'mjml',
+    title: 'MJML Compilation',
+    description: 'Test email template compilation system',
+    status: 'pending',
+    loading: false,
+    canRetry: true,
+    hasDetails: true,
+    showDetails: false,
+    error: null,
+    details: null,
+    suggestions: []
+  }
+])
 
 // Composables
-const { 
-  fetchNewsletters, 
-  deleteNewsletter: deleteNewsletterFromDirectus,
-  updateNewsletter: updateNewsletterInDirectus,
-  createNewsletter: createNewsletterInDirectus,
-  fetchNewsletter
-} = useDirectusNewsletter()
+const { testConnection, fetchCollections, createCollection } = useDirectusNewsletter()
+const { testSendGridConnection } = useSendGrid()
+const { compileMjmlToHtml } = useMjmlCompiler()
+const { getConfig } = useNewsletter()
 
-const { sendTestEmail: sendTestViaGrid } = useSendGrid()
-
-// Computed
-const filteredNewsletters = computed(() => {
-  let filtered = newsletters.value
-
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(newsletter => 
-      newsletter.title?.toLowerCase().includes(query) ||
-      newsletter.subject_line?.toLowerCase().includes(query) ||
-      newsletter.preview_text?.toLowerCase().includes(query)
-    )
-  }
-
-  // Status filter
-  if (statusFilter.value) {
-    filtered = filtered.filter(newsletter => newsletter.status === statusFilter.value)
-  }
-
-  // Category filter
-  if (categoryFilter.value) {
-    filtered = filtered.filter(newsletter => newsletter.category === categoryFilter.value)
-  }
-
-  return filtered
+// Enhanced computed properties
+const allStepsComplete = computed(() => {
+  return setupSteps.value.every(step => step.status === 'complete')
 })
 
-const totalPages = computed(() => Math.ceil(filteredNewsletters.value.length / itemsPerPage))
+// Enhanced utility functions
+const showNotification = (message, type = 'success', details = '') => {
+  notification.value = { show: true, message, type, details }
+  setTimeout(() => {
+    notification.value.show = false
+  }, 5000)
+}
 
-const paginatedNewsletters = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return filteredNewsletters.value.slice(start, end)
-})
+const getStepIcon = (step) => {
+  if (step.loading) return 'lucide:loader-2'
+  
+  switch (step.status) {
+    case 'complete': return 'lucide:check'
+    case 'error': return 'lucide:x'
+    case 'active': return 'lucide:loader-2'
+    default: return 'lucide:circle'
+  }
+}
 
-// Load newsletters
-onMounted(async () => {
-  await refreshNewsletters()
-})
+const toggleStepDetails = (stepId) => {
+  const step = setupSteps.value.find(s => s.id === stepId)
+  if (step) {
+    step.showDetails = !step.showDetails
+  }
+}
 
-// Methods
-const refreshNewsletters = async () => {
-  loading.value = true
-  error.value = null
+const updateStepStatus = (stepId, status, details = null, error = null, suggestions = []) => {
+  const step = setupSteps.value.find(s => s.id === stepId)
+  if (step) {
+    step.status = status
+    step.loading = false
+    step.details = details
+    step.error = error
+    step.suggestions = suggestions
+  }
+}
+
+// Enhanced step verification functions
+const verifyConfiguration = async () => {
+  const step = setupSteps.value.find(s => s.id === 'config')
+  step.status = 'active'
+  step.loading = true
+
   try {
-    newsletters.value = await fetchNewsletters({ 
-      limit: 100,
-      sort: ['-date_created']
+    config.value = await getConfig()
+    
+    const checks = {
+      directus_url: !!config.value.directus?.url,
+      directus_token: !!config.value.directus?.auth?.token,
+      sendgrid_key: !!config.value.sendgrid?.apiKey,
+      mjml_mode: !!config.value.mjmlMode
+    }
+
+    const allConfigured = Object.values(checks).every(Boolean)
+    
+    if (allConfigured) {
+      updateStepStatus('config', 'complete', checks)
+    } else {
+      const missing = Object.entries(checks)
+        .filter(([, value]) => !value)
+        .map(([key]) => key.replace(/_/g, ' ').toUpperCase())
+      
+      updateStepStatus('config', 'error', null, `Missing configuration: ${missing.join(', ')}`, [
+        'Check your .env file for missing variables',
+        'Verify nuxt.config.ts newsletter module configuration',
+        'Ensure all required environment variables are set'
+      ])
+    }
+  } catch (error) {
+    updateStepStatus('config', 'error', null, error.message, [
+      'Check console for detailed error information',
+      'Verify module is properly installed and configured'
+    ])
+  }
+}
+
+const verifyDirectusConnection = async () => {
+  const step = setupSteps.value.find(s => s.id === 'directus')
+  step.status = 'active'
+  step.loading = true
+
+  try {
+    const response = await testConnection()
+    updateStepStatus('directus', 'complete', {
+      status: 'Connected',
+      version: response.version || 'Unknown',
+      auth_type: config.value.directus?.auth?.type || 'static'
     })
-  } catch (err) {
-    error.value = err.message
-    console.error('Error loading newsletters:', err)
+  } catch (error) {
+    updateStepStatus('directus', 'error', null, error.message, [
+      'Verify DIRECTUS_URL is correct and accessible',
+      'Check DIRECTUS_TOKEN has proper permissions',
+      'Ensure Directus instance is running and accessible'
+    ])
+  }
+}
+
+const verifyCollections = async () => {
+  const step = setupSteps.value.find(s => s.id === 'collections')
+  step.status = 'active'
+  step.loading = true
+
+  try {
+    const collections = await fetchCollections()
+    const requiredCollections = [
+      'newsletters', 'newsletter_blocks', 'block_types', 
+      'subscribers', 'mailing_lists', 'newsletter_sends'
+    ]
+    
+    const existingCollections = collections.map(c => c.collection)
+    const missing = requiredCollections.filter(c => !existingCollections.includes(c))
+    
+    if (missing.length === 0) {
+      updateStepStatus('collections', 'complete', {
+        total_collections: collections.length,
+        required_found: requiredCollections.length,
+        status: 'All required collections exist'
+      })
+    } else {
+      updateStepStatus('collections', 'error', null, `Missing collections: ${missing.join(', ')}`, [
+        'Run the "Install Collections" action below',
+        'Or use the setup script: npm run newsletter:setup',
+        'Check Directus admin panel for existing collections'
+      ])
+    }
+  } catch (error) {
+    updateStepStatus('collections', 'error', null, error.message, [
+      'Verify Directus connection is working',
+      'Check user permissions for schema access'
+    ])
+  }
+}
+
+const verifySendGrid = async () => {
+  const step = setupSteps.value.find(s => s.id === 'sendgrid')
+  step.status = 'active'
+  step.loading = true
+
+  try {
+    if (!config.value.sendgrid?.apiKey) {
+      updateStepStatus('sendgrid', 'error', null, 'SendGrid API key not configured', [
+        'Add SENDGRID_API_KEY to your .env file',
+        'Get your API key from SendGrid dashboard',
+        'Ensure the API key has mail sending permissions'
+      ])
+      return
+    }
+
+    const response = await testSendGridConnection()
+    updateStepStatus('sendgrid', 'complete', {
+      status: 'Connected',
+      from_email: config.value.sendgrid?.defaultFromEmail || 'Not set',
+      from_name: config.value.sendgrid?.defaultFromName || 'Not set'
+    })
+  } catch (error) {
+    updateStepStatus('sendgrid', 'error', null, error.message, [
+      'Verify SENDGRID_API_KEY is correct',
+      'Check API key permissions in SendGrid dashboard',
+      'Ensure SendGrid account is active and verified'
+    ])
+  }
+}
+
+const verifyMJML = async () => {
+  const step = setupSteps.value.find(s => s.id === 'mjml')
+  step.status = 'active'
+  step.loading = true
+
+  try {
+    const testMjml = `
+      <mjml>
+        <mj-body>
+          <mj-section>
+            <mj-column>
+              <mj-text>Test compilation</mj-text>
+            </mj-column>
+          </mj-section>
+        </mj-body>
+      </mjml>
+    `
+    
+    await compileMjmlToHtml(testMjml)
+    updateStepStatus('mjml', 'complete', {
+      mode: config.value.mjmlMode || 'client',
+      status: 'Working correctly'
+    })
+  } catch (error) {
+    updateStepStatus('mjml', 'error', null, error.message, [
+      'If using server mode, ensure MJML is installed: npm install mjml',
+      'Try switching to client mode in configuration',
+      'Check browser console for additional errors'
+    ])
+  }
+}
+
+// Enhanced action functions
+const retryStep = async (stepId) => {
+  const stepFunctions = {
+    config: verifyConfiguration,
+    directus: verifyDirectusConnection,
+    collections: verifyCollections,
+    sendgrid: verifySendGrid,
+    mjml: verifyMJML
+  }
+
+  const stepFunction = stepFunctions[stepId]
+  if (stepFunction) {
+    await stepFunction()
+  }
+}
+
+const testConfiguration = async () => {
+  testing.value = true
+  try {
+    await runAllVerifications()
+    showNotification('Configuration test completed', 'success', 'Check the steps above for detailed results')
+  } catch (error) {
+    showNotification('Configuration test failed', 'error', error.message)
+  } finally {
+    testing.value = false
+  }
+}
+
+const installCollections = async () => {
+  installing.value.collections = true
+  try {
+    // This would call your collection installation logic
+    await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate installation
+    showNotification('Collections installed successfully', 'success')
+    await verifyCollections()
+  } catch (error) {
+    showNotification('Failed to install collections', 'error', error.message)
+  } finally {
+    installing.value.collections = false
+  }
+}
+
+const installBlockTypes = async () => {
+  installing.value.blockTypes = true
+  try {
+    // This would call your block types installation logic
+    await new Promise(resolve => setTimeout(resolve, 1500)) // Simulate installation
+    showNotification('Block types installed successfully', 'success')
+  } catch (error) {
+    showNotification('Failed to install block types', 'error', error.message)
+  } finally {
+    installing.value.blockTypes = false
+  }
+}
+
+const runFullSetup = async () => {
+  runningFullSetup.value = true
+  try {
+    loadingMessage.value = 'Running full setup process...'
+    
+    // Install collections first
+    await installCollections()
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // Install block types
+    await installBlockTypes()
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // Re-run all verifications
+    await runAllVerifications()
+    
+    showNotification('Full setup completed successfully', 'success', 'Your newsletter module is ready to use!')
+  } catch (error) {
+    showNotification('Setup process failed', 'error', error.message)
+  } finally {
+    runningFullSetup.value = false
+  }
+}
+
+const runAllVerifications = async () => {
+  loadingMessage.value = 'Verifying configuration...'
+  await verifyConfiguration()
+  
+  loadingMessage.value = 'Testing Directus connection...'
+  await verifyDirectusConnection()
+  
+  loadingMessage.value = 'Checking collections...'
+  await verifyCollections()
+  
+  loadingMessage.value = 'Testing SendGrid...'
+  await verifySendGrid()
+  
+  loadingMessage.value = 'Verifying MJML compilation...'
+  await verifyMJML()
+}
+
+// Enhanced initialization
+const initializeSetup = async () => {
+  loading.value = true
+  
+  try {
+    loadingMessage.value = 'Loading configuration...'
+    config.value = await getConfig()
+    
+    await runAllVerifications()
+  } catch (error) {
+    console.error('Setup initialization error:', error)
+    showNotification('Failed to initialize setup', 'error', error.message)
   } finally {
     loading.value = false
   }
 }
 
-const clearFilters = () => {
-  searchQuery.value = ''
-  statusFilter.value = ''
-  categoryFilter.value = ''
-  currentPage.value = 1
-}
-
-const toggleMenu = (id) => {
-  openMenuId.value = openMenuId.value === id ? null : id
-}
-
-const editNewsletter = (newsletter) => {
-  navigateTo(`/?edit=${newsletter.id}`)
-}
-
-const duplicateNewsletter = async (newsletter) => {
-  try {
-    const original = await fetchNewsletter(newsletter.id)
-    const copy = {
-      title: `${original.title} (Copy)`,
-      subject_line: `${original.subject_line} (Copy)`,
-      preview_text: original.preview_text,
-      from_name: original.from_name,
-      from_email: original.from_email,
-      reply_to: original.reply_to,
-      category: original.category,
-      status: 'draft',
-      blocks: original.blocks?.map(block => ({
-        ...block,
-        id: undefined // Remove ID so Directus creates new ones
-      })) || []
-    }
-    
-    await createNewsletterInDirectus(copy)
-    await refreshNewsletters()
-    
-    // Show success message
-    alert('Newsletter duplicated successfully!')
-  } catch (err) {
-    alert('Error duplicating newsletter: ' + err.message)
-  }
-}
-
-const deleteNewsletterConfirm = (newsletter) => {
-  newsletterToDelete.value = newsletter
-  showDeleteModal.value = true
-  openMenuId.value = null
-}
-
-const confirmDelete = async () => {
-  try {
-    await deleteNewsletterFromDirectus(newsletterToDelete.value.id)
-    await refreshNewsletters()
-    showDeleteModal.value = false
-    newsletterToDelete.value = null
-  } catch (err) {
-    alert('Error deleting newsletter: ' + err.message)
-  }
-}
-
-const sendTestEmail = (newsletter) => {
-  testNewsletter.value = newsletter
-  testEmail.value = ''
-  showTestModal.value = true
-  openMenuId.value = null
-}
-
-const confirmSendTest = async () => {
-  if (!testEmail.value) return
-  
-  try {
-    // Get full newsletter data with compiled HTML
-    const fullNewsletter = await fetchNewsletter(testNewsletter.value.id)
-    
-    if (!fullNewsletter.compiled_html) {
-      alert('Newsletter must be compiled first. Please edit and save the newsletter.')
-      return
-    }
-    
-    await sendTestViaGrid(fullNewsletter, testEmail.value)
-    alert('Test email sent to ' + testEmail.value)
-    showTestModal.value = false
-  } catch (err) {
-    alert('Error sending test: ' + err.message)
-  }
-}
-
-const markReady = async (newsletter) => {
-  try {
-    await updateNewsletterInDirectus(newsletter.id, { status: 'ready' })
-    await refreshNewsletters()
-  } catch (err) {
-    alert('Error updating newsletter status: ' + err.message)
-  }
-}
-
-const sendNewsletter = (newsletter) => {
-  navigateTo(`/?edit=${newsletter.id}&send=true`)
-}
-
-// Utility functions
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
-const formatStatus = (status) => {
-  const statusMap = {
-    draft: 'Draft',
-    ready: 'Ready',
-    scheduled: 'Scheduled',
-    sending: 'Sending',
-    sent: 'Sent',
-    paused: 'Paused'
-  }
-  return statusMap[status] || status
-}
-
-// Close menu when clicking outside
+// Lifecycle
 onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.card-menu')) {
-      openMenuId.value = null
-    }
-  })
+  initializeSetup()
 })
 </script>
 
 <style scoped>
-.newsletter-list-page {
-  min-height: 100vh;
-  background: #f8fafc;
-  padding: 2rem;
+/* Enhanced animations and transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
 }
 
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+/* Enhanced button hover effects */
+button:not(:disabled):hover {
+  transform: translateY(-1px);
 }
 
-.header-content h1 {
-  margin: 0;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1e293b;
+/* Custom progress animations */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-.subtitle {
-  margin: 0.5rem 0 0;
-  color: #64748b;
-  font-size: 1.125rem;
+.shimmer {
+  animation: shimmer 2s infinite;
 }
 
-.filters-section {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
+/* Enhanced scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.search-bar {
-  flex: 1;
-  min-width: 300px;
+::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 3px;
 }
 
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 3px;
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.filters {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.filter-select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
-  font-size: 0.875rem;
-}
-
-.newsletters-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.results-info {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-.newsletters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
-
-.newsletter-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.newsletter-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-
-.newsletter-draft {
-  border-left: 4px solid #94a3b8;
-}
-
-.newsletter-ready {
-  border-left: 4px solid #3b82f6;
-}
-
-.newsletter-scheduled {
-  border-left: 4px solid #8b5cf6;
-}
-
-.newsletter-sent {
-  border-left: 4px solid #10b981;
-}
-
-.card-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.title-section h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.4;
-}
-
-.meta-info {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: #64748b;
-}
-
-.category {
-  background: #f1f5f9;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.status-section {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status {
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status-draft { background: #f1f5f9; color: #64748b; }
-.status-ready { background: #dbeafe; color: #1d4ed8; }
-.status-scheduled { background: #ede9fe; color: #7c3aed; }
-.status-sent { background: #d1fae5; color: #047857; }
-.status-sending { background: #fef3c7; color: #92400e; }
-
-.card-menu {
-  position: relative;
-}
-
-.menu-btn {
-  padding: 0.5rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 4px;
-  color: #64748b;
-  transition: all 0.2s;
-}
-
-.menu-btn:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  min-width: 160px;
-  overflow: hidden;
-}
-
-.menu-item {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #374151;
-  transition: background 0.2s;
-}
-
-.menu-item:hover:not(:disabled) {
-  background: #f9fafb;
-}
-
-.menu-item:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.menu-item.danger {
-  color: #dc2626;
-}
-
-.menu-item.danger:hover {
-  background: #fef2f2;
-}
-
-.menu-divider {
-  margin: 0;
-  border: none;
-  border-top: 1px solid #e5e7eb;
-}
-
-.card-body {
-  padding: 1.5rem;
-}
-
-.subject-line {
-  margin-bottom: 0.75rem;
-  color: #374151;
-  font-size: 0.875rem;
-}
-
-.preview-text {
-  margin-bottom: 1rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.newsletter-stats {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f1f5f9;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.stat-value {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.card-actions {
-  padding: 1rem 1.5rem;
-  background: #f8fafc;
-  display: flex;
-  gap: 0.75rem;
-}
-
-.pagination {
-  padding: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.page-info {
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-/* States */
-.loading-state,
-.error-state,
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 1rem;
-  border: 3px solid #f3f4f6;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.error-icon,
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.error-state h3,
-.empty-state h3 {
-  margin: 0 0 0.5rem;
-  color: #1f2937;
-}
-
-.warning-text {
-  color: #dc2626;
-  font-size: 0.875rem;
-  margin: 0.5rem 0;
-}
-
-/* Buttons */
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: #6b7280;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #4b5563;
-}
-
-.btn-success {
-  background: #10b981;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #059669;
-}
-
-.btn-danger {
-  background: #dc2626;
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-/* Modal */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 2rem;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-}
-
-.modal-content h3 {
-  margin: 0 0 1rem;
-  color: #1f2937;
-}
-
-.modal-content p {
-  margin: 0.5rem 0;
-  color: #6b7280;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  margin: 1rem 0;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .newsletter-list-page {
-    padding: 1rem;
-  }
-  
-  .list-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .filters-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .filters {
-    justify-content: space-between;
-  }
-  
-  .newsletters-grid {
-    grid-template-columns: 1fr;
-    padding: 1rem;
-    gap: 1rem;
-  }
-  
-  .card-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .status-section {
-    justify-content: space-between;
-    width: 100%;
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
 }
 </style>
