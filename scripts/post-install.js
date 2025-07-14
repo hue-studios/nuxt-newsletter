@@ -5,8 +5,13 @@
  * Only runs when installed as a dependency, not during development
  */
 
-const path = require('path');
-const fs = require('fs');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function isInDevelopment() {
   // Check if we're in the module's own directory (development)

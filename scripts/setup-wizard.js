@@ -5,14 +5,19 @@
  * Interactive setup for the best possible user experience
  */
 
-const { execSync } = require('child_process');
-const { existsSync, writeFileSync, readFileSync } = require('fs');
-const { join } = require('path');
-const readline = require('readline');
+import { execSync } from 'child_process';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { createInterface } from 'readline';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class NewsletterSetupWizard {
   constructor() {
-    this.rl = readline.createInterface({
+    this.rl = createInterface({
       input: process.stdin,
       output: process.stdout
     });
@@ -271,7 +276,7 @@ class NewsletterSetupWizard {
     } catch (error) {
       this.log('❌ Failed to set up Directus collections', 'error');
       this.log('You can run the setup manually later:', 'warning');
-      this.log(`npm run newsletter:setup ${this.config.directusUrl} ${this.config.directusEmail} [password]`, 'warning');
+      this.log(`npm run setup:directus ${this.config.directusUrl} ${this.config.directusEmail} [password]`, 'warning');
     }
   }
 
@@ -363,7 +368,7 @@ DIRECTUS_URL=${this.config.directusUrl}`;
     
     this.log('📚 Need help?', 'info');
     this.log('  • Documentation: https://github.com/hue-studios/nuxt-newsletter', 'info');
-    this.log('  • Verify setup: npm run newsletter:verify', 'info');
+    this.log('  • Verify setup: npm run verify', 'info');
     this.log('  • Issues: https://github.com/hue-studios/nuxt-newsletter/issues', 'info');
     
     console.log();
