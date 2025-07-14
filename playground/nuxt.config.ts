@@ -1,13 +1,13 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import tailwindcss from '@tailwindcss/vite'
+// import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   modules: ['../src/module'],
   
-  // Tailwind CSS 4 Vite plugin
-  vite: {
-    plugins: [tailwindcss()],
-  },
+  // // Tailwind CSS 4 Vite plugin
+  // vite: {
+  //   plugins: [tailwindcss()],
+  // },
   
   newsletter: {
     directus: {
@@ -27,7 +27,7 @@ export default defineNuxtConfig({
     ui: {
       icons: 'lucide',
       enableDragDrop: true,
-      autoInstallTailwind: false, // Disabled since we're configuring manually
+      autoInstallTailwind: true, // Disabled since we're configuring manually
       theme: {
         primaryColor: 'blue',
         darkMode: true

@@ -163,8 +163,24 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     const resolver = createResolver(import.meta.url)
     const logger = useLogger('@hue-studios/nuxt-newsletter')
 
+    const hasDirectusUrl = !!(options.directus.url || process.env.DIRECTUS_URL)
+
+     // Only validate strictly in production builds
+  if (!hasDirectusUrl && nuxt.options.dev) {
+    logger.info('Directus URL not set. Using default: http://localhost:8055')
+    options.directus.url = options.directus.url || 'http://localhost:8055'
+  } else if (!hasDirectusUrl) {
+    logger.error('Directus URL is required in production!')
+    throw new Error('Directus URL is required for the newsletter module')
+  }
+
+    // Skip validation during build/prepare phase in development
+  const isBuilding = process.env.NODE_ENV === 'prerender' || 
+                    process.argv.includes('prepare') || 
+                    process.argv.includes('build')
+
     // Enhanced validation with helpful error messages
-    if (!options.directus.url) {
+    if (!options.directus.url && !isBuilding) {
       logger.error(`
 🚨 Newsletter Module Setup Error:
 
@@ -186,6 +202,11 @@ Or set the DIRECTUS_URL environment variable.
       `)
       throw new Error('Directus URL is required for the newsletter module')
     }
+
+    // For development/prepare phase, just warn
+  if (!options.directus.url && isBuilding) {
+    logger.info('Directus URL will be required at runtime. Skipping validation during build...')
+  }
 
     // Check for required environment variables
     const directusToken = options.directus.auth?.token || process.env.DIRECTUS_TOKEN
