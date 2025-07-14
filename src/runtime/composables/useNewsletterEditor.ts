@@ -32,21 +32,27 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
   })
 
   const addBlock = (type: string, index?: number) => {
-    const newBlock: NewsletterBlock = {
-      id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: type, // This is the slug string
-      content: {},
-      sort: blocks.value.length // Set initial sort order
-    }
-    if (index !== undefined && index >= 0 && index <= blocks.value.length) {
-      blocks.value.splice(index, 0, newBlock)
-    } else {
-      blocks.value.push(newBlock)
-    }
-    // IMPORTANT: Removed the redundant forEach loop here.
-    // The sort order is handled by the initial 'sort' assignment and 'moveBlock'/'duplicateBlock'.
-    return newBlock
+  const newBlock: NewsletterBlock = {
+    id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type: type, // This is the slug string
+    content: {},
+    sort: 0 // Initialize to 0, will be set correctly below
   }
+  
+  // Use nextTick to avoid reactive loops
+  if (index !== undefined && index >= 0 && index <= blocks.value.length) {
+    blocks.value.splice(index, 0, newBlock)
+  } else {
+    blocks.value.push(newBlock)
+  }
+  
+  // Update sort order for all blocks in a single operation
+  blocks.value.forEach((block, i) => { 
+    block.sort = i 
+  })
+  
+  return newBlock
+}
 
   const removeBlock = (id: string) => {
     newsletter.value.blocks = newsletter.value.blocks.filter(block => block.id !== id)
@@ -94,45 +100,57 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
   }
 
   const loadFromTemplate = (template: any) => {
-    if (template.blocks_config) {
-      // Clear existing blocks
-      clearBlocks()
+  if (template.blocks_config) {
+    // Clear existing blocks first
+    clearBlocks()
 
-      // Load blocks from template
-      const templateBlocks = Array.isArray(template.blocks_config)
+    // Parse template blocks safely
+    let templateBlocks
+    try {
+      templateBlocks = Array.isArray(template.blocks_config)
         ? template.blocks_config
         : JSON.parse(template.blocks_config)
-
-      templateBlocks.forEach((blockConfig: any, index: number) => {
-        const newBlock: NewsletterBlock = {
-          id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: blockConfig.type, // This should be the slug from the template
-          content: blockConfig.content || {},
-          sort: index
-        }
-        blocks.value.push(newBlock)
-      })
+    } catch (error) {
+      console.error('Invalid template blocks_config:', error)
+      return
     }
 
-    // Apply template settings
-    if (template.default_subject_pattern) {
-      newsletter.value.subject_line = template.default_subject_pattern
-      newsletter.value.title = template.default_subject_pattern // Also update title
-    }
-    if (template.default_from_name) {
-      newsletter.value.from_name = template.default_from_name
-    }
-    if (template.default_from_email) {
-      newsletter.value.from_email = template.default_from_email
-    }
-    if (template.default_reply_to) {
-      newsletter.value.reply_to = template.default_reply_to
-    }
-    if (template.default_category) {
-      newsletter.value.category = template.default_category
-    }
-    // Removed default_settings application as 'settings' field is removed
+    // Validate each block before adding
+    templateBlocks.forEach((blockConfig: any, index: number) => {
+      // Ensure block has required properties
+      if (!blockConfig.type || typeof blockConfig.type !== 'string') {
+        console.warn('Invalid block config - missing or invalid type:', blockConfig)
+        return
+      }
+
+      const newBlock: NewsletterBlock = {
+        id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: blockConfig.type, // Ensure this is a string slug
+        content: blockConfig.content || {},
+        sort: index
+      }
+      blocks.value.push(newBlock)
+    })
   }
+
+  // Apply template settings with validation
+  if (template.default_subject_pattern && typeof template.default_subject_pattern === 'string') {
+    newsletter.value.subject_line = template.default_subject_pattern
+    newsletter.value.title = template.default_subject_pattern
+  }
+  if (template.default_from_name) {
+    newsletter.value.from_name = template.default_from_name
+  }
+  if (template.default_from_email) {
+    newsletter.value.from_email = template.default_from_email
+  }
+  if (template.default_reply_to) {
+    newsletter.value.reply_to = template.default_reply_to
+  }
+  if (template.default_category) {
+    newsletter.value.category = template.default_category
+  }
+}
 
   return {
     newsletter,

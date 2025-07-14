@@ -1,6 +1,6 @@
 // src/runtime/composables/useDirectusNewsletter.ts
-import { useRuntimeConfig, useState } from '#app'
-import { createDirectus, createItem, deleteItem, readItem, readItems, rest, staticToken, updateItem, uploadFiles } from '@directus/sdk'
+import { useRuntimeConfig, useState } from '#app';
+import { createDirectus, createItem, deleteItem, readItem, readItems, rest, staticToken, updateItem, uploadFiles } from '@directus/sdk';
 import type {
   BlockType,
   MailingList,
@@ -131,18 +131,44 @@ export function useDirectusNewsletter() {
     }
   }
 
-  const createNewsletter = async (payload: NewsletterData) => {
-    try {
-      const client = getClient()
-      // payload.blocks should already be transformed with block_type ID by the caller (index.vue)
-      // payload is already of type DirectusNewsletterPayload (which is NewsletterData)
-      const response = await client.request(createItem('newsletters', payload))
-      return response as NewsletterData
-    } catch (error) {
-      console.error('[Newsletter] Error creating newsletter:', error)
-      throw error
+ const createNewsletter = async (newsletterData: any) => {
+  try {
+    console.log('Creating newsletter with data:', {
+      ...newsletterData,
+      blocks: newsletterData.blocks?.length || 0
+    })
+    
+    const client = getClient()
+    
+    // Validate required fields before sending
+    const requiredFields = ['title', 'subject_line']
+    for (const field of requiredFields) {
+      if (!newsletterData[field]) {
+        throw new Error(`Missing required field: ${field}`)
+      }
     }
+    
+    // Remove any undefined/null values that might cause issues
+    const cleanData = Object.fromEntries(
+      Object.entries(newsletterData).filter(([_, value]) => value !== undefined && value !== null)
+    )
+    
+    const result = await client.request(createItem('newsletters', cleanData))
+    return result
+  } catch (error) {
+    console.error('[Newsletter] Error creating newsletter:', error)
+    
+    // Provide more helpful error messages
+    if (error.response?.status === 403) {
+      throw new Error('Permission denied. Check your Directus token and user permissions.')
+    }
+    if (error.response?.status === 422) {
+      throw new Error('Invalid data. Check required fields and data format.')
+    }
+    
+    throw error
   }
+}
 
   const updateNewsletter = async (id: string, payload: NewsletterData) => {
     try {

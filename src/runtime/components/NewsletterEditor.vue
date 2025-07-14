@@ -487,19 +487,7 @@ const addBlockFromType = (blockType: any) => {
   const newBlock = addBlock(blockType.slug)
 
   if (blockType.field_visibility_config) {
-    const defaultContent: any = {}
-
-    if (blockType.field_visibility_config.includes('title')) {
-      defaultContent.title = blockType.name === 'Hero Section' ? 'Welcome!' : 'Add your title here'
-    }
-    if (blockType.field_visibility_config.includes('text_content')) {
-      defaultContent.text_content = 'Click edit to add your content...'
-    }
-    if (blockType.field_visibility_config.includes('button_text')) {
-      defaultContent.button_text = 'Learn More'
-      defaultContent.button_url = 'https://example.com'
-    }
-
+    const defaultContent: any = getPlaceholderContent(blockType.slug)
     updateBlock(newBlock.id, { content: defaultContent })
   }
 
@@ -512,6 +500,41 @@ const addBlockFromType = (blockType: any) => {
       blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, 100)
+}
+
+const getPlaceholderContent = (blockSlug: string) => {
+  const placeholders: Record<string, any> = {
+    hero: {
+      title: 'Welcome to Our Newsletter!',
+      subtitle: 'Stay updated with the latest news and insights',
+      button_text: 'Learn More',
+      button_url: 'https://example.com',
+      background_color: '#f8fafc',
+      text_color: '#1f2937'
+    },
+    text: {
+      text_content: 'Add your main content here. You can use <strong>HTML formatting</strong> to make text <em>italic</em> or <a href="#">add links</a>.',
+      background_color: '#ffffff',
+      text_color: '#374151'
+    },
+    'cta-section': {
+      cta_title: 'Ready to Get Started?',
+      cta_subtitle: 'Join thousands of satisfied customers',
+      primary_button_text: 'Get Started',
+      primary_button_url: 'https://example.com/signup',
+      secondary_button_text: 'Learn More',
+      secondary_button_url: 'https://example.com/about'
+    },
+    'product-showcase': {
+      title: 'Featured Product',
+      subtitle: 'Perfect for your needs',
+      price: '$99.99',
+      button_text: 'Shop Now',
+      button_url: 'https://example.com/product'
+    }
+  }
+  
+  return placeholders[blockSlug] || {}
 }
 
 // Template loading

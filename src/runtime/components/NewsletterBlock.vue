@@ -83,7 +83,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import type { BlockType, NewsletterBlock as NewsletterBlockType } from '../../types';
-import ImageUpload from './ImageUpload.vue'; // Import the new ImageUpload component
+import ImageUpload from './ImageUpload.vue';
 
 interface Props {
   block: NewsletterBlockType
@@ -115,6 +115,26 @@ const toggleEdit = () => {
   isEditing.value = !isEditing.value
 }
 
+// FIXED: Add the missing hasContent computed property
+const hasContent = computed(() => {
+  if (!localContent.value || typeof localContent.value !== 'object') {
+    return false
+  }
+  
+  return Object.values(localContent.value).some(value => {
+    if (typeof value === 'string') {
+      return value.trim().length > 0
+    }
+    if (typeof value === 'number') {
+      return true
+    }
+    if (Array.isArray(value)) {
+      return value.length > 0
+    }
+    return value != null && value !== ''
+  })
+})
+
 // Determine which fields to show in the editor based on blockType.field_visibility_config
 const visibleFields = computed(() => {
   return props.blockType?.field_visibility_config || []
@@ -122,7 +142,6 @@ const visibleFields = computed(() => {
 
 // Determine which fields to show in the preview
 const previewFields = computed(() => {
-  // Show all visible fields in preview for now, or customize as needed
   return visibleFields.value
 })
 
@@ -131,7 +150,6 @@ const formatFieldName = (field: string) => {
 }
 
 const getFieldValue = (field: string) => {
-  // Special handling for image_url to just show the ID or a snippet
   if (field === 'image_url' && localContent.value[field]) {
     return `Image ID: ${localContent.value[field].substring(0, 8)}...`;
   }
@@ -147,13 +165,12 @@ const getFieldPlaceholder = (field: string) => {
     button_url: 'https://example.com',
     background_color: '#FFFFFF',
     text_color: '#000000',
-    image_url: 'Directus File ID' // Placeholder for image field
+    image_url: 'Directus File ID'
   }
   return placeholders[field] || `Enter ${formatFieldName(field).toLowerCase()}`
 }
 
 const getFieldClass = (field: string) => {
-  // Example: make 'text_content' full width
   if (field === 'text_content' || field === 'mjml_output') {
     return 'full-width'
   }
@@ -165,8 +182,14 @@ const isTextField = (field: string) => {
     'text_content',
     'background_color',
     'text_color',
-    'image_url' // Image field is no longer a simple text field
-  ].includes(field) && typeof localContent.value[field] === 'string' || field.includes('_url') || field.includes('_text') || field.includes('title') || field.includes('subtitle')
+    'image_url'
+  ].includes(field) && (
+    typeof localContent.value[field] === 'string' || 
+    field.includes('_url') || 
+    field.includes('_text') || 
+    field.includes('title') || 
+    field.includes('subtitle')
+  )
 }
 
 const isTextareaField = (field: string) => {
@@ -178,18 +201,17 @@ const isColorField = (field: string) => {
 }
 
 const isImageField = (field: string) => {
-  return field === 'image_url'; // New check for image field
+  return field === 'image_url'
 }
 
 const handleImageUploadError = (message: string) => {
-  // You can display this error message in the NewsletterEditor or a global toast
-  console.error('Image upload error in block:', message);
-  // Potentially show a notification here if you want immediate feedback
+  console.error('Image upload error in block:', message)
 }
 </script>
 
 <style scoped>
 @reference 'tailwindcss';
+/* Your existing styles */
 .newsletter-block {
   @apply bg-white rounded-lg shadow-sm border border-gray-200 mb-4;
 }
@@ -235,7 +257,7 @@ const handleImageUploadError = (message: string) => {
 }
 
 .form-group {
-  @apply mb-1; /* Reduced margin-bottom as gap is on grid */
+  @apply mb-1;
 }
 
 .form-group.full-width {
