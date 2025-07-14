@@ -1,13 +1,11 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
+// playground/nuxt.config.ts
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   modules: ['../src/module'],
   
-  // // Tailwind CSS 4 Vite plugin
-  vite: {
-    plugins: [tailwindcss()],
-  },
+  // Tailwind CSS 4 Vite plugin
+  
   
   newsletter: {
     directus: {
@@ -18,16 +16,16 @@ export default defineNuxtConfig({
       }
     },
     sendgrid: {
-      // These will be overridden by env vars if set
+      // API key will be read from runtimeConfig
       defaultFromEmail: 'newsletter@example.com',
       defaultFromName: 'Test Newsletter'
     },
-    mjmlMode: 'server', // Use server-side compilation for better performance
+    mjmlMode: 'server',
     prefix: 'Newsletter',
     ui: {
       icons: 'lucide',
       enableDragDrop: true,
-      autoInstallTailwind: true, // Disabled since we're configuring manually
+      autoInstallTailwind: false, // We're configuring manually
       theme: {
         primaryColor: 'blue',
         darkMode: true
@@ -35,13 +33,23 @@ export default defineNuxtConfig({
     }
   },
 
-  // For development
+  // Properly configure runtime config for environment variables
   runtimeConfig: {
+    // Private keys (server-side only)
+    sendgridApiKey: process.env.SENDGRID_API_KEY || '',
+    sendgridWebhookSecret: process.env.SENDGRID_WEBHOOK_SECRET || '',
+    directusAdminToken: process.env.DIRECTUS_ADMIN_TOKEN || '',
+    
+    // Public config (client-side accessible)
     public: {
       newsletter: {
-        dev: true
+        dev: true,
+        siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
       }
     }
+  },
+  vite: {
+    plugins: [tailwindcss()],
   },
 
   devtools: { enabled: true }
