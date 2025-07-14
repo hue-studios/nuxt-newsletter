@@ -5,10 +5,10 @@
  * Interactive setup for the best possible user experience
  */
 
-import { execSync } from 'child_process';
-import { existsSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import readline from 'readline';
+const { execSync } = require('child_process');
+const { existsSync, writeFileSync, readFileSync } = require('fs');
+const { join } = require('path');
+const readline = require('readline');
 
 class NewsletterSetupWizard {
   constructor() {
@@ -121,6 +121,8 @@ class NewsletterSetupWizard {
     this.log('First, we need your Directus information:', 'info');
     this.config.directusUrl = await this.ask('Directus URL', 'https://your-directus.com');
     this.config.directusEmail = await this.ask('Directus admin email');
+    
+    // Hide password input (simple version)
     this.config.directusPassword = await this.ask('Directus admin password');
     
     console.log();
@@ -184,7 +186,7 @@ class NewsletterSetupWizard {
       // Check if package already installed
       const packageJson = join(this.projectRoot, 'package.json');
       if (existsSync(packageJson)) {
-        const pkg = JSON.parse(require('fs').readFileSync(packageJson, 'utf8'));
+        const pkg = JSON.parse(readFileSync(packageJson, 'utf8'));
         if (pkg.dependencies?.['@hue-studios/nuxt-newsletter']) {
           this.log('✅ Newsletter module already installed', 'success');
         } else {
@@ -230,7 +232,7 @@ class NewsletterSetupWizard {
     if (envExists) {
       const shouldAppend = await this.askYesNo('Add environment variables to existing .env file?');
       if (shouldAppend) {
-        const existing = require('fs').readFileSync(envPath, 'utf8');
+        const existing = readFileSync(envPath, 'utf8');
         writeFileSync(envPath, existing + '\n' + envContent);
         this.log('✅ Environment variables added to .env', 'success');
       } else {

@@ -1,7 +1,7 @@
 {
   "name": "@hue-studios/nuxt-newsletter",
-  "version": "1.0.2",
-  "description": "Modern MJML newsletter module for Nuxt 3 with Directus CMS and SendGrid integration",
+  "version": "1.0.3",
+  "description": "Modern MJML newsletter module for Nuxt 3 with Directus CMS, SendGrid integration, and Tailwind CSS 4",
   "keywords": [
     "nuxt",
     "nuxt3",
@@ -12,7 +12,9 @@
     "sendgrid",
     "cms",
     "tailwindcss",
-    "drag-drop"
+    "tailwindcss4",
+    "drag-drop",
+    "modern-ui"
   ],
   "repository": {
     "type": "git",
@@ -89,14 +91,24 @@
   },
   "peerDependencies": {
     "@nuxt/icon": "^1.0.0",
-    "@nuxtjs/tailwindcss": "^6.0.0",
-    "@vueuse/nuxt": ">=10.0.0",
+    "@vueuse/nuxt": ">=11.0.0",
     "nuxt": "^3.0.0",
     "vue": "^3.0.0"
   },
+  "peerDependenciesMeta": {
+    "tailwindcss": {
+      "optional": false
+    },
+    "@tailwindcss/vite": {
+      "optional": false
+    }
+  },
   "optionalDependencies": {
     "mjml": "^4.15.3",
-    "mjml-browser": "^4.15.3"
+    "mjml-browser": "^4.15.3",
+    "tailwind-merge": "^3.3.1",
+    "clsx": "^2.1.1",
+    "tw-animate-css": "^1.3.4"
   },
   "engines": {
     "node": ">=18.0.0"

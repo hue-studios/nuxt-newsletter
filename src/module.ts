@@ -10,6 +10,8 @@ import {
   useLogger
 } from '@nuxt/kit'
 import { defu } from 'defu'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
 
 export interface NewsletterModuleOptions {
   /**
@@ -102,7 +104,7 @@ export interface NewsletterModuleOptions {
      */
     enableDragDrop?: boolean
     /**
-     * Auto-install TailwindCSS if not present
+     * Auto-install TailwindCSS 4 if not present
      * @default true
      */
     autoInstallTailwind?: boolean
@@ -255,19 +257,9 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
       await installModule('@nuxt/icon')
       logger.info(`✅ @nuxt/icon installed with ${options.ui?.icons || 'lucide'} icons`)
       
-      // Auto-install TailwindCSS if enabled and not already present
+      // Auto-install TailwindCSS 4 if enabled and not already present
       if (options.ui?.autoInstallTailwind !== false) {
-        const hasTailwind = nuxt.options.modules.some(m => 
-          (typeof m === 'string' && m.includes('tailwindcss')) ||
-          (Array.isArray(m) && m[0]?.includes('tailwindcss'))
-        )
-        
-        if (!hasTailwind) {
-          await installModule('@nuxtjs/tailwindcss')
-          logger.info('✅ @nuxtjs/tailwindcss auto-installed for modern UI')
-        } else {
-          logger.info('✅ TailwindCSS already configured')
-        }
+        await setupTailwindCSS4(nuxt, logger, resolver)
       }
 
       // Color mode support if dark mode is enabled
@@ -285,7 +277,7 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
 
     } catch (error) {
       logger.error('Failed to install required dependencies. Please install manually:')
-      logger.error('npm install @vueuse/nuxt @nuxt/icon @nuxtjs/tailwindcss')
+      logger.error('npm install @vueuse/nuxt @nuxt/icon tailwindcss @tailwindcss/vite')
       throw error
     }
 
@@ -388,7 +380,7 @@ To enable email sending, set SENDGRID_API_KEY environment variable.
       // Add helpful development logs with modern features
       nuxt.hook('build:before', () => {
         logger.success(`
-🎉 Newsletter Module Ready! (Modern UI Edition)
+🎉 Newsletter Module Ready! (Tailwind CSS 4 Edition)
 
 Configuration:
   • Directus: ${options.directus.url}
@@ -397,7 +389,7 @@ Configuration:
   • SendGrid: ${sendgridKey ? '✅ configured' : '❌ not configured'}
 
 Modern UI Features:
-  • TailwindCSS: ${options.ui?.autoInstallTailwind !== false ? '✅ enabled' : '❌ disabled'}
+  • TailwindCSS 4: ${options.ui?.autoInstallTailwind !== false ? '✅ enabled' : '❌ disabled'}
   • Icons: ${options.ui?.icons || 'lucide'}
   • Drag & Drop: ${options.ui?.enableDragDrop !== false ? '✅ enabled' : '❌ disabled'}
   • Theme: ${options.ui?.theme?.primaryColor || 'blue'} ${options.ui?.theme?.darkMode ? '(dark mode)' : '(light mode)'}
@@ -428,18 +420,223 @@ Quick start:
       }
     })
 
-    // Add custom CSS for TailwindCSS if needed
-    if (options.ui?.autoInstallTailwind !== false) {
-      nuxt.options.css = nuxt.options.css || []
-      
-      // Add custom newsletter styles if they don't exist
-      const customCssPath = resolver.resolve('./runtime/assets/newsletter.css')
-      if (!nuxt.options.css.some(css => css.includes('newsletter.css'))) {
-        // Note: We'd need to create this CSS file with newsletter-specific styles
-        // nuxt.options.css.push(customCssPath)
-      }
-    }
-
     logger.success('Modern Newsletter module initialized successfully! 🚀')
   }
 })
+
+// Tailwind CSS 4 setup function
+async function setupTailwindCSS4(nuxt: any, logger: any, resolver: any) {
+  const rootDir = nuxt.options.rootDir
+
+  // Check if Tailwind CSS 4 is already installed
+  const packageJsonPath = join(rootDir, 'package.json')
+  let hasTailwind4 = false
+  let hasVitePlugin = false
+
+  if (existsSync(packageJsonPath)) {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies }
+    
+    // Check for Tailwind CSS 4 packages
+    hasTailwind4 = dependencies.tailwindcss && dependencies.tailwindcss.includes('4.')
+    hasVitePlugin = !!dependencies['@tailwindcss/vite']
+  }
+
+  // Check if Tailwind is configured in nuxt.config
+  const hasTailwindViteConfig = nuxt.options.vite?.plugins?.some((plugin: any) => 
+    plugin?.name?.includes('tailwind') || plugin?.toString?.()?.includes('tailwind')
+  )
+
+  if (hasTailwind4 && hasVitePlugin && hasTailwindViteConfig) {
+    logger.info('✅ Tailwind CSS 4 already configured')
+    await ensureTailwindConfig(rootDir, logger, resolver)
+    return
+  }
+
+  // Install Tailwind CSS 4 packages
+  logger.info('📦 Installing Tailwind CSS 4...')
+  
+  try {
+    const { execSync } = await import('child_process')
+    
+    if (!hasTailwind4 || !hasVitePlugin) {
+      execSync('npm install tailwindcss@^4.0.0 @tailwindcss/vite', { 
+        stdio: 'inherit', 
+        cwd: rootDir 
+      })
+      logger.info('✅ Tailwind CSS 4 packages installed')
+    }
+
+    // Add Vite plugin to nuxt.config if not present
+    if (!hasTailwindViteConfig) {
+      await addTailwindViteConfig(nuxt, logger)
+    }
+
+    // Ensure tailwind.config.ts exists and has newsletter paths
+    await ensureTailwindConfig(rootDir, logger, resolver)
+
+    logger.info('✅ Tailwind CSS 4 configured successfully')
+
+  } catch (error) {
+    logger.warn('⚠️  Could not auto-install Tailwind CSS 4. Please install manually:')
+    logger.warn('npm install tailwindcss@^4.0.0 @tailwindcss/vite')
+    logger.warn('Then add tailwindcss() to your vite.plugins in nuxt.config.ts')
+  }
+}
+
+// Add Tailwind Vite plugin to nuxt.config
+async function addTailwindViteConfig(nuxt: any, logger: any) {
+  // We can't directly modify the nuxt.config.ts file, but we can add the plugin
+  // dynamically and warn the user to add it manually
+  
+  // Add the plugin dynamically if possible
+  if (!nuxt.options.vite) {
+    nuxt.options.vite = {}
+  }
+  if (!nuxt.options.vite.plugins) {
+    nuxt.options.vite.plugins = []
+  }
+
+  try {
+    // Try to dynamically import and add the plugin
+    const { default: tailwindcss } = await import('@tailwindcss/vite')
+    nuxt.options.vite.plugins.push(tailwindcss())
+    logger.info('✅ Tailwind CSS 4 Vite plugin added dynamically')
+  } catch (error) {
+    logger.warn(`
+⚠️  Please add the Tailwind CSS 4 Vite plugin to your nuxt.config.ts:
+
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineNuxtConfig({
+  vite: {
+    plugins: [tailwindcss()],
+  },
+  newsletter: {
+    ui: {
+      autoInstallTailwind: false // Disable if configuring manually
+    }
+  }
+})
+    `)
+  }
+}
+
+// Ensure tailwind.config.ts exists with newsletter paths
+async function ensureTailwindConfig(rootDir: string, logger: any, resolver: any) {
+  const configPath = join(rootDir, 'tailwind.config.ts')
+  const configJsPath = join(rootDir, 'tailwind.config.js')
+  
+  const moduleContentPath = resolver.resolve('./runtime/**/*.{vue,js,ts}').replace(rootDir, '.')
+  
+  // Check if config already exists
+  if (existsSync(configPath) || existsSync(configJsPath)) {
+    // Config exists, check if it includes newsletter module paths
+    const existingConfigPath = existsSync(configPath) ? configPath : configJsPath
+    const configContent = readFileSync(existingConfigPath, 'utf8')
+    
+    if (configContent.includes('@hue-studios/nuxt-newsletter') || configContent.includes('newsletter')) {
+      logger.info('✅ Tailwind config already includes newsletter paths')
+      return
+    }
+    
+    logger.warn(`
+⚠️  Please add the newsletter module to your Tailwind content paths:
+
+content: [
+  // ... your existing paths
+  "./node_modules/@hue-studios/nuxt-newsletter/dist/**/*.{js,vue,ts}",
+],
+    `)
+    return
+  }
+
+  // Create new tailwind.config.ts
+  const tailwindConfig = `import type { Config } from "tailwindcss";
+
+const config: Config = {
+  darkMode: "class",
+  
+  content: [
+    "./components/**/*.{vue,js,ts}",
+    "./layouts/**/*.vue", 
+    "./pages/**/*.vue",
+    "./app.vue",
+    "./plugins/**/*.{js,ts}",
+    "./nuxt.config.{js,ts}",
+    // Newsletter module components
+    "./node_modules/@hue-studios/nuxt-newsletter/dist/**/*.{js,vue,ts}",
+  ],
+
+  theme: {
+    container: {
+      center: true,
+    },
+    extend: {
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+    },
+  },
+};
+
+export default config;`
+
+  try {
+    writeFileSync(configPath, tailwindConfig)
+    logger.info('✅ Created tailwind.config.ts with newsletter module paths')
+  } catch (error) {
+    logger.warn('⚠️  Could not create tailwind.config.ts. Please create it manually.')
+  }
+}
