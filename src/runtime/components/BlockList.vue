@@ -145,7 +145,6 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useAdvancedDragDrop } from './useAdvancedDragDrop'
 
 interface Props {
   blocks: any[]
@@ -179,7 +178,7 @@ const {
   getDragClasses,
   cancelDrag,
   triggerHapticFeedback
-} = useAdvancedDragDrop({
+} = useDragDrop({
   onMove: handleBlockMove,
   onStart: handleDragStart,
   onEnd: handleDragEnd,

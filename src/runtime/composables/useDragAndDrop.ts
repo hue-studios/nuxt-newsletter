@@ -19,7 +19,7 @@ export interface DragDropOptions {
 }
 
 interface DragState {
-  isDragging: boolean
+   isDragging: boolean
   draggedIndex: number | null
   dragOverIndex: number | null
   initialPosition: { x: number; y: number }
@@ -30,10 +30,128 @@ interface DragState {
   animationFrameId: number | null
   touchStartTime: number
   hasMovedMinDistance: boolean
-  velocityTracker: Array<{ x: number; y: number; time: number }>
+  velocityTracker: VelocityPoint[]
   isLongPress: boolean
   cancelTimeout: NodeJS.Timeout | null
 }
+
+// Add this interface to your types at the top of the file
+interface VelocityPoint {
+  x: number
+  y: number
+  time: number
+}
+
+const createGhostElement = (element: HTMLElement): HTMLElement => {
+  const rect = element.getBoundingClientRect()
+  const ghost = element.cloneNode(true) as HTMLElement
+  
+  // Style the ghost element
+  ghost.style.cssText = `
+    position: fixed;
+    top: ${rect.top}px;
+    left: ${rect.left}px;
+    width: ${rect.width}px;
+    height: ${rect.height}px;
+    background: white;
+    border: 2px solid #3b82f6;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.9;
+    transform: rotate(2deg) scale(1.05);
+    transition: none;
+    animation: ghostPulse 2s ease-in-out infinite;
+  `
+  
+  // Remove any interactive elements
+  ghost.querySelectorAll('button, input, textarea, select').forEach(el => {
+    el.setAttribute('disabled', 'true')
+    el.style.pointerEvents = 'none'
+  })
+  
+  return ghost
+}
+
+const findDropTarget = (clientX: number, clientY: number): { index: number, element: HTMLElement | null } => {
+  const dropZones = document.querySelectorAll('[data-drop-zone]')
+  
+  for (let i = 0; i < dropZones.length; i++) {
+    const zone = dropZones[i] as HTMLElement
+    const rect = zone.getBoundingClientRect()
+    
+    if (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    ) {
+      return {
+        index: parseInt(zone.getAttribute('data-drop-zone') || '-1'),
+        element: zone
+      }
+    }
+  }
+  
+  return { index: -1, element: null }
+}
+
+const calculateVelocity = (): { x: number, y: number } => {
+  const tracker = dragState.value.velocityTracker
+  if (tracker.length < 2) return { x: 0, y: 0 }
+  
+  const recent = tracker.slice(-2)
+  const timeDiff = recent[1].time - recent[0].time
+  
+  if (timeDiff === 0) return { x: 0, y: 0 }
+  
+  return {
+    x: (recent[1].x - recent[0].x) / timeDiff,
+    y: (recent[1].y - recent[0].y) / timeDiff
+  }
+}
+
+const handleAutoScroll = (clientY: number) => {
+  const scrollContainer = dragState.value.scrollContainer
+  if (!scrollContainer || !autoScroll) return
+  
+  const rect = scrollContainer.getBoundingClientRect()
+  const scrollZone = 60 // px from edge to trigger scroll
+  const scrollSpeed = 5 // px per frame
+  
+  if (clientY < rect.top + scrollZone) {
+    // Scroll up
+    scrollContainer.scrollTop = Math.max(0, scrollContainer.scrollTop - scrollSpeed)
+  } else if (clientY > rect.bottom - scrollZone) {
+    // Scroll down
+    scrollContainer.scrollTop = Math.min(
+      scrollContainer.scrollHeight - scrollContainer.clientHeight,
+      scrollContainer.scrollTop + scrollSpeed
+    )
+  }
+}
+
+const handleTouchMove = (event: TouchEvent) => {
+  handleMove(event.touches[0].clientX, event.touches[0].clientY)
+}
+
+const handleMouseMove = (event: MouseEvent) => {
+  handleMove(event.clientX, event.clientY)
+}
+
+// Update the trackVelocity function
+const trackVelocity = (clientX: number, clientY: number) => {
+  const now = Date.now()
+  dragState.value.velocityTracker.push({ x: clientX, y: clientY, time: now })
+  
+  // Keep only last 5 points for velocity calculation
+  if (dragState.value.velocityTracker.length > 5) {
+    dragState.value.velocityTracker.shift()
+  }
+}
+
+
 
 export function useAdvancedDragDrop(options: DragDropOptions = {}) {
   const {
@@ -573,6 +691,11 @@ export function useAdvancedDragDrop(options: DragDropOptions = {}) {
     getDragAttributes,
     getDragClasses,
     cancelDrag,
+    handleKeyDown,
+    handleDragStart,
+    handleMouseMove,
+    handleTouchMove,
+    handleDragEnd,
     
     // Utilities
     triggerHapticFeedback

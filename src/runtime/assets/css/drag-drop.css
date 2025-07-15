@@ -1,0 +1,263 @@
+/* Global drag-and-drop styles */
+/* Add this file: src/runtime/assets/css/drag-drop.css */
+
+@keyframes ghostPulse {
+  0%, 100% { 
+    transform: rotate(2deg) scale(1.05); 
+  }
+  50% { 
+    transform: rotate(2deg) scale(1.08); 
+  }
+}
+
+@keyframes blockSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropZonePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Core drag states */
+.drop-zone-active {
+  transform: scale(1.02) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  animation: dropZonePulse 1.5s ease-in-out infinite;
+}
+
+.is-dragging {
+  opacity: 0.5 !important;
+  transform: scale(0.98) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.is-drag-over {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.drag-disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+}
+
+.drag-active {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.drag-active * {
+  cursor: grabbing !important;
+}
+
+/* Prevent text selection during drag */
+.drag-active {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  
+  /* Prevent context menu on long press */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ghost element styles */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.9;
+  transform: rotate(2deg) scale(1.05);
+  animation: ghostPulse 2s ease-in-out infinite;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Drag handle styles */
+.drag-handle {
+  cursor: grab;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drag-handle:hover {
+  transform: scale(1.1);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+/* Drop zone indicators */
+.drop-zone-indicator {
+  position: relative;
+  height: 4px;
+  margin: 8px 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.drop-zone-indicator.active {
+  opacity: 1;
+}
+
+.drop-zone-line {
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+.drop-zone-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #3b82f6;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Accessibility */
+.accessibility-mode {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.2s ease;
+}
+
+.accessibility-mode:focus {
+  outline-color: rgba(59, 130, 246, 0.5);
+}
+
+.accessibility-mode:focus-visible {
+  outline-color: #3b82f6;
+  outline-width: 3px;
+}
+
+/* Touch optimizations */
+@media (max-width: 768px) {
+  .drag-handle {
+    min-height: 44px;
+    min-width: 44px;
+    
+    /* Better touch feedback */
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  .drop-zone-indicator {
+    height: 6px;
+    margin: 12px 0;
+  }
+  
+  .drop-zone-line {
+    height: 3px;
+  }
+  
+  .drop-zone-label {
+    padding: 6px 16px;
+    font-size: 14px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .drop-zone-active {
+    border-color: #000 !important;
+    background-color: rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .drop-zone-line {
+    background: #000;
+  }
+  
+  .drop-zone-label {
+    background: #000;
+    color: #fff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .drag-ghost,
+  .drop-zone-active {
+    animation: none !important;
+  }
+  
+  .is-dragging,
+  .accessibility-mode,
+  .drag-handle {
+    transition: none !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .drag-ghost {
+    background: #1f2937;
+    border-color: #60a5fa;
+  }
+  
+  .drop-zone-active {
+    background-color: rgba(96, 165, 250, 0.1) !important;
+    border-color: rgba(96, 165, 250, 0.3) !important;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
+  }
+  
+  .drop-zone-line {
+    background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  }
+  
+  .drop-zone-label {
+    background: #60a5fa;
+  }
+}
+
+/* Performance optimizations */
+.drag-optimized {
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Smooth scrolling for auto-scroll */
+.drag-scroll-container {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbars during drag for cleaner look */
+.drag-active .drag-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.drag-active .drag-scroll-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

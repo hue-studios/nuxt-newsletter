@@ -26,6 +26,14 @@ export default defineNuxtConfig({
     ui: {
       icons: 'lucide',
       enableDragDrop: true,
+      dragDrop: {
+        hapticFeedback: true,
+        autoScroll: true,
+        smoothAnimations: true,
+        longPressDelay: 300,
+        minimumDistance: 8,
+        accessibilityMode: true
+      },
       autoInstallTailwind: false, // We're configuring manually
       theme: {
         primaryColor: 'blue',

@@ -424,6 +424,9 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
 
     // Add drag and drop composable if enabled
     if (options.ui?.enableDragDrop !== false) {
+      // Add the drag-drop CSS
+      nuxt.options.css.push(resolver.resolve('./runtime/assets/css/drag-drop.css'))
+
       addImports([
         {
           name: 'useDragAndDrop',
