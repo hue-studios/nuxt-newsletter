@@ -1,340 +1,219 @@
 <template>
-  <div class="flex flex-col h-full bg-white">
-    <!-- Enhanced Preview Header -->
-    <div class="flex-shrink-0 bg-gradient-to-r from-slate-50 to-blue-50/30 border-b border-slate-200/60 p-4">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center space-x-3">
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-            <Icon name="lucide:eye" class="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-slate-900">Live Preview</h3>
-            <p class="text-sm text-slate-600">See how your newsletter looks</p>
-          </div>
-        </div>
-
-        <!-- Preview Actions -->
-        <div class="flex items-center space-x-2">
-          <!-- Refresh Button -->
-          <button
-            @click="refreshPreview"
-            :disabled="isCompiling"
-            class="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-300 bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
-            title="Refresh preview"
-          >
-            <Icon
-              name="lucide:refresh-cw"
-              class="w-4 h-4"
-              :class="{ 'animate-spin': isCompiling }"
-            />
-          </button>
-
-          <!-- Actions Menu -->
-          <div class="relative">
-            <button
-              @click="showActionsMenu = !showActionsMenu"
-              class="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-300 bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all duration-200 shadow-sm hover:shadow"
-              title="More actions"
-            >
-              <Icon name="lucide:more-horizontal" class="w-4 h-4" />
-            </button>
-
-            <!-- Enhanced Dropdown Menu -->
-            <Transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95 translate-y-1"
-              enter-to-class="transform opacity-100 scale-100 translate-y-0"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100 translate-y-0"
-              leave-to-class="transform opacity-0 scale-95 translate-y-1"
-            >
-              <div
-                v-if="showActionsMenu"
-                class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 z-20 overflow-hidden"
-              >
-                <div class="py-2">
-                  <button
-                    @click="showMjmlSource = true; showActionsMenu = false"
-                    class="flex items-center w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Icon name="lucide:code" class="w-4 h-4 mr-3 text-slate-500" />
-                    View MJML Source
-                  </button>
-                  <button
-                    @click="copyMjml; showActionsMenu = false"
-                    class="flex items-center w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Icon name="lucide:copy" class="w-4 h-4 mr-3 text-slate-500" />
-                    Copy MJML
-                  </button>
-                  <div class="border-t border-slate-100 my-1"></div>
-                  <button
-                    @click="downloadMjml; showActionsMenu = false"
-                    class="flex items-center w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Icon name="lucide:download" class="w-4 h-4 mr-3 text-slate-500" />
-                    Download MJML
-                  </button>
-                  <button
-                    @click="downloadHtml; showActionsMenu = false"
-                    class="flex items-center w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Icon name="lucide:file-text" class="w-4 h-4 mr-3 text-slate-500" />
-                    Download HTML
-                  </button>
-                </div>
-              </div>
-            </Transition>
-          </div>
-        </div>
-      </div>
-
-      <!-- Enhanced Device Toggle -->
-      <div class="flex items-center justify-center">
-        <div class="inline-flex items-center bg-white rounded-xl p-1 shadow-sm border border-slate-200">
-          <button
-            v-for="device in devices"
-            :key="device.type"
-            @click="currentDevice = device.type"
-            class="flex items-center justify-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium"
-            :class="currentDevice === device.type
-              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
-            :title="device.label"
-          >
-            <Icon :name="device.icon" class="w-4 h-4 mr-2" />
-            {{ device.label }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Enhanced Preview Content Area -->
-    <div class="flex-1 overflow-hidden bg-gradient-to-br from-slate-100 to-blue-100/30 p-6">
-      <!-- Loading State -->
-      <div v-if="isCompiling" class="flex flex-col items-center justify-center h-full">
-        <div class="text-center">
-          <div class="w-12 h-12 mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mx-auto">
-            <Icon name="lucide:loader-2" class="w-6 h-6 text-white animate-spin" />
-          </div>
-          <h4 class="text-lg font-medium text-slate-900 mb-2">Compiling Newsletter</h4>
-          <p class="text-slate-600">Generating your beautiful email...</p>
-        </div>
-      </div>
-
-      <!-- Error State -->
-      <div v-else-if="compilationError" class="flex flex-col items-center justify-center h-full">
-        <div class="text-center max-w-md">
-          <div class="w-12 h-12 mb-4 rounded-2xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center mx-auto">
-            <Icon name="lucide:alert-triangle" class="w-6 h-6 text-red-600" />
-          </div>
-          <h4 class="text-lg font-medium text-slate-900 mb-2">Compilation Error</h4>
-          <p class="text-slate-600 mb-4">{{ compilationError }}</p>
-          <button
-            @click="refreshPreview"
-            class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-md hover:shadow-lg"
-          >
-            <Icon name="lucide:refresh-cw" class="w-4 h-4 mr-2" />
-            Try Again
-          </button>
-        </div>
-      </div>
-
-      <!-- Enhanced Device Frame -->
-      <div v-else class="h-full flex items-center justify-center">
-        <div
-          class="bg-white rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 ease-out border border-slate-300/50"
-          :class="deviceFrameClasses"
+  <div class="newsletter-preview">
+    <!-- Preview Controls -->
+    <div class="preview-controls">
+      <div class="device-selector">
+        <button
+          v-for="device in devices"
+          :key="device.type"
+          @click="currentDevice = device.type"
+          class="device-button"
+          :class="{ 'active': currentDevice === device.type }"
         >
-          <!-- Enhanced Mobile Frame Header -->
-          <div v-if="currentDevice === 'mobile'" class="bg-slate-900 h-8 flex items-center justify-center relative">
-            <!-- Phone notch -->
-            <div class="absolute left-1/2 transform -translate-x-1/2 top-1 w-20 h-1 bg-slate-700 rounded-full"></div>
-            <!-- Status indicators -->
-            <div class="absolute left-4 flex items-center space-x-1">
-              <div class="flex space-x-1">
-                <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
-                <div class="w-1 h-1 bg-slate-500 rounded-full"></div>
-                <div class="w-1 h-1 bg-slate-400 rounded-full"></div>
-              </div>
-            </div>
-            <!-- Time -->
-            <div class="text-white text-xs font-medium">
-              {{ new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }}
-            </div>
-            <!-- Battery -->
-            <div class="absolute right-4 flex items-center space-x-1">
-              <div class="w-6 h-3 border border-slate-500 rounded-sm relative">
-                <div class="absolute right-0 top-1/2 transform -translate-y-1/2 w-0.5 h-1.5 bg-slate-500 rounded-r-sm translate-x-full"></div>
-                <div class="w-4 h-1.5 bg-green-500 rounded-sm m-0.5"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Enhanced Desktop Frame Header -->
-          <div v-if="currentDevice === 'desktop'" class="bg-slate-200 h-8 flex items-center px-4 border-b border-slate-300">
-            <div class="flex space-x-2">
-              <div class="w-3 h-3 rounded-full bg-red-400"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <div class="w-3 h-3 rounded-full bg-green-400"></div>
-            </div>
-            <div class="flex-1 flex justify-center">
-              <div class="bg-white rounded-md px-4 py-1 text-xs text-slate-600 max-w-xs truncate">
-                inbox.gmail.com
-              </div>
-            </div>
-          </div>
-
-          <!-- Email Client Header (simulated) -->
-          <div class="bg-slate-50 border-b border-slate-200 p-3">
-            <div class="flex items-center space-x-3">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
-                {{ (newsletter.from_name || 'Newsletter')[0] }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-medium text-slate-900 truncate">
-                    {{ newsletter.from_name || 'Newsletter' }}
-                  </p>
-                  <span class="text-xs text-slate-500">now</span>
-                </div>
-                <p class="text-sm text-slate-600 truncate">
-                  {{ newsletter.subject_line || 'Newsletter Subject' }}
-                </p>
-                <p v-if="newsletter.preview_text" class="text-xs text-slate-500 truncate">
-                  {{ newsletter.preview_text }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Email Preview Content -->
-          <div class="flex-1 overflow-hidden">
-            <iframe
-              ref="previewFrame"
-              :srcdoc="iframeContent"
-              class="w-full h-full border-0 bg-white"
-              :class="iframeClasses"
-              sandbox="allow-same-origin allow-scripts"
-              @load="handleIframeLoad"
-            />
-          </div>
-        </div>
+          <Icon :name="device.icon" />
+          <span>{{ device.label }}</span>
+        </button>
       </div>
 
-      <!-- Empty State -->
-      <div v-if="!isCompiling && !compilationError && !compiledHtml" class="flex flex-col items-center justify-center h-full">
-        <div class="text-center max-w-md">
-          <div class="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center mx-auto">
-            <Icon name="lucide:mail" class="w-8 h-8 text-slate-500" />
-          </div>
-          <h4 class="text-xl font-medium text-slate-900 mb-2">Newsletter Preview</h4>
-          <p class="text-slate-600 mb-6">
-            Add content blocks to see your newsletter come to life
-          </p>
-          <div class="flex items-center justify-center space-x-2 text-sm text-slate-500">
-            <div class="w-2 h-2 rounded-full bg-slate-300 animate-bounce"></div>
-            <div class="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style="animation-delay: 0.1s"></div>
-            <div class="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style="animation-delay: 0.2s"></div>
-          </div>
-        </div>
+      <div class="zoom-controls">
+        <button @click="zoomOut" :disabled="zoom <= 0.5" class="zoom-button">
+          <Icon name="lucide:zoom-out" />
+        </button>
+        <span class="zoom-display">{{ Math.round(zoom * 100) }}%</span>
+        <button @click="zoomIn" :disabled="zoom >= 1.5" class="zoom-button">
+          <Icon name="lucide:zoom-in" />
+        </button>
+      </div>
+
+      <div class="preview-actions">
+        <button @click="refreshPreview" class="action-button" :disabled="isCompiling">
+          <Icon :name="isCompiling ? 'lucide:loader-2' : 'lucide:refresh-cw'" :class="{ 'animate-spin': isCompiling }" />
+        </button>
+        <button @click="showMjmlSource = true" class="action-button">
+          <Icon name="lucide:code" />
+        </button>
+        <button @click="downloadHtml" class="action-button">
+          <Icon name="lucide:download" />
+        </button>
       </div>
     </div>
 
-    <!-- Enhanced Copy Success Notification -->
-    <Transition
-      enter-active-class="transition ease-out duration-200"
-      enter-from-class="transform opacity-0 translate-y-2"
-      enter-to-class="transform opacity-100 translate-y-0"
-      leave-active-class="transition ease-in duration-150"
-      leave-from-class="transform opacity-100 translate-y-0"
-      leave-to-class="transform opacity-0 translate-y-2"
-    >
-      <div
-        v-if="showCopySuccess"
-        class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium"
-      >
-        <div class="flex items-center space-x-2">
-          <Icon name="lucide:check" class="w-4 h-4 text-green-400" />
-          <span>MJML copied to clipboard!</span>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Enhanced MJML Source Modal -->
-    <Transition
-      enter-active-class="transition ease-out duration-300"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition ease-in duration-200"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="showMjmlSource"
-        class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-        @click.self="showMjmlSource = false"
-      >
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-          <!-- Enhanced Modal Header -->
-          <div class="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50/30">
-            <div class="flex items-center space-x-3">
-              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-                <Icon name="lucide:code" class="w-4 h-4 text-white" />
+    <!-- Preview Frame Container -->
+    <div class="preview-container" :class="containerClasses">
+      <!-- Device Frame -->
+      <div class="device-frame" :class="frameClasses" :style="frameStyles">
+        <!-- Mobile Frame Chrome -->
+        <template v-if="currentDevice === 'mobile'">
+          <!-- Status Bar -->
+          <div class="mobile-status-bar">
+            <div class="status-left">
+              <div class="signal-bars">
+                <div class="bar" v-for="i in 4" :key="i" :class="{ 'active': i <= 3 }"></div>
               </div>
-              <div>
-                <h3 class="text-lg font-semibold text-slate-900">MJML Source Code</h3>
-                <p class="text-sm text-slate-600">Raw MJML markup for your newsletter</p>
+              <span class="carrier">Verizon</span>
+              <Icon name="lucide:wifi" class="wifi-icon" />
+            </div>
+            <div class="status-center">
+              <span class="time">{{ currentTime }}</span>
+            </div>
+            <div class="status-right">
+              <span class="battery-percent">85%</span>
+              <div class="battery-icon">
+                <div class="battery-fill"></div>
               </div>
             </div>
-            <button
-              @click="showMjmlSource = false"
-              class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <Icon name="lucide:x" class="w-5 h-5" />
-            </button>
           </div>
 
-          <!-- Enhanced Modal Body -->
-          <div class="flex-1 overflow-auto p-6 bg-slate-50">
-            <div class="bg-slate-900 rounded-xl overflow-hidden">
-              <div class="flex items-center justify-between p-4 border-b border-slate-700">
-                <div class="flex items-center space-x-2">
-                  <div class="flex space-x-1">
-                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                  </div>
-                  <span class="text-sm text-slate-400 ml-4">newsletter.mjml</span>
-                </div>
-                <button
-                  @click="copyMjml"
-                  class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
-                >
-                  <Icon name="lucide:copy" class="w-3 h-3 mr-1" />
-                  Copy
+          <!-- Email App Header -->
+          <div class="email-header">
+            <div class="header-content">
+              <button class="back-button">
+                <Icon name="lucide:chevron-left" />
+              </button>
+              <div class="email-info">
+                <h4>{{ newsletter.subject_line || 'Newsletter Subject' }}</h4>
+                <p>from {{ newsletter.from_name || 'Your Company' }}</p>
+              </div>
+              <div class="header-actions">
+                <button class="header-action">
+                  <Icon name="lucide:star" />
+                </button>
+                <button class="header-action">
+                  <Icon name="lucide:more-vertical" />
                 </button>
               </div>
-              <pre class="p-4 text-sm text-slate-300 overflow-auto"><code>{{ compiledMjml || '<!-- No MJML generated yet -->' }}</code></pre>
+            </div>
+          </div>
+        </template>
+
+        <!-- Desktop Frame Chrome -->
+        <template v-else>
+          <!-- Browser Chrome -->
+          <div class="browser-chrome">
+            <div class="chrome-controls">
+              <div class="traffic-lights">
+                <div class="traffic-light red"></div>
+                <div class="traffic-light yellow"></div>
+                <div class="traffic-light green"></div>
+              </div>
+              <div class="address-bar">
+                <Icon name="lucide:lock" class="lock-icon" />
+                <span>mail.google.com</span>
+              </div>
+              <div class="browser-actions">
+                <Icon name="lucide:refresh-cw" />
+                <Icon name="lucide:more-horizontal" />
+              </div>
             </div>
           </div>
 
-          <!-- Enhanced Modal Footer -->
-          <div class="flex items-center justify-end space-x-3 p-6 border-t border-slate-200 bg-slate-50">
-            <button
-              @click="downloadMjml"
-              class="inline-flex items-center px-4 py-2.5 border border-slate-300 shadow-sm text-sm font-medium rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
-            >
-              <Icon name="lucide:download" class="w-4 h-4 mr-2" />
-              Download MJML
+          <!-- Gmail Interface -->
+          <div class="gmail-interface">
+            <div class="gmail-header">
+              <div class="email-sender">
+                <div class="sender-avatar">
+                  {{ (newsletter.from_name || 'C')[0].toUpperCase() }}
+                </div>
+                <div class="sender-info">
+                  <div class="sender-name">{{ newsletter.from_name || 'Your Company' }}</div>
+                  <div class="sender-email">&lt;{{ newsletter.from_email || 'newsletter@company.com' }}&gt;</div>
+                </div>
+              </div>
+              <div class="email-meta">
+                <span class="email-time">{{ formatTime() }}</span>
+                <div class="email-actions">
+                  <Icon name="lucide:reply" />
+                  <Icon name="lucide:forward" />
+                  <Icon name="lucide:more-vertical" />
+                </div>
+              </div>
+            </div>
+            <div class="email-subject">
+              <h3>{{ newsletter.subject_line || 'Newsletter Subject Line' }}</h3>
+              <div class="subject-meta">
+                <span class="to-line">to me</span>
+                <Icon name="lucide:chevron-down" class="details-toggle" />
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Email Content Area -->
+        <div class="email-content" :style="contentStyles">
+          <!-- Compilation Error -->
+          <div v-if="compilationError" class="compilation-error">
+            <Icon name="lucide:alert-triangle" />
+            <div>
+              <h4>Compilation Error</h4>
+              <p>{{ compilationError }}</p>
+              <button @click="refreshPreview" class="retry-button">
+                <Icon name="lucide:refresh-cw" />
+                Try Again
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading State -->
+          <div v-else-if="isCompiling" class="loading-state">
+            <Icon name="lucide:loader-2" class="animate-spin" />
+            <p>Compiling newsletter...</p>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else-if="!compiledHtml" class="empty-content">
+            <Icon name="lucide:mail" />
+            <h4>No Content Yet</h4>
+            <p>Add some blocks to see your newsletter preview</p>
+          </div>
+
+          <!-- Compiled Newsletter -->
+          <iframe
+            v-else
+            ref="previewFrame"
+            :srcdoc="iframeContent"
+            class="newsletter-iframe"
+            @load="handleIframeLoad"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- MJML Source Modal -->
+    <Transition name="modal">
+      <div v-if="showMjmlSource" class="modal-overlay" @click="showMjmlSource = false">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3>MJML Source</h3>
+            <button @click="showMjmlSource = false" class="modal-close">
+              <Icon name="lucide:x" />
             </button>
-            <button
-              @click="downloadHtml"
-              class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              <Icon name="lucide:file-text" class="w-4 h-4 mr-2" />
-              Download HTML
-            </button>
+          </div>
+          <div class="modal-body">
+            <div class="source-tabs">
+              <button
+                @click="sourceTab = 'mjml'"
+                class="source-tab"
+                :class="{ 'active': sourceTab === 'mjml' }"
+              >
+                MJML
+              </button>
+              <button
+                @click="sourceTab = 'html'"
+                class="source-tab"
+                :class="{ 'active': sourceTab === 'html' }"
+              >
+                HTML
+              </button>
+            </div>
+            <div class="source-container">
+              <pre><code>{{ sourceTab === 'mjml' ? compiledMjml : compiledHtml }}</code></pre>
+            </div>
+            <div class="source-actions">
+              <button @click="copySource" class="copy-button">
+                <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" />
+                {{ copied ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -344,282 +223,626 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import type { NewsletterData } from '../../types';
 
 interface Props {
-  newsletter: NewsletterData
+  newsletter: any
   blockTypes: any[]
+  device?: 'mobile' | 'desktop'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  device: 'mobile'
+})
 
 const emit = defineEmits<{
   'update:compiled': [compiled: { mjml: string, html: string }]
 }>()
 
-// Core functionality
+// Composables
 const { compileNewsletterToMjml, compileMjmlToHtml, isCompiling, compilationError } = useMjmlCompiler()
 
-// Enhanced state
-const currentDevice = ref<'desktop' | 'mobile'>('desktop')
+// State
+const currentDevice = ref(props.device)
+const zoom = ref(1)
 const compiledMjml = ref('')
 const compiledHtml = ref('')
 const showMjmlSource = ref(false)
-const showActionsMenu = ref(false)
+const sourceTab = ref('mjml')
 const copied = ref(false)
-const showCopySuccess = ref(false)
 const previewFrame = ref<HTMLIFrameElement>()
+const currentTime = ref('')
 
-// Enhanced device configurations
+// Device configurations
 const devices = [
-  { type: 'desktop', icon: 'lucide:monitor', label: 'Desktop' },
-  { type: 'mobile', icon: 'lucide:smartphone', label: 'Mobile' }
-] as const
+  { type: 'mobile', icon: 'lucide:smartphone', label: 'Mobile' },
+  { type: 'desktop', icon: 'lucide:monitor', label: 'Desktop' }
+]
 
-// Enhanced computed styles
-const deviceFrameClasses = computed(() => {
-  return {
-    'w-full max-w-3xl': currentDevice.value === 'desktop',
-    'w-80': currentDevice.value === 'mobile'
-  }
-})
+// Computed styles
+const containerClasses = computed(() => ({
+  'mobile-container': currentDevice.value === 'mobile',
+  'desktop-container': currentDevice.value === 'desktop'
+}))
 
-const iframeClasses = computed(() => {
-  return {
-    'min-h-[600px]': currentDevice.value === 'desktop',
-    'h-[640px]': currentDevice.value === 'mobile'
-  }
-})
+const frameClasses = computed(() => ({
+  'mobile-frame': currentDevice.value === 'mobile',
+  'desktop-frame': currentDevice.value === 'desktop'
+}))
 
-// Enhanced iframe content
+const frameStyles = computed(() => ({
+  transform: `scale(${zoom.value})`,
+  transformOrigin: 'top center'
+}))
+
+const contentStyles = computed(() => ({
+  height: currentDevice.value === 'mobile' ? 'calc(100vh - 120px)' : 'calc(100vh - 160px)'
+}))
+
+// Enhanced iframe content with proper scaling
 const iframeContent = computed(() => {
-  if (!compiledHtml.value) {
-    return `
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-            body {
-              margin: 0;
-              padding: 40px 20px;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-              min-height: 100vh;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .placeholder {
-              text-align: center;
-              max-width: 400px;
-              padding: 40px;
-              background: white;
-              border-radius: 16px;
-              box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            }
-            .icon {
-              width: 64px;
-              height: 64px;
-              background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-              border-radius: 16px;
-              margin: 0 auto 20px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 24px;
-            }
-            h3 { color: #1e293b; margin: 0 0 8px; font-size: 18px; }
-            p { color: #64748b; margin: 0; line-height: 1.5; }
-          </style>
-        </head>
-        <body>
-          <div class="placeholder">
-            <div class="icon">✉</div>
-            <h3>Newsletter Preview</h3>
-            <p>Add content blocks to see your beautiful newsletter here</p>
-          </div>
-        </body>
-      </html>
-    `
-  }
-
+  if (!compiledHtml.value) return ''
+  
+  const baseStyles = `
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Mobile optimizations */
+      @media screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+        
+        table {
+          width: 100% !important;
+        }
+        
+        .mobile-hide {
+          display: none !important;
+        }
+        
+        .mobile-center {
+          text-align: center !important;
+        }
+      }
+      
+      /* Prevent zooming on mobile */
+      * {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+      }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  `
+  
   return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Newsletter Preview</title>
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f8fafc;
-          }
-          .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #ffffff;
-          }
-          @media (max-width: 600px) {
-            .email-container {
-              width: 100% !important;
-              max-width: 100% !important;
-            }
-          }
-        </style>
+        ${baseStyles}
       </head>
       <body>
-        <div class="email-container">
-          ${compiledHtml.value}
-        </div>
+        ${compiledHtml.value}
       </body>
     </html>
   `
 })
 
-// Enhanced compilation function
-const compileNewsletter = async () => {
-  if (!props.newsletter || !props.blockTypes.length) return
+// Methods
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: false 
+  })
+}
 
+const formatTime = () => {
+  return new Date().toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+}
+
+const zoomIn = () => {
+  zoom.value = Math.min(zoom.value + 0.1, 1.5)
+}
+
+const zoomOut = () => {
+  zoom.value = Math.max(zoom.value - 0.1, 0.5)
+}
+
+const refreshPreview = async () => {
+  await compileNewsletter()
+}
+
+const compileNewsletter = async () => {
   try {
     const mjml = await compileNewsletterToMjml(props.newsletter, props.blockTypes)
-    compiledMjml.value = mjml
-
     const html = await compileMjmlToHtml(mjml)
+    
+    compiledMjml.value = mjml
     compiledHtml.value = html
-
+    
     emit('update:compiled', { mjml, html })
   } catch (error) {
-    console.error('Preview compilation error:', error)
+    console.error('Compilation failed:', error)
   }
 }
 
-// Enhanced refresh function
-const refreshPreview = () => {
-  compileNewsletter()
-}
-
-// Enhanced copy function
-const copyMjml = async () => {
-  if (!compiledMjml.value) return
-
-  try {
-    await navigator.clipboard.writeText(compiledMjml.value)
-    copied.value = true
-    showCopySuccess.value = true
-
-    setTimeout(() => {
-      copied.value = false
-      showCopySuccess.value = false
-    }, 2000)
-  } catch (error) {
-    console.error('Error copying MJML:', error)
-  }
-}
-
-// Enhanced download functions
-const downloadMjml = () => {
-  if (!compiledMjml.value) return
+const handleIframeLoad = async () => {
+  await nextTick()
   
-  const blob = new Blob([compiledMjml.value], { type: 'text/xml' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `newsletter-${Date.now()}.mjml`
-  a.click()
-  URL.revokeObjectURL(url)
+  if (previewFrame.value?.contentWindow) {
+    // Apply mobile-specific styles if needed
+    if (currentDevice.value === 'mobile') {
+      const iframeDoc = previewFrame.value.contentDocument
+      if (iframeDoc) {
+        const body = iframeDoc.body
+        if (body) {
+          body.style.maxWidth = '375px'
+          body.style.margin = '0 auto'
+          body.style.overflow = 'visible'
+        }
+      }
+    }
+  }
 }
 
 const downloadHtml = () => {
-  if (!iframeContent.value) return
+  if (!compiledHtml.value) return
   
   const blob = new Blob([iframeContent.value], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `newsletter-${Date.now()}.html`
+  a.download = `${props.newsletter.title || 'newsletter'}.html`
+  document.body.appendChild(a)
   a.click()
+  document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
-const handleIframeLoad = () => {
-  nextTick(() => {
-    if (previewFrame.value?.contentWindow) {
-      // Optional: Add any post-load processing
-    }
-  })
+const copySource = async () => {
+  const content = sourceTab.value === 'mjml' ? compiledMjml.value : compiledHtml.value
+  if (!content) return
+  
+  try {
+    await navigator.clipboard.writeText(content)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch (error) {
+    console.error('Failed to copy:', error)
+  }
 }
 
-// Watch for changes and recompile
-watch(
-  () => [props.newsletter, props.blockTypes],
-  () => {
-    compileNewsletter()
-  },
-  { deep: true }
-)
-
-// Initial compilation
-onMounted(() => {
-  compileNewsletter()
+// Watchers
+watch(() => props.newsletter, compileNewsletter, { deep: true })
+watch(() => props.device, (newDevice) => {
+  currentDevice.value = newDevice
 })
 
-// Enhanced click outside handler
+// Lifecycle
 onMounted(() => {
-  const handleClickOutside = (event: Event) => {
-    if (!event.target) return
-
-    const target = event.target as HTMLElement
-    if (showActionsMenu.value && !target.closest('.relative')) {
-      showActionsMenu.value = false
-    }
-  }
-
-  document.addEventListener('click', handleClickOutside)
-
+  updateTime()
+  const timeInterval = setInterval(updateTime, 60000) // Update every minute
+  
+  compileNewsletter()
+  
   onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside)
+    clearInterval(timeInterval)
   })
 })
 </script>
 
 <style scoped>
-/* Enhanced animations */
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
+@reference 'tailwindcss';
+.newsletter-preview {
+  @apply h-full flex flex-col bg-slate-100;
+}
+
+/* Preview Controls */
+.preview-controls {
+  @apply flex items-center justify-between p-3 bg-white border-b border-slate-200 flex-wrap gap-3;
+}
+
+.device-selector {
+  @apply flex items-center gap-1 bg-slate-100 rounded-lg p-1;
+}
+
+.device-button {
+  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors;
+}
+
+.device-button.active {
+  @apply bg-white shadow-sm text-blue-600;
+}
+
+.device-button:not(.active) {
+  @apply text-slate-600 hover:text-slate-900;
+}
+
+.device-button svg {
+  @apply w-4 h-4;
+}
+
+.zoom-controls {
+  @apply flex items-center gap-2;
+}
+
+.zoom-button {
+  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.zoom-display {
+  @apply text-sm font-medium text-slate-700 min-w-[3rem] text-center;
+}
+
+.preview-actions {
+  @apply flex items-center gap-1;
+}
+
+.action-button {
+  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50;
+}
+
+/* Preview Container */
+.preview-container {
+  @apply flex-1 overflow-auto p-4 bg-gradient-to-br from-slate-100 to-slate-200;
+}
+
+.preview-container.mobile-container {
+  @apply flex justify-center;
+}
+
+.preview-container.desktop-container {
+  @apply flex justify-center;
+}
+
+/* Device Frames */
+.device-frame {
+  @apply bg-white rounded-xl shadow-2xl overflow-hidden transition-transform duration-300;
+}
+
+.mobile-frame {
+  @apply w-[375px] h-[812px] relative;
+}
+
+.desktop-frame {
+  @apply w-full max-w-4xl min-h-[600px] relative;
+}
+
+/* Mobile Chrome */
+.mobile-status-bar {
+  @apply h-11 bg-slate-900 flex items-center justify-between px-4 text-white text-sm;
+}
+
+.status-left {
+  @apply flex items-center gap-2;
+}
+
+.signal-bars {
+  @apply flex items-end gap-0.5;
+}
+
+.bar {
+  @apply w-1 bg-slate-500 rounded-full;
+}
+
+.bar:nth-child(1) { @apply h-1; }
+.bar:nth-child(2) { @apply h-2; }
+.bar:nth-child(3) { @apply h-3; }
+.bar:nth-child(4) { @apply h-4; }
+
+.bar.active {
+  @apply bg-white;
+}
+
+.carrier {
+  @apply text-xs;
+}
+
+.wifi-icon {
+  @apply w-4 h-4;
+}
+
+.status-center {
+  @apply font-semibold;
+}
+
+.status-right {
+  @apply flex items-center gap-1;
+}
+
+.battery-percent {
+  @apply text-xs;
+}
+
+.battery-icon {
+  @apply w-6 h-3 border border-white rounded-sm relative;
+}
+
+.battery-icon::after {
+  content: '';
+  @apply absolute -right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-1.5 bg-white rounded-r-sm;
+}
+
+.battery-fill {
+  @apply w-4 h-1.5 bg-green-400 rounded-sm m-0.5;
+}
+
+.email-header {
+  @apply h-14 bg-white border-b border-slate-200 flex items-center;
+}
+
+.header-content {
+  @apply flex items-center w-full px-4;
+}
+
+.back-button {
+  @apply p-2 -ml-2 text-blue-600;
+}
+
+.email-info {
+  @apply flex-1 mx-3 min-w-0;
+}
+
+.email-info h4 {
+  @apply text-sm font-semibold text-slate-900 truncate;
+}
+
+.email-info p {
+  @apply text-xs text-slate-600 truncate;
+}
+
+.header-actions {
+  @apply flex items-center gap-2;
+}
+
+.header-action {
+  @apply p-2 text-slate-400 hover:text-slate-600;
+}
+
+/* Desktop Chrome */
+.browser-chrome {
+  @apply h-12 bg-slate-200 border-b border-slate-300;
+}
+
+.chrome-controls {
+  @apply h-full flex items-center px-4;
+}
+
+.traffic-lights {
+  @apply flex items-center gap-2;
+}
+
+.traffic-light {
+  @apply w-3 h-3 rounded-full;
+}
+
+.traffic-light.red {
+  @apply bg-red-400;
+}
+
+.traffic-light.yellow {
+  @apply bg-yellow-400;
+}
+
+.traffic-light.green {
+  @apply bg-green-400;
+}
+
+.address-bar {
+  @apply flex-1 mx-4 bg-white rounded-md px-3 py-1.5 flex items-center gap-2 text-sm text-slate-600;
+}
+
+.lock-icon {
+  @apply w-4 h-4 text-green-600;
+}
+
+.browser-actions {
+  @apply flex items-center gap-2 text-slate-500;
+}
+
+.gmail-interface {
+  @apply bg-white border-b border-slate-200;
+}
+
+.gmail-header {
+  @apply flex items-center justify-between p-4;
+}
+
+.email-sender {
+  @apply flex items-center gap-3;
+}
+
+.sender-avatar {
+  @apply w-10 h-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center text-sm;
+}
+
+.sender-info {
+  @apply min-w-0;
+}
+
+.sender-name {
+  @apply font-semibold text-slate-900;
+}
+
+.sender-email {
+  @apply text-sm text-slate-600;
+}
+
+.email-meta {
+  @apply flex items-center gap-4;
+}
+
+.email-time {
+  @apply text-sm text-slate-600;
+}
+
+.email-actions {
+  @apply flex items-center gap-2 text-slate-400;
+}
+
+.email-subject {
+  @apply px-4 pb-4;
+}
+
+.email-subject h3 {
+  @apply text-xl font-bold text-slate-900 mb-1;
+}
+
+.subject-meta {
+  @apply flex items-center gap-2 text-sm text-slate-600;
+}
+
+.details-toggle {
+  @apply w-4 h-4 cursor-pointer hover:text-slate-900;
+}
+
+/* Email Content */
+.email-content {
+  @apply flex-1 overflow-auto bg-white;
+}
+
+.compilation-error,
+.loading-state,
+.empty-content {
+  @apply flex flex-col items-center justify-center h-64 text-center p-8;
+}
+
+.compilation-error {
+  @apply text-red-600;
+}
+
+.compilation-error svg {
+  @apply w-12 h-12 mb-4;
+}
+
+.compilation-error h4 {
+  @apply text-lg font-semibold mb-2;
+}
+
+.compilation-error p {
+  @apply mb-4 max-w-md;
+}
+
+.retry-button {
+  @apply inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors;
+}
+
+.loading-state {
+  @apply text-slate-600;
+}
+
+.loading-state svg {
+  @apply w-8 h-8 mb-4;
+}
+
+.empty-content {
+  @apply text-slate-400;
+}
+
+.empty-content svg {
+  @apply w-16 h-16 mb-4;
+}
+
+.empty-content h4 {
+  @apply text-lg font-semibold text-slate-600 mb-2;
+}
+
+.newsletter-iframe {
+  @apply w-full h-full border-none;
+}
+
+/* Modal */
+.modal-overlay {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
+}
+
+.modal-content {
+  @apply bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden;
+}
+
+.modal-header {
+  @apply flex items-center justify-between p-4 border-b border-slate-200;
+}
+
+.modal-header h3 {
+  @apply text-lg font-semibold text-slate-900;
+}
+
+.modal-close {
+  @apply p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors;
+}
+
+.modal-body {
+  @apply flex flex-col h-full max-h-[70vh];
+}
+
+.source-tabs {
+  @apply flex border-b border-slate-200;
+}
+
+.source-tab {
+  @apply px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent transition-colors;
+}
+
+.source-tab.active {
+  @apply text-blue-600 border-blue-600;
+}
+
+.source-container {
+  @apply flex-1 overflow-auto p-4 bg-slate-50;
+}
+
+.source-container pre {
+  @apply text-sm font-mono bg-white rounded-lg p-4 overflow-auto;
+}
+
+.source-actions {
+  @apply p-4 border-t border-slate-200 flex justify-end;
+}
+
+.copy-button {
+  @apply inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors;
+}
+
+/* Transitions */
+.modal-enter-active,
+.modal-leave-active {
+  @apply transition-all duration-300;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  @apply opacity-0 scale-95;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .mobile-frame {
+    @apply w-full max-w-sm;
   }
-  50% {
-    transform: translateY(-4px);
+  
+  .preview-controls {
+    @apply flex-col items-stretch gap-2;
   }
-}
-
-.animate-bounce {
-  animation: bounce 1s infinite;
-}
-
-/* Scrollbar styling for modal */
-pre::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-pre::-webkit-scrollbar-track {
-  background: #1e293b;
-}
-
-pre::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 4px;
-}
-
-pre::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  
+  .device-selector,
+  .zoom-controls,
+  .preview-actions {
+    @apply justify-center;
+  }
 }
 </style>

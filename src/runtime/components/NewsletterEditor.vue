@@ -467,6 +467,27 @@ const {
   loadFromTemplate
 } = useNewsletterEditor(props.modelValue)
 
+const {
+  isDragging,
+  draggedIndex,
+  dragOverIndex,
+  getDragAttributes,
+  getDragClasses,
+  triggerHapticFeedback
+} = useDragDrop({
+  onMove: handleBlockMove,
+  onStart: handleDragStart,
+  onEnd: handleDragEnd,
+  onCancel: handleDragCancel,
+  scrollContainer: '.blocks-container',
+  hapticFeedback: true,
+  autoScroll: true,
+  smoothAnimations: true,
+  longPressDelay: 300,
+  minimumDistance: 8,
+  accessibilityMode: true
+})
+
 const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
 
 // Enhanced state management
