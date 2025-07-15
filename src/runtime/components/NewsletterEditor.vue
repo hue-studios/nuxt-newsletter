@@ -1,7 +1,6 @@
-<!-- Updated NewsletterEditor.vue with proper device controls -->
 <template>
   <div class="newsletter-editor">
-    <!-- Header with enhanced controls -->
+    <!-- Header -->
     <div class="editor-header">
       <div class="header-left">
         <div class="editor-title">
@@ -9,147 +8,202 @@
           <h1>Newsletter Editor</h1>
         </div>
         <div class="header-actions">
-          <button
-            @click="showTemplateSelector = true"
-            class="action-button secondary"
-            title="Load from template"
-          >
+          <button @click="showTemplateSelector = true" class="action-button secondary">
             <Icon name="lucide:layout-template" class="w-4 h-4" />
-            Template
+            Templates
           </button>
         </div>
       </div>
       
       <div class="header-right">
-        <!-- Device Preview Controls -->
         <div class="device-controls">
           <span class="device-label">Preview:</span>
           <div class="device-selector">
             <button
-              @click="previewDevice = 'desktop'; console.log('Set to desktop')"
-              class="device-button"
+              @click="previewDevice = 'desktop'"
               :class="{ active: previewDevice === 'desktop' }"
-              title="Desktop Preview"
+              class="device-button"
+              title="Desktop preview"
             >
               <Icon name="lucide:monitor" class="w-4 h-4" />
             </button>
             <button
-              @click="previewDevice = 'tablet'; console.log('Set to tablet')"
-              class="device-button"
+              @click="previewDevice = 'tablet'"
               :class="{ active: previewDevice === 'tablet' }"
-              title="Tablet Preview"
+              class="device-button"
+              title="Tablet preview"
             >
               <Icon name="lucide:tablet" class="w-4 h-4" />
             </button>
             <button
-              @click="previewDevice = 'mobile'; console.log('Set to mobile')"
-              class="device-button"
+              @click="previewDevice = 'mobile'"
               :class="{ active: previewDevice === 'mobile' }"
-              title="Mobile Preview"
+              class="device-button"
+              title="Mobile preview"
             >
               <Icon name="lucide:smartphone" class="w-4 h-4" />
             </button>
           </div>
         </div>
         
-        <!-- Main Actions -->
         <div class="main-actions">
-          <button
-            @click="showPreview = !showPreview; console.log('Preview toggled to:', !showPreview)"
-            class="action-button"
-            :class="{ active: showPreview }"
-            title="Toggle Preview"
-          >
-            <Icon name="lucide:eye" class="w-4 h-4" />
-            <span class="hidden sm:inline">Preview</span>
+          <button @click="togglePreview" class="action-button secondary">
+            <Icon :name="showPreview ? 'lucide:eye-off' : 'lucide:eye'" class="w-4 h-4" />
+            {{ showPreview ? 'Hide' : 'Show' }} Preview
           </button>
-          <button
-            @click="saveNewsletter"
-            class="action-button primary"
-            :disabled="props.disabled"
-            title="Save Newsletter"
-          >
+          <button @click="saveNewsletter" class="action-button primary" :disabled="props.disabled">
             <Icon name="lucide:save" class="w-4 h-4" />
-            <span class="hidden sm:inline">Save</span>
+            Save
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="main-content">
+    <!-- Main Content -->
+    <div class="main-content" :class="{ 'with-preview': showPreview }">
       <!-- Editor Panel -->
-      <div v-if="!showPreview" class="editor-panel">
-        <div class="debug-info" style="position: fixed; top: 50px; right: 10px; background: cyan; padding: 5px; z-index: 1000;">
-          Show Preview: {{ showPreview }}
-        </div>
-        <!-- Block Types Palette -->
-        <div class="block-palette">
-          <div class="palette-header">
-            <h2>Add Blocks</h2>
-            <Icon name="lucide:plus" class="w-4 h-4 text-slate-500" />
+      <div class="editor-panel">
+        <div class="editor-container">
+          <!-- Newsletter Settings -->
+          <div class="newsletter-settings">
+            <div class="settings-row">
+              <div class="form-group">
+                <label for="subject">Subject Line</label>
+                <input
+                  id="subject"
+                  v-model="newsletter.subject"
+                  type="text"
+                  placeholder="Enter newsletter subject..."
+                  class="form-input"
+                  :disabled="props.disabled"
+                  @input="debouncedUpdate"
+                />
+              </div>
+              <div class="form-group">
+                <label for="preheader">Preheader Text</label>
+                <input
+                  id="preheader"
+                  v-model="newsletter.preheader"
+                  type="text"
+                  placeholder="Preview text that appears after subject..."
+                  class="form-input"
+                  :disabled="props.disabled"
+                  @input="debouncedUpdate"
+                />
+              </div>
+            </div>
           </div>
-          
-          <div class="palette-content">
-            <div v-if="loadingBlockTypes" class="loading-state">
-              <Icon name="lucide:loader-2" class="w-4 h-4 animate-spin" />
-              <span>Loading blocks...</span>
+
+          <!-- Block Types Toolbar -->
+          <div class="block-toolbar">
+            <div class="toolbar-header">
+              <h3>Add Content Block</h3>
+              <div class="block-stats">
+                {{ blocks.length }} block{{ blocks.length !== 1 ? 's' : '' }}
+              </div>
             </div>
             
-            <div v-else>
-              <div
-                v-for="category in blockCategories"
-                :key="category"
-                class="block-category"
+            <div v-if="loadingBlockTypes" class="loading-blocks">
+              <Icon name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+              <span>Loading block types...</span>
+            </div>
+            
+            <div v-else-if="blockTypes.length === 0" class="no-blocks">
+              <Icon name="lucide:alert-triangle" class="w-5 h-5 text-amber-500" />
+              <span>No block types available</span>
+            </div>
+            
+            <div v-else class="block-types-grid">
+              <button
+                v-for="blockType in blockTypes"
+                :key="blockType.id"
+                @click="addBlock(blockType.id)"
+                class="block-type-button"
+                :disabled="props.disabled"
               >
-                <h3 class="category-title">{{ category }}</h3>
-                <div class="category-blocks">
-                  <button
-                    v-for="blockType in blockTypes.filter(bt => bt.category === category)"
-                    :key="blockType.id"
-                    @click="addBlock(blockType.id)"
-                    class="block-type-button"
+                <Icon :name="blockType.icon || 'lucide:square'" class="w-5 h-5" />
+                <span>{{ blockType.name }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Content Blocks -->
+          <div class="content-blocks">
+            <div class="blocks-header">
+              <h3>Newsletter Content</h3>
+            </div>
+            
+            <div v-if="blocks.length === 0" class="empty-blocks">
+              <Icon name="lucide:plus-circle" class="w-12 h-12 text-slate-300" />
+              <h4>No content blocks yet</h4>
+              <p>Add your first content block using the buttons above.</p>
+            </div>
+            
+            <div v-else class="blocks-list">
+              <div
+                v-for="(block, index) in blocks"
+                :key="block.id"
+                class="block-item"
+                :class="{ 'block-error': hasBlockError(block.id) }"
+              >
+                <div class="block-header">
+                  <div class="block-info">
+                    <Icon :name="getBlockIcon(block.block_type)" class="w-4 h-4 text-slate-500" />
+                    <span class="block-title">{{ getBlockName(block.block_type) }}</span>
+                    <span class="block-index">#{{ index + 1 }}</span>
+                  </div>
+                  <div class="block-actions">
+                    <button
+                      @click="moveBlockUp(index)"
+                      :disabled="index === 0 || props.disabled"
+                      class="block-action-button"
+                      title="Move up"
+                    >
+                      <Icon name="lucide:chevron-up" class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="moveBlockDown(index)"
+                      :disabled="index === blocks.length - 1 || props.disabled"
+                      class="block-action-button"
+                      title="Move down"
+                    >
+                      <Icon name="lucide:chevron-down" class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="duplicateBlock(block.id)"
+                      :disabled="props.disabled"
+                      class="block-action-button"
+                      title="Duplicate"
+                    >
+                      <Icon name="lucide:copy" class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="removeBlock(block.id)"
+                      :disabled="props.disabled"
+                      class="block-action-button danger"
+                      title="Delete"
+                    >
+                      <Icon name="lucide:trash-2" class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="block-content">
+                  <NewsletterBlock
+                    :block="block"
+                    :block-type="getBlockType(block.block_type)"
                     :disabled="props.disabled"
-                    :title="`Add ${blockType.name}`"
-                  >
-                    <Icon 
-                      :name="blockType.icon || 'lucide:square'" 
-                      class="block-type-icon" 
-                    />
-                    <span class="block-type-name">{{ blockType.name }}</span>
-                  </button>
+                    @update="handleBlockUpdate"
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Block List -->
-        <div class="blocks-container">
-          <div class="blocks-header">
-            <h2>Newsletter Content</h2>
-            <div class="blocks-count">
-              {{ blocks.length }} block{{ blocks.length !== 1 ? 's' : '' }}
-            </div>
-          </div>
-          
-          <BlockList
-            v-model:blocks="blocks"
-            :block-types="blockTypes"
-            :disabled="props.disabled"
-            @block:update="handleBlockUpdate"
-            @block:duplicate="handleBlockDuplicate"
-            @block:delete="handleBlockDelete"
-          />
-        </div>
       </div>
 
-      <!-- Preview Panel - Full Width When Active -->
+      <!-- Preview Panel -->
       <div v-if="showPreview" class="preview-panel">
-        <div class="debug-info" style="position: fixed; top: 80px; right: 10px; background: lightgreen; padding: 5px; z-index: 1000;">
-          Preview Active: {{ showPreview }}<br>
-          Device: {{ previewDevice }}
-        </div>
         <NewsletterPreview
           :newsletter="newsletter"
           :block-types="blockTypes"
@@ -170,7 +224,12 @@
             </button>
           </div>
           <div class="modal-body">
-            <div class="template-grid">
+            <div v-if="templates.length === 0" class="empty-templates">
+              <Icon name="lucide:layout-template" class="w-12 h-12 text-slate-300" />
+              <h4>No templates available</h4>
+              <p>Create your first template by saving a newsletter as a template.</p>
+            </div>
+            <div v-else class="template-grid">
               <button
                 v-for="template in templates"
                 :key="template.id"
@@ -182,7 +241,7 @@
                 </div>
                 <div class="template-info">
                   <h4>{{ template.name }}</h4>
-                  <p>{{ template.description }}</p>
+                  <p>{{ template.description || 'No description' }}</p>
                 </div>
               </button>
             </div>
@@ -210,9 +269,10 @@
 </template>
 
 <script setup lang="ts">
+import { debounce } from 'lodash-es'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { NewsletterData } from '../../types'
-import BlockList from './BlockList.vue'
+import NewsletterBlock from './NewsletterBlock.vue'
 import NewsletterPreview from './NewsletterPreview.vue'
 
 interface Props {
@@ -229,22 +289,24 @@ const emit = defineEmits<{
   'save': []
 }>()
 
-// Core newsletter editing
-const {
-  newsletter,
-  blocks,
-  addBlock,
-  removeBlock,
-  updateBlock,
-  moveBlock,
-  duplicateBlock,
-  loadFromTemplate
-} = useNewsletterEditor(props.modelValue)
+// Initialize newsletter data
+const newsletter = ref<NewsletterData>({
+  subject: '',
+  preheader: '',
+  blocks: [],
+  ...props.modelValue
+})
 
-// Directus integration
-const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
+// Initialize blocks array
+const blocks = ref<any[]>([...(props.modelValue?.blocks || [])])
 
 // State
+const blockTypes = ref<any[]>([])
+const templates = ref<any[]>([])
+const loadingBlockTypes = ref(true)
+const showTemplateSelector = ref(false)
+const showPreview = ref(true)
+const previewDevice = ref<'desktop' | 'tablet' | 'mobile'>('desktop')
 const errors = ref<Record<string, string>>({})
 const notification = ref({
   show: false,
@@ -252,12 +314,13 @@ const notification = ref({
   type: 'success' as 'success' | 'error'
 })
 
-const blockTypes = ref<any[]>([])
-const templates = ref<any[]>([])
-const loadingBlockTypes = ref(true)
-const showTemplateSelector = ref(false)
-const showPreview = ref(true)
-const previewDevice = ref<'desktop' | 'tablet' | 'mobile'>('desktop')
+// Composables
+const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
+
+// Debounced update function
+const debouncedUpdate = debounce(() => {
+  updateNewsletter()
+}, 300)
 
 // Computed properties
 const blockCategories = computed(() => {
@@ -265,27 +328,81 @@ const blockCategories = computed(() => {
   return categories.sort()
 })
 
-// Methods
+// Core methods
+const updateNewsletter = () => {
+  newsletter.value.blocks = [...blocks.value]
+  emit('update:modelValue', newsletter.value)
+}
+
+const addBlock = (blockTypeId: string) => {
+  const blockType = blockTypes.value.find(bt => bt.id === blockTypeId)
+  if (!blockType) return
+
+  const newBlock = {
+    id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    block_type: blockTypeId,
+    content: {},
+    sort: blocks.value.length
+  }
+
+  blocks.value.push(newBlock)
+  updateNewsletter()
+}
+
+const removeBlock = (blockId: string) => {
+  const index = blocks.value.findIndex(b => b.id === blockId)
+  if (index > -1) {
+    blocks.value.splice(index, 1)
+    updateNewsletter()
+  }
+}
+
+const duplicateBlock = (blockId: string) => {
+  const originalBlock = blocks.value.find(b => b.id === blockId)
+  if (!originalBlock) return
+
+  const duplicatedBlock = {
+    ...originalBlock,
+    id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    sort: blocks.value.length
+  }
+
+  blocks.value.push(duplicatedBlock)
+  updateNewsletter()
+}
+
+const moveBlockUp = (index: number) => {
+  if (index > 0) {
+    const block = blocks.value.splice(index, 1)[0]
+    blocks.value.splice(index - 1, 0, block)
+    updateNewsletter()
+  }
+}
+
+const moveBlockDown = (index: number) => {
+  if (index < blocks.value.length - 1) {
+    const block = blocks.value.splice(index, 1)[0]
+    blocks.value.splice(index + 1, 0, block)
+    updateNewsletter()
+  }
+}
+
 const handleBlockUpdate = (blockId: string, content: any) => {
-  updateBlock(blockId, content)
-  emit('update:modelValue', newsletter.value)
-}
-
-const handleBlockDuplicate = (blockId: string) => {
-  duplicateBlock(blockId)
-  emit('update:modelValue', newsletter.value)
-}
-
-const handleBlockDelete = (blockId: string) => {
-  removeBlock(blockId)
-  emit('update:modelValue', newsletter.value)
+  const block = blocks.value.find(b => b.id === blockId)
+  if (block) {
+    block.content = { ...content }
+    updateNewsletter()
+  }
 }
 
 const handleCompiled = (compiled: { mjml: string; html: string }) => {
-  // Update newsletter with compiled content
   newsletter.value.mjml = compiled.mjml
   newsletter.value.html = compiled.html
   emit('update:modelValue', newsletter.value)
+}
+
+const togglePreview = () => {
+  showPreview.value = !showPreview.value
 }
 
 const saveNewsletter = () => {
@@ -296,12 +413,18 @@ const saveNewsletter = () => {
 const loadTemplate = async (templateId: string) => {
   try {
     const template = await fetchTemplate(templateId)
-    loadFromTemplate(template)
+    
+    // Load template data
+    newsletter.value.subject = template.subject || ''
+    newsletter.value.preheader = template.preheader || ''
+    blocks.value = [...(template.blocks || [])]
+    
+    updateNewsletter()
     showTemplateSelector.value = false
-    emit('update:modelValue', newsletter.value)
     showNotification('Template loaded successfully!', 'success')
   } catch (error) {
     showNotification('Failed to load template', 'error')
+    console.error('Template loading error:', error)
   }
 }
 
@@ -312,17 +435,46 @@ const showNotification = (message: string, type: 'success' | 'error') => {
   }, 4000)
 }
 
+// Utility functions
+const getBlockType = (blockTypeId: string) => {
+  return blockTypes.value.find(bt => bt.id === blockTypeId)
+}
+
+const getBlockName = (blockTypeId: string) => {
+  const blockType = getBlockType(blockTypeId)
+  return blockType?.name || 'Unknown Block'
+}
+
+const getBlockIcon = (blockTypeId: string) => {
+  const blockType = getBlockType(blockTypeId)
+  return blockType?.icon || 'lucide:square'
+}
+
+const hasBlockError = (blockId: string) => {
+  return errors.value[blockId] !== undefined
+}
+
 // Load initial data
-onMounted(async () => {
+const loadInitialData = async () => {
   try {
-    blockTypes.value = await fetchBlockTypes()
-    templates.value = await fetchTemplates()
+    loadingBlockTypes.value = true
+    
+    // Load block types and templates in parallel
+    const [loadedBlockTypes, loadedTemplates] = await Promise.all([
+      fetchBlockTypes(),
+      fetchTemplates()
+    ])
+    
+    blockTypes.value = loadedBlockTypes
+    templates.value = loadedTemplates
+    
   } catch (error) {
     console.error('Failed to load initial data:', error)
+    showNotification('Failed to load editor components', 'error')
   } finally {
     loadingBlockTypes.value = false
   }
-})
+}
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
@@ -331,6 +483,11 @@ watch(() => props.modelValue, (newValue) => {
     blocks.value = [...(newValue.blocks || [])]
   }
 }, { deep: true })
+
+// Lifecycle
+onMounted(() => {
+  loadInitialData()
+})
 </script>
 
 <style scoped>
@@ -391,125 +548,225 @@ watch(() => props.modelValue, (newValue) => {
   @apply flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors;
 }
 
-.action-button.secondary {
-  @apply text-slate-700 bg-slate-100 hover:bg-slate-200;
-}
-
 .action-button.primary {
-  @apply text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50;
+  @apply bg-blue-600 text-white hover:bg-blue-700;
 }
 
-.action-button.active {
-  @apply bg-blue-100 text-blue-700;
+.action-button.secondary {
+  @apply bg-white text-slate-700 border border-slate-300 hover:bg-slate-50;
+}
+
+.action-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
 }
 
 .main-content {
-  @apply flex-1 overflow-hidden;
+  @apply flex-1 flex overflow-hidden;
+}
+
+.main-content.with-preview {
+  @apply gap-1;
 }
 
 .editor-panel {
-  @apply h-full flex flex-col overflow-hidden bg-white;
+  @apply flex-1 overflow-auto;
 }
 
-.preview-panel {
-  @apply h-full w-full overflow-hidden;
+.editor-container {
+  @apply max-w-2xl mx-auto p-6 space-y-6;
 }
 
-.block-palette {
-  @apply border-b border-slate-200;
+.newsletter-settings {
+  @apply bg-white rounded-lg border border-slate-200 p-6;
 }
 
-.palette-header {
-  @apply flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200;
+.settings-row {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
 }
 
-.palette-header h2 {
-  @apply text-sm font-semibold text-slate-900;
+.form-group {
+  @apply space-y-2;
 }
 
-.palette-content {
-  @apply p-4 max-h-64 overflow-y-auto;
+.form-group label {
+  @apply block text-sm font-medium text-slate-700;
 }
 
-.loading-state {
-  @apply flex items-center justify-center gap-2 py-8 text-slate-500;
+.form-input {
+  @apply w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
 }
 
-.block-category {
-  @apply space-y-3 mb-6 last:mb-0;
+.form-input:disabled {
+  @apply bg-slate-100 text-slate-500 cursor-not-allowed;
 }
 
-.category-title {
-  @apply text-xs font-medium text-slate-700 uppercase tracking-wide;
+.block-toolbar {
+  @apply bg-white rounded-lg border border-slate-200 p-6;
 }
 
-.category-blocks {
-  @apply grid grid-cols-1 gap-2;
-}
-
-.block-type-button {
-  @apply flex items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-left;
-}
-
-.block-type-icon {
-  @apply w-4 h-4 text-slate-600;
-}
-
-.block-type-name {
-  @apply text-sm font-medium text-slate-700;
-}
-
-.blocks-container {
-  @apply flex-1 overflow-y-auto p-4;
-}
-
-.blocks-header {
+.toolbar-header {
   @apply flex items-center justify-between mb-4;
 }
 
-.blocks-header h2 {
-  @apply text-sm font-semibold text-slate-900;
+.toolbar-header h3 {
+  @apply text-lg font-medium text-slate-900;
 }
 
-.blocks-count {
+.block-stats {
+  @apply text-sm text-slate-500;
+}
+
+.loading-blocks {
+  @apply flex items-center justify-center gap-2 py-8 text-slate-500;
+}
+
+.no-blocks {
+  @apply flex items-center justify-center gap-2 py-8 text-slate-500;
+}
+
+.block-types-grid {
+  @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3;
+}
+
+.block-type-button {
+  @apply flex flex-col items-center gap-2 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors;
+}
+
+.block-type-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.block-type-button span {
+  @apply text-sm font-medium text-slate-700;
+}
+
+.content-blocks {
+  @apply bg-white rounded-lg border border-slate-200 p-6;
+}
+
+.blocks-header {
+  @apply mb-4;
+}
+
+.blocks-header h3 {
+  @apply text-lg font-medium text-slate-900;
+}
+
+.empty-blocks {
+  @apply flex flex-col items-center justify-center py-12 text-slate-500;
+}
+
+.empty-blocks h4 {
+  @apply text-lg font-medium mt-4 mb-2;
+}
+
+.empty-blocks p {
+  @apply text-sm text-center;
+}
+
+.blocks-list {
+  @apply space-y-4;
+}
+
+.block-item {
+  @apply border border-slate-200 rounded-lg overflow-hidden;
+}
+
+.block-item.block-error {
+  @apply border-red-300 bg-red-50;
+}
+
+.block-header {
+  @apply flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200;
+}
+
+.block-info {
+  @apply flex items-center gap-2;
+}
+
+.block-title {
+  @apply text-sm font-medium text-slate-900;
+}
+
+.block-index {
   @apply text-xs text-slate-500;
+}
+
+.block-actions {
+  @apply flex items-center gap-1;
+}
+
+.block-action-button {
+  @apply p-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors;
+}
+
+.block-action-button.danger {
+  @apply hover:text-red-600 hover:bg-red-100;
+}
+
+.block-action-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.block-content {
+  @apply p-4;
+}
+
+.preview-panel {
+  @apply flex-1 border-l border-slate-200;
 }
 
 /* Modal styles */
 .modal-overlay {
-  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
 }
 
 .modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col;
+  @apply bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden;
 }
 
 .modal-header {
-  @apply flex items-center justify-between p-6 border-b border-slate-200;
+  @apply flex items-center justify-between p-4 border-b border-slate-200;
 }
 
 .modal-header h3 {
-  @apply text-lg font-medium text-slate-900;
+  @apply text-lg font-medium;
 }
 
 .modal-close {
-  @apply p-2 text-slate-400 hover:text-slate-600 rounded-md transition-colors;
+  @apply p-1 hover:bg-slate-100 rounded;
 }
 
 .modal-body {
-  @apply flex-1 overflow-y-auto p-6;
+  @apply p-4 max-h-96 overflow-auto;
+}
+
+.empty-templates {
+  @apply flex flex-col items-center justify-center py-12 text-slate-500;
+}
+
+.empty-templates h4 {
+  @apply text-lg font-medium mt-4 mb-2;
+}
+
+.empty-templates p {
+  @apply text-sm text-center;
 }
 
 .template-grid {
-  @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
 }
 
 .template-card {
-  @apply p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-left;
+  @apply flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors;
 }
 
 .template-preview {
-  @apply flex items-center justify-center h-20 bg-slate-100 rounded-lg mb-3;
+  @apply flex-shrink-0;
+}
+
+.template-info {
+  @apply flex-1 text-left;
 }
 
 .template-info h4 {
@@ -517,68 +774,44 @@ watch(() => props.modelValue, (newValue) => {
 }
 
 .template-info p {
-  @apply text-sm text-slate-600;
+  @apply text-sm text-slate-500;
 }
 
-/* Notification styles */
 .notification-container {
   @apply fixed top-4 right-4 z-50;
 }
 
 .notification {
-  @apply flex items-center gap-3 px-4 py-3 bg-white border rounded-lg shadow-lg;
+  @apply flex items-center gap-3 p-4 rounded-lg shadow-lg;
 }
 
 .notification.success {
-  @apply border-green-200 bg-green-50 text-green-800;
+  @apply bg-green-100 text-green-800 border border-green-200;
 }
 
 .notification.error {
-  @apply border-red-200 bg-red-50 text-red-800;
+  @apply bg-red-100 text-red-800 border border-red-200;
 }
 
 .notification-close {
-  @apply p-1 text-slate-400 hover:text-slate-600 transition-colors;
-}
-
-/* Responsive design */
-@media (max-width: 640px) {
-  .editor-header {
-    @apply flex-col gap-4;
-  }
-  
-  .header-left,
-  .header-right {
-    @apply w-full justify-between;
-  }
-  
-  .device-controls {
-    @apply order-2;
-  }
-  
-  .main-actions {
-    @apply order-1;
-  }
+  @apply p-1 hover:bg-black/10 rounded;
 }
 
 /* Transitions */
-.modal-enter-active,
-.modal-leave-active {
-  @apply transition-all duration-200;
+.modal-enter-active, .modal-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-.modal-enter-from,
-.modal-leave-to {
-  @apply opacity-0 transform scale-95;
+.modal-enter-from, .modal-leave-to {
+  opacity: 0;
 }
 
-.notification-enter-active,
-.notification-leave-active {
-  @apply transition-all duration-300;
+.notification-enter-active, .notification-leave-active {
+  transition: all 0.3s ease;
 }
 
-.notification-enter-from,
-.notification-leave-to {
-  @apply opacity-0 translate-x-full;
+.notification-enter-from, .notification-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
 }
 </style>
