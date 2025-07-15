@@ -67,6 +67,7 @@
   "dependencies": {
     "@nuxt/kit": "^3.17.0",
     "defu": "^6.1.4",
+    "lodash-es": "^4.17.21",
     "ofetch": "^1.4.1"
   },
   "devDependencies": {
@@ -78,6 +79,7 @@
     "@nuxt/test-utils": "^3.19.0",
     "@nuxtjs/color-mode": "^3.5.1",
     "@tailwindcss/vite": "^1.0.0",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
