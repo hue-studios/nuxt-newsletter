@@ -1562,15 +1562,17 @@ class DirectusNewsletterInstaller {
     console.log("\n🧩 Installing sample data...");
 
     // Sample block types
-    const blockTypes = [
-      {
-        name: "Hero Section",
-        slug: "hero",
-        description:
-          "Large header section with title, subtitle, and optional button",
-        category: "content",
-        icon: "title",
-        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+    // Updated sample data section for install-directus-collections.js
+// Replace the existing blockTypes array with this fixed version
+
+const blockTypes = [
+  {
+    name: "Hero Section",
+    slug: "hero",
+    description: "Large header section with title, subtitle, and optional button",
+    category: "content",
+    icon: "lucide:heading", // Fixed: was "title"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     <mj-text align="{{text_align}}" font-size="32px" font-weight="bold" color="{{text_color}}">
       {{title}}
@@ -1587,48 +1589,48 @@ class DirectusNewsletterInstaller {
     {{/if}}
   </mj-column>
 </mj-section>`,
-        status: "published",
-        field_visibility_config: [
-          "title",
-          "subtitle",
-          "button_text",
-          "button_url",
-          "background_color",
-          "text_color",
-          "text_align",
-          "padding",
-        ],
-      },
-      {
-        name: "Text Block",
-        slug: "text",
-        description: "Simple text content with formatting options",
-        category: "content",
-        icon: "text_fields",
-        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+    status: "published",
+    field_visibility_config: [
+      "title",
+      "subtitle", 
+      "button_text",
+      "button_url",
+      "background_color",
+      "text_color",
+      "text_align",
+      "padding",
+    ],
+  },
+  {
+    name: "Text Block",
+    slug: "text",
+    description: "Simple text content with formatting options",
+    category: "content",
+    icon: "lucide:type", // Fixed: was "text_fields"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     <mj-text align="{{text_align}}" font-size="{{font_size}}" color="{{text_color}}">
       {{{text_content}}}
     </mj-text>
   </mj-column>
 </mj-section>`,
-        status: "published",
-        field_visibility_config: [
-          "text_content",
-          "background_color",
-          "text_color",
-          "text_align",
-          "padding",
-          "font_size",
-        ],
-      },
-      {
-        name: "Image Block",
-        slug: "image",
-        description: "Image with optional caption and link",
-        category: "media",
-        icon: "image",
-        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+    status: "published",
+    field_visibility_config: [
+      "text_content",
+      "background_color",
+      "text_color",
+      "text_align",
+      "padding",
+      "font_size",
+    ],
+  },
+  {
+    name: "Image Block",
+    slug: "image",
+    description: "Image with optional caption and link",
+    category: "media",
+    icon: "lucide:image", // Fixed: was "image"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     {{#if button_url}}
     <mj-image src="{{image}}" alt="{{image_alt_text}}" align="{{text_align}}" href="{{button_url}}" />
@@ -1642,40 +1644,324 @@ class DirectusNewsletterInstaller {
     {{/if}}
   </mj-column>
 </mj-section>`,
-        status: "published",
-        field_visibility_config: [
-          "image", // Changed from image_url to image
-          "image_alt_text",
-          "image_caption",
-          "button_url",
-          "background_color",
-          "text_align",
-          "padding",
-        ],
-      },
-      {
-        name: "Button",
-        slug: "button",
-        description: "Call-to-action button",
-        category: "interactive",
-        icon: "smart_button",
-        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+    status: "published",
+    field_visibility_config: [
+      "image",
+      "image_alt_text",
+      "image_caption",
+      "button_url",
+      "background_color",
+      "text_color",
+      "text_align",
+      "padding",
+    ],
+  },
+  {
+    name: "Button Block",
+    slug: "button",
+    description: "Call-to-action button with customizable styling",
+    category: "interactive",
+    icon: "lucide:mouse-pointer-click", // Fixed: was "button"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
-    <mj-button background-color="#007bff" color="#ffffff" href="{{button_url}}" align="{{text_align}}">
+    <mj-button 
+      background-color="{{button_color}}" 
+      color="{{text_color}}" 
+      href="{{button_url}}" 
+      align="{{text_align}}"
+      border-radius="{{border_radius}}"
+      font-size="{{font_size}}"
+      padding="{{button_padding}}"
+    >
       {{button_text}}
     </mj-button>
   </mj-column>
 </mj-section>`,
-        status: "published",
-        field_visibility_config: [
-          "button_text",
-          "button_url",
-          "background_color",
-          "text_align",
-          "padding",
-        ],
-      },
-    ];
+    status: "published",
+    field_visibility_config: [
+      "button_text",
+      "button_url",
+      "button_color",
+      "text_color",
+      "background_color",
+      "text_align",
+      "border_radius",
+      "font_size",
+      "button_padding",
+      "padding",
+    ],
+  },
+  {
+    name: "Product Showcase",
+    slug: "product-showcase",
+    description: "Product display with image, title, price, and CTA",
+    category: "content",
+    icon: "lucide:store", // Fixed: was "storefront"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column width="40%">
+    <mj-image src="{{image}}" alt="{{image_alt_text}}" />
+  </mj-column>
+  <mj-column width="60%">
+    <mj-text font-size="24px" font-weight="bold" color="{{text_color}}">
+      {{title}}
+    </mj-text>
+    <mj-text font-size="16px" color="{{text_color}}" line-height="1.6">
+      {{{text_content}}}
+    </mj-text>
+    {{#if price}}
+    <mj-text font-size="20px" font-weight="bold" color="#e53e3e" padding="10px 0">
+      {{price}}
+    </mj-text>
+    {{/if}}
+    {{#if button_text}}
+    <mj-button background-color="#007bff" href="{{button_url}}" align="left">
+      {{button_text}}
+    </mj-button>
+    {{/if}}
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "title",
+      "text_content",
+      "image",
+      "image_alt_text",
+      "price",
+      "button_text",
+      "button_url",
+      "background_color",
+      "text_color",
+      "padding",
+    ],
+  },
+  {
+    name: "Team Member",
+    slug: "team-member",
+    description: "Team member profile with photo and bio",
+    category: "content",
+    icon: "lucide:user", // Fixed: was "person"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column width="30%">
+    <mj-image src="{{image}}" alt="{{image_alt_text}}" border-radius="50%" width="120px" />
+  </mj-column>
+  <mj-column width="70%">
+    <mj-text font-size="20px" font-weight="bold" color="{{text_color}}">
+      {{title}}
+    </mj-text>
+    {{#if subtitle}}
+    <mj-text font-size="14px" color="#666666" font-style="italic" padding="5px 0">
+      {{subtitle}}
+    </mj-text>
+    {{/if}}
+    <mj-text font-size="14px" color="{{text_color}}" line-height="1.6">
+      {{{text_content}}}
+    </mj-text>
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "title",
+      "subtitle",
+      "text_content",
+      "image",
+      "image_alt_text",
+      "background_color",
+      "text_color",
+      "padding",
+    ],
+  },
+  {
+    name: "Statistics Block",
+    slug: "statistics",
+    description: "Display key metrics and statistics",
+    category: "content",
+    icon: "lucide:bar-chart", // Fixed: was "bar_chart"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column>
+    {{#if title}}
+    <mj-text align="center" font-size="24px" font-weight="bold" color="{{text_color}}" padding="0 0 20px 0">
+      {{title}}
+    </mj-text>
+    {{/if}}
+    <mj-table>
+      <tr>
+        <td style="padding: 20px; text-align: center; border-right: 1px solid #eee;">
+          <div style="font-size: 32px; font-weight: bold; color: {{text_color}};">{{stat_1_value}}</div>
+          <div style="font-size: 14px; color: #666; margin-top: 5px;">{{stat_1_label}}</div>
+        </td>
+        <td style="padding: 20px; text-align: center; border-right: 1px solid #eee;">
+          <div style="font-size: 32px; font-weight: bold; color: {{text_color}};">{{stat_2_value}}</div>
+          <div style="font-size: 14px; color: #666; margin-top: 5px;">{{stat_2_label}}</div>
+        </td>
+        <td style="padding: 20px; text-align: center;">
+          <div style="font-size: 32px; font-weight: bold; color: {{text_color}};">{{stat_3_value}}</div>
+          <div style="font-size: 14px; color: #666; margin-top: 5px;">{{stat_3_label}}</div>
+        </td>
+      </tr>
+    </mj-table>
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "title",
+      "stat_1_value",
+      "stat_1_label",
+      "stat_2_value",
+      "stat_2_label",
+      "stat_3_value",
+      "stat_3_label",
+      "background_color",
+      "text_color",
+      "padding",
+    ],
+  },
+  {
+    name: "Quote Block",
+    slug: "quote",
+    description: "Testimonial or quote with author attribution",
+    category: "content",
+    icon: "lucide:quote", // Fixed: was "quote"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column>
+    <mj-text align="center" font-size="18px" font-style="italic" color="{{text_color}}" padding="0 0 20px 0">
+      "{{quote_text}}"
+    </mj-text>
+    {{#if author_name}}
+    <mj-text align="center" font-size="14px" font-weight="bold" color="{{text_color}}">
+      — {{author_name}}
+    </mj-text>
+    {{/if}}
+    {{#if author_title}}
+    <mj-text align="center" font-size="12px" color="#666666">
+      {{author_title}}
+    </mj-text>
+    {{/if}}
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "quote_text",
+      "author_name",
+      "author_title",
+      "background_color",
+      "text_color",
+      "padding",
+    ],
+  },
+  {
+    name: "Social Media Links",
+    slug: "social-links",
+    description: "Social media icons with links",
+    category: "interactive",
+    icon: "lucide:share-2", // Fixed: was "social_media"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column>
+    {{#if title}}
+    <mj-text align="center" font-size="18px" font-weight="bold" color="{{text_color}}" padding="0 0 20px 0">
+      {{title}}
+    </mj-text>
+    {{/if}}
+    <mj-social font-size="15px" icon-size="30px" mode="horizontal" align="center">
+      {{#if facebook_url}}
+      <mj-social-element name="facebook" href="{{facebook_url}}"></mj-social-element>
+      {{/if}}
+      {{#if twitter_url}}
+      <mj-social-element name="twitter" href="{{twitter_url}}"></mj-social-element>
+      {{/if}}
+      {{#if instagram_url}}
+      <mj-social-element name="instagram" href="{{instagram_url}}"></mj-social-element>
+      {{/if}}
+      {{#if linkedin_url}}
+      <mj-social-element name="linkedin" href="{{linkedin_url}}"></mj-social-element>
+      {{/if}}
+    </mj-social>
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "title",
+      "facebook_url",
+      "twitter_url",
+      "instagram_url",
+      "linkedin_url",
+      "background_color",
+      "text_color",
+      "padding",
+    ],
+  },
+  {
+    name: "Divider",
+    slug: "divider",
+    description: "Horizontal line separator",
+    category: "layout",
+    icon: "lucide:minus", // Fixed: was "divider"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column>
+    <mj-divider border-color="{{border_color}}" border-width="{{border_width}}" />
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "background_color",
+      "border_color",
+      "border_width",
+      "padding",
+    ],
+  },
+  {
+    name: "Spacer",
+    slug: "spacer",
+    description: "Empty space for layout control",
+    category: "layout",
+    icon: "lucide:space", // Fixed: was "spacer"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column>
+    <mj-spacer height="{{spacer_height}}" />
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "spacer_height",
+      "background_color",
+      "padding",
+    ],
+  },
+  {
+    name: "Footer",
+    slug: "footer",
+    description: "Newsletter footer with company info and unsubscribe",
+    category: "layout",
+    icon: "lucide:layout-footer", // Fixed: was "footer"
+    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+  <mj-column>
+    <mj-text align="center" font-size="14px" color="{{text_color}}" padding="0 0 10px 0">
+      {{company_name}}
+    </mj-text>
+    {{#if address}}
+    <mj-text align="center" font-size="12px" color="#666666" padding="0 0 10px 0">
+      {{address}}
+    </mj-text>
+    {{/if}}
+    {{#if unsubscribe_url}}
+    <mj-text align="center" font-size="12px" color="#666666">
+      <a href="{{unsubscribe_url}}" style="color: #666666; text-decoration: underline;">
+        Unsubscribe
+      </a>
+    </mj-text>
+    {{/if}}
+  </mj-column>
+</mj-section>`,
+    status: "published",
+    field_visibility_config: [
+      "company_name",
+      "address",
+      "unsubscribe_url",
+      "background_color",
+      "text_color",
+      "padding",
+    ],
+  },
+];
 
     for (const blockType of blockTypes) {
       try {

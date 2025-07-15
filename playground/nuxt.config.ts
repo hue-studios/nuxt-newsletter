@@ -7,7 +7,12 @@ export default defineNuxtConfig({
   
   // Tailwind CSS 4 Vite plugin
   
-  
+  icon: {
+    provider: 'iconify',
+    // iconifyApiOptions: {
+    //   url: 'https://api.iconify.design'
+    // }
+  },
   newsletter: {
     directus: {
       url: process.env.DIRECTUS_URL || 'http://localhost:8055',

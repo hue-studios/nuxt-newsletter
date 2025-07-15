@@ -1,4 +1,5 @@
 // src/runtime/composables/useMjmlCompiler.ts
+import { debounce } from 'lodash'
 import { $fetch } from 'ofetch'
 import { readonly, ref } from 'vue'
 import { useDirectusNewsletter } from './useDirectusNewsletter'
@@ -187,6 +188,31 @@ export function useMjmlCompiler() {
     }
   }
 
+  // Debounced compilation for smooth preview updates
+  const debouncedCompile = debounce(async (newsletter: NewsletterData, blockTypes: BlockType[]) => {
+    if (!newsletter || !blockTypes || blockTypes.length === 0) {
+      return null
+    }
+
+    try {
+      // Compile newsletter to MJML
+      const mjml = await compileNewsletterToMjml(newsletter, blockTypes)
+      
+      // Compile MJML to HTML
+      const result = await compileMjmlToHtml(mjml)
+      
+      return {
+        mjml,
+        html: result.html,
+        errors: result.errors
+      }
+    } catch (error) {
+      console.error('Debounced compilation failed:', error)
+      compilationError.value = error instanceof Error ? error.message : 'Compilation failed'
+      return null
+    }
+  }, 300)
+
   return {
     isCompiling: readonly(isCompiling),
     compilationError: readonly(compilationError),
@@ -194,6 +220,7 @@ export function useMjmlCompiler() {
     compileBlockToMjml,
     compileNewsletterToMjml,
     compileMjmlToHtml,
-    loadBlockTypes
+    loadBlockTypes,
+    debouncedCompile // Add this to exports
   }
 }

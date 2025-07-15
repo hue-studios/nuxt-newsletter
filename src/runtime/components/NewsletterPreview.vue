@@ -1,172 +1,104 @@
 <template>
-  <div class="newsletter-preview">
-    <!-- Preview Controls -->
-    <div class="preview-controls">
-      <div class="device-selector">
+  <div class="newsletter-preview-container">
+    <!-- Enhanced header with proper controls -->
+    <div class="preview-header">
+      <div class="preview-title">
+        <Icon name="lucide:mail" class="w-5 h-5 text-slate-600" />
+        <span>Newsletter Preview</span>
+      </div>
+      <div class="preview-controls">
         <button
-          v-for="device in devices"
-          :key="device.type"
-          @click="currentDevice = device.type"
-          class="device-button"
-          :class="{ 'active': currentDevice === device.type }"
+          @click="refreshPreview"
+          :disabled="isCompiling"
+          class="control-button"
+          title="Refresh preview"
         >
-          <Icon :name="device.icon" />
-          <span>{{ device.label }}</span>
+          <Icon name="lucide:refresh-cw" :class="{ 'animate-spin': isCompiling }" class="w-4 h-4" />
         </button>
-      </div>
-
-      <div class="zoom-controls">
-        <button @click="zoomOut" :disabled="zoom <= 0.5" class="zoom-button">
-          <Icon name="lucide:zoom-out" />
+        <button
+          @click="showMjmlSource = true"
+          class="control-button"
+          title="View MJML source"
+        >
+          <Icon name="lucide:code" class="w-4 h-4" />
         </button>
-        <span class="zoom-display">{{ Math.round(zoom * 100) }}%</span>
-        <button @click="zoomIn" :disabled="zoom >= 1.5" class="zoom-button">
-          <Icon name="lucide:zoom-in" />
-        </button>
-      </div>
-
-      <div class="preview-actions">
-        <button @click="refreshPreview" class="action-button" :disabled="isCompiling">
-          <Icon :name="isCompiling ? 'lucide:loader-2' : 'lucide:refresh-cw'" :class="{ 'animate-spin': isCompiling }" />
-        </button>
-        <button @click="showMjmlSource = true" class="action-button">
-          <Icon name="lucide:code" />
-        </button>
-        <button @click="downloadHtml" class="action-button">
-          <Icon name="lucide:download" />
-        </button>
+        <div class="device-selector">
+          <button
+            v-for="deviceOption in deviceOptions"
+            :key="deviceOption.value"
+            @click="currentDevice = deviceOption.value"
+            class="device-button"
+            :class="{ 'active': currentDevice === deviceOption.value }"
+            :title="deviceOption.label"
+          >
+            <Icon :name="deviceOption.icon" class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Preview Frame Container -->
-    <div class="preview-container" :class="containerClasses">
-      <!-- Device Frame -->
-      <div class="device-frame" :class="frameClasses" :style="frameStyles">
-        <!-- Mobile Frame Chrome -->
-        <template v-if="currentDevice === 'mobile'">
-          <!-- Status Bar -->
-          <div class="mobile-status-bar">
-            <div class="status-left">
-              <div class="signal-bars">
-                <div class="bar" v-for="i in 4" :key="i" :class="{ 'active': i <= 3 }"></div>
-              </div>
-              <span class="carrier">Verizon</span>
-              <Icon name="lucide:wifi" class="wifi-icon" />
-            </div>
-            <div class="status-center">
-              <span class="time">{{ currentTime }}</span>
-            </div>
-            <div class="status-right">
-              <span class="battery-percent">85%</span>
-              <div class="battery-icon">
-                <div class="battery-fill"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Email App Header -->
+    <!-- Enhanced preview content -->
+    <div class="preview-content" :class="deviceClasses">
+      <div class="email-client-frame">
+        <!-- Email client header -->
+        <template v-if="currentDevice === 'desktop'">
           <div class="email-header">
-            <div class="header-content">
-              <button class="back-button">
-                <Icon name="lucide:chevron-left" />
-              </button>
-              <div class="email-info">
-                <h4>{{ newsletter.subject_line || 'Newsletter Subject' }}</h4>
-                <p>from {{ newsletter.from_name || 'Your Company' }}</p>
+            <div class="email-sender">
+              <div class="sender-avatar">
+                <Icon name="lucide:user" class="w-4 h-4 text-slate-600" />
               </div>
-              <div class="header-actions">
-                <button class="header-action">
-                  <Icon name="lucide:star" />
-                </button>
-                <button class="header-action">
-                  <Icon name="lucide:more-vertical" />
-                </button>
+              <div class="sender-info">
+                <div class="sender-name">{{ safeGetValue(newsletter, 'from_name', 'Your Company') }}</div>
+                <div class="sender-email">&lt;{{ safeGetValue(newsletter, 'from_email', 'newsletter@company.com') }}&gt;</div>
               </div>
+            </div>
+            <div class="email-meta">
+              <span class="email-time">{{ formatTime() }}</span>
+              <div class="email-actions">
+                <Icon name="lucide:reply" class="w-4 h-4 text-slate-400" />
+                <Icon name="lucide:forward" class="w-4 h-4 text-slate-400" />
+                <Icon name="lucide:more-vertical" class="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+          </div>
+          <div class="email-subject">
+            <h3>{{ safeGetValue(newsletter, 'subject_line', 'Newsletter Subject Line') }}</h3>
+            <div class="subject-meta">
+              <span class="to-line">to me</span>
+              <Icon name="lucide:chevron-down" class="w-4 h-4 text-slate-400" />
             </div>
           </div>
         </template>
 
-        <!-- Desktop Frame Chrome -->
-        <template v-else>
-          <!-- Browser Chrome -->
-          <div class="browser-chrome">
-            <div class="chrome-controls">
-              <div class="traffic-lights">
-                <div class="traffic-light red"></div>
-                <div class="traffic-light yellow"></div>
-                <div class="traffic-light green"></div>
-              </div>
-              <div class="address-bar">
-                <Icon name="lucide:lock" class="lock-icon" />
-                <span>mail.google.com</span>
-              </div>
-              <div class="browser-actions">
-                <Icon name="lucide:refresh-cw" />
-                <Icon name="lucide:more-horizontal" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Gmail Interface -->
-          <div class="gmail-interface">
-            <div class="gmail-header">
-              <div class="email-sender">
-                <div class="sender-avatar">
-                  {{ (newsletter.from_name || 'C')[0].toUpperCase() }}
-                </div>
-                <div class="sender-info">
-                  <div class="sender-name">{{ newsletter.from_name || 'Your Company' }}</div>
-                  <div class="sender-email">&lt;{{ newsletter.from_email || 'newsletter@company.com' }}&gt;</div>
-                </div>
-              </div>
-              <div class="email-meta">
-                <span class="email-time">{{ formatTime() }}</span>
-                <div class="email-actions">
-                  <Icon name="lucide:reply" />
-                  <Icon name="lucide:forward" />
-                  <Icon name="lucide:more-vertical" />
-                </div>
-              </div>
-            </div>
-            <div class="email-subject">
-              <h3>{{ newsletter.subject_line || 'Newsletter Subject Line' }}</h3>
-              <div class="subject-meta">
-                <span class="to-line">to me</span>
-                <Icon name="lucide:chevron-down" class="details-toggle" />
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <!-- Email Content Area -->
+        <!-- Email content area -->
         <div class="email-content" :style="contentStyles">
-          <!-- Compilation Error -->
+          <!-- Compilation error -->
           <div v-if="compilationError" class="compilation-error">
-            <Icon name="lucide:alert-triangle" />
+            <Icon name="lucide:alert-triangle" class="w-5 h-5 text-amber-500" />
             <div>
               <h4>Compilation Error</h4>
               <p>{{ compilationError }}</p>
               <button @click="refreshPreview" class="retry-button">
-                <Icon name="lucide:refresh-cw" />
+                <Icon name="lucide:refresh-cw" class="w-4 h-4" />
                 Try Again
               </button>
             </div>
           </div>
 
-          <!-- Loading State -->
+          <!-- Loading state -->
           <div v-else-if="isCompiling" class="loading-state">
-            <Icon name="lucide:loader-2" class="animate-spin" />
+            <Icon name="lucide:loader-2" class="w-8 h-8 animate-spin text-blue-500" />
             <p>Compiling newsletter...</p>
           </div>
 
-          <!-- Empty State -->
+          <!-- Empty state -->
           <div v-else-if="!compiledHtml" class="empty-content">
-            <Icon name="lucide:mail" />
+            <Icon name="lucide:mail" class="w-12 h-12 text-slate-300" />
             <h4>No Content Yet</h4>
             <p>Add some blocks to see your newsletter preview</p>
           </div>
 
-          <!-- Compiled Newsletter -->
+          <!-- Compiled newsletter -->
           <iframe
             v-else
             ref="previewFrame"
@@ -185,7 +117,7 @@
           <div class="modal-header">
             <h3>MJML Source</h3>
             <button @click="showMjmlSource = false" class="modal-close">
-              <Icon name="lucide:x" />
+              <Icon name="lucide:x" class="w-5 h-5" />
             </button>
           </div>
           <div class="modal-body">
@@ -210,7 +142,7 @@
             </div>
             <div class="source-actions">
               <button @click="copySource" class="copy-button">
-                <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" />
+                <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" class="w-4 h-4" />
                 {{ copied ? 'Copied!' : 'Copy' }}
               </button>
             </div>
@@ -227,439 +159,252 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 interface Props {
   newsletter: any
   blockTypes: any[]
-  device?: 'mobile' | 'desktop'
+  device?: 'desktop' | 'mobile' | 'tablet'
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  device: 'mobile'
+  device: 'desktop'
 })
 
 const emit = defineEmits<{
-  'update:compiled': [compiled: { mjml: string, html: string }]
+  'update:compiled': [value: { mjml: string; html: string }]
 }>()
 
-// Composables
-const { compileNewsletterToMjml, compileMjmlToHtml, isCompiling, compilationError } = useMjmlCompiler()
-
-// State
-const currentDevice = ref(props.device)
-const zoom = ref(1)
+// Core state
 const compiledMjml = ref('')
 const compiledHtml = ref('')
+const currentDevice = ref(props.device)
 const showMjmlSource = ref(false)
 const sourceTab = ref('mjml')
 const copied = ref(false)
-const previewFrame = ref<HTMLIFrameElement>()
-const currentTime = ref('')
 
-// Device configurations
-const devices = [
-  { type: 'mobile', icon: 'lucide:smartphone', label: 'Mobile' },
-  { type: 'desktop', icon: 'lucide:monitor', label: 'Desktop' }
+// Preview frame reference
+const previewFrame = ref<HTMLIFrameElement | null>(null)
+
+// Device options with proper lucide icons
+const deviceOptions = [
+  { value: 'desktop', label: 'Desktop', icon: 'lucide:monitor' },
+  { value: 'tablet', label: 'Tablet', icon: 'lucide:tablet' },
+  { value: 'mobile', label: 'Mobile', icon: 'lucide:smartphone' }
 ]
 
-// Computed styles
-const containerClasses = computed(() => ({
-  'mobile-container': currentDevice.value === 'mobile',
-  'desktop-container': currentDevice.value === 'desktop'
-}))
+// Composables
+const { debouncedCompile, isCompiling, compilationError } = useMjmlCompiler()
 
-const frameClasses = computed(() => ({
-  'mobile-frame': currentDevice.value === 'mobile',
-  'desktop-frame': currentDevice.value === 'desktop'
-}))
+// Safe value getter to prevent [object Object] display
+const safeGetValue = (obj: any, key: string, fallback: string = '') => {
+  if (!obj || typeof obj !== 'object') return fallback
+  const value = obj[key]
+  if (value === null || value === undefined) return fallback
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return value.toString()
+  return fallback
+}
 
-const frameStyles = computed(() => ({
-  transform: `scale(${zoom.value})`,
-  transformOrigin: 'top center'
+// Computed properties
+const deviceClasses = computed(() => ({
+  'device-desktop': currentDevice.value === 'desktop',
+  'device-tablet': currentDevice.value === 'tablet',
+  'device-mobile': currentDevice.value === 'mobile'
 }))
 
 const contentStyles = computed(() => ({
-  height: currentDevice.value === 'mobile' ? 'calc(100vh - 120px)' : 'calc(100vh - 160px)'
+  '--device-width': currentDevice.value === 'desktop' ? '600px' : 
+                   currentDevice.value === 'tablet' ? '768px' : '375px'
 }))
 
-// Enhanced iframe content with proper scaling
 const iframeContent = computed(() => {
   if (!compiledHtml.value) return ''
-  
-  const baseStyles = `
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        line-height: 1.5;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      
-      /* Mobile optimizations */
-      @media screen and (max-width: 600px) {
-        .container {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-        
-        table {
-          width: 100% !important;
-        }
-        
-        .mobile-hide {
-          display: none !important;
-        }
-        
-        .mobile-center {
-          text-align: center !important;
-        }
-      }
-      
-      /* Prevent zooming on mobile */
-      * {
-        -webkit-text-size-adjust: 100%;
-        -ms-text-size-adjust: 100%;
-      }
-    </style>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  `
   
   return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
-        ${baseStyles}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Newsletter Preview</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+          }
+          .newsletter-container {
+            max-width: var(--device-width, 600px);
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+        </style>
       </head>
       <body>
-        ${compiledHtml.value}
+        <div class="newsletter-container">
+          ${compiledHtml.value}
+        </div>
       </body>
     </html>
   `
 })
 
 // Methods
-const updateTime = () => {
-  const now = new Date()
-  currentTime.value = now.toLocaleTimeString('en-US', { 
+const formatTime = () => {
+  return new Date().toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
-    hour12: false 
+    hour12: true 
   })
-}
-
-const formatTime = () => {
-  return new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  })
-}
-
-const zoomIn = () => {
-  zoom.value = Math.min(zoom.value + 0.1, 1.5)
-}
-
-const zoomOut = () => {
-  zoom.value = Math.max(zoom.value - 0.1, 0.5)
 }
 
 const refreshPreview = async () => {
-  await compileNewsletter()
-}
-
-const compileNewsletter = async () => {
-  try {
-    const mjml = await compileNewsletterToMjml(props.newsletter, props.blockTypes)
-    const html = await compileMjmlToHtml(mjml)
-    
-    compiledMjml.value = mjml
-    compiledHtml.value = html
-    
-    emit('update:compiled', { mjml, html })
-  } catch (error) {
-    console.error('Compilation failed:', error)
+  if (!props.newsletter || !Array.isArray(props.newsletter.blocks)) {
+    compiledMjml.value = ''
+    compiledHtml.value = ''
+    return
   }
-}
 
-const handleIframeLoad = async () => {
-  await nextTick()
+  const result = await debouncedCompile(props.newsletter, props.blockTypes)
   
-  if (previewFrame.value?.contentWindow) {
-    // Apply mobile-specific styles if needed
-    if (currentDevice.value === 'mobile') {
-      const iframeDoc = previewFrame.value.contentDocument
-      if (iframeDoc) {
-        const body = iframeDoc.body
-        if (body) {
-          body.style.maxWidth = '375px'
-          body.style.margin = '0 auto'
-          body.style.overflow = 'visible'
-        }
-      }
+  if (result) {
+    compiledMjml.value = result.mjml
+    compiledHtml.value = result.html
+    
+    // Emit compiled content
+    emit('update:compiled', { mjml: result.mjml, html: result.html })
+    
+    // Log any compilation errors/warnings
+    if (result.errors && result.errors.length > 0) {
+      console.warn('MJML compilation warnings:', result.errors)
     }
   }
 }
 
-const downloadHtml = () => {
-  if (!compiledHtml.value) return
+const compileBlockToMjml = (block: any, blockType: any) => {
+  if (!blockType.mjml_template) return ''
   
-  const blob = new Blob([iframeContent.value], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${props.newsletter.title || 'newsletter'}.html`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  let mjml = blockType.mjml_template
+  const content = block.content || {}
+
+  // Replace handlebars-style placeholders
+  Object.keys(content).forEach(key => {
+    const value = content[key]
+    if (value !== null && value !== undefined) {
+      // Handle both {{key}} and {{{key}}} patterns
+      mjml = mjml.replace(new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g'), String(value))
+      mjml = mjml.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value))
+    }
+  })
+
+  // Handle conditional blocks {{#if key}}...{{/if}}
+  mjml = mjml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
+    const value = block.content?.[key]
+    return (value && value !== '' && value !== null && value !== undefined) ? content : ''
+  })
+
+  return mjml
+}
+
+const handleIframeLoad = () => {
+  if (!previewFrame.value) return
+  
+  try {
+    // Apply device-specific styles to iframe content
+    const iframeDoc = previewFrame.value.contentDocument
+    if (iframeDoc) {
+      const style = iframeDoc.createElement('style')
+      style.textContent = `
+        body { 
+          transform-origin: top left;
+          ${currentDevice.value === 'mobile' ? 'transform: scale(0.8);' : ''}
+        }
+      `
+      iframeDoc.head.appendChild(style)
+    }
+  } catch (error) {
+    console.warn('Could not apply iframe styles:', error)
+  }
 }
 
 const copySource = async () => {
   const content = sourceTab.value === 'mjml' ? compiledMjml.value : compiledHtml.value
-  if (!content) return
   
   try {
     await navigator.clipboard.writeText(content)
     copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
   } catch (error) {
     console.error('Failed to copy:', error)
   }
 }
 
 // Watchers
-watch(() => props.newsletter, compileNewsletter, { deep: true })
-watch(() => props.device, (newDevice) => {
-  currentDevice.value = newDevice
+watch(() => props.newsletter, refreshPreview, { deep: true })
+watch(() => props.blockTypes, refreshPreview)
+watch(currentDevice, () => {
+  nextTick(() => {
+    if (previewFrame.value) {
+      handleIframeLoad()
+    }
+  })
 })
 
 // Lifecycle
 onMounted(() => {
-  updateTime()
-  const timeInterval = setInterval(updateTime, 60000) // Update every minute
-  
-  compileNewsletter()
-  
-  onUnmounted(() => {
-    clearInterval(timeInterval)
-  })
+  refreshPreview()
+})
+
+// Cleanup
+onUnmounted(() => {
+  // Clean up any timers or listeners if needed
 })
 </script>
 
 <style scoped>
 @reference 'tailwindcss';
-.newsletter-preview {
-  @apply h-full flex flex-col bg-slate-100;
+.newsletter-preview-container {
+  @apply h-full flex flex-col bg-white border-l border-slate-200;
 }
 
-/* Preview Controls */
+.preview-header {
+  @apply flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50;
+}
+
+.preview-title {
+  @apply flex items-center gap-2 text-sm font-medium text-slate-900;
+}
+
 .preview-controls {
-  @apply flex items-center justify-between p-3 bg-white border-b border-slate-200 flex-wrap gap-3;
+  @apply flex items-center gap-2;
+}
+
+.control-button {
+  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors;
 }
 
 .device-selector {
-  @apply flex items-center gap-1 bg-slate-100 rounded-lg p-1;
+  @apply flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200;
 }
 
 .device-button {
-  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors;
+  @apply p-2 text-slate-600 hover:text-slate-900 rounded-md transition-colors;
 }
 
 .device-button.active {
-  @apply bg-white shadow-sm text-blue-600;
+  @apply bg-blue-100 text-blue-700;
 }
 
-.device-button:not(.active) {
-  @apply text-slate-600 hover:text-slate-900;
+.preview-content {
+  @apply flex-1 overflow-hidden;
 }
 
-.device-button svg {
-  @apply w-4 h-4;
-}
-
-.zoom-controls {
-  @apply flex items-center gap-2;
-}
-
-.zoom-button {
-  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
-}
-
-.zoom-display {
-  @apply text-sm font-medium text-slate-700 min-w-[3rem] text-center;
-}
-
-.preview-actions {
-  @apply flex items-center gap-1;
-}
-
-.action-button {
-  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50;
-}
-
-/* Preview Container */
-.preview-container {
-  @apply flex-1 overflow-auto p-4 bg-gradient-to-br from-slate-100 to-slate-200;
-}
-
-.preview-container.mobile-container {
-  @apply flex justify-center;
-}
-
-.preview-container.desktop-container {
-  @apply flex justify-center;
-}
-
-/* Device Frames */
-.device-frame {
-  @apply bg-white rounded-xl shadow-2xl overflow-hidden transition-transform duration-300;
-}
-
-.mobile-frame {
-  @apply w-[375px] h-[812px] relative;
-}
-
-.desktop-frame {
-  @apply w-full max-w-4xl min-h-[600px] relative;
-}
-
-/* Mobile Chrome */
-.mobile-status-bar {
-  @apply h-11 bg-slate-900 flex items-center justify-between px-4 text-white text-sm;
-}
-
-.status-left {
-  @apply flex items-center gap-2;
-}
-
-.signal-bars {
-  @apply flex items-end gap-0.5;
-}
-
-.bar {
-  @apply w-1 bg-slate-500 rounded-full;
-}
-
-.bar:nth-child(1) { @apply h-1; }
-.bar:nth-child(2) { @apply h-2; }
-.bar:nth-child(3) { @apply h-3; }
-.bar:nth-child(4) { @apply h-4; }
-
-.bar.active {
-  @apply bg-white;
-}
-
-.carrier {
-  @apply text-xs;
-}
-
-.wifi-icon {
-  @apply w-4 h-4;
-}
-
-.status-center {
-  @apply font-semibold;
-}
-
-.status-right {
-  @apply flex items-center gap-1;
-}
-
-.battery-percent {
-  @apply text-xs;
-}
-
-.battery-icon {
-  @apply w-6 h-3 border border-white rounded-sm relative;
-}
-
-.battery-icon::after {
-  content: '';
-  @apply absolute -right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-1.5 bg-white rounded-r-sm;
-}
-
-.battery-fill {
-  @apply w-4 h-1.5 bg-green-400 rounded-sm m-0.5;
+.email-client-frame {
+  @apply h-full flex flex-col;
 }
 
 .email-header {
-  @apply h-14 bg-white border-b border-slate-200 flex items-center;
-}
-
-.header-content {
-  @apply flex items-center w-full px-4;
-}
-
-.back-button {
-  @apply p-2 -ml-2 text-blue-600;
-}
-
-.email-info {
-  @apply flex-1 mx-3 min-w-0;
-}
-
-.email-info h4 {
-  @apply text-sm font-semibold text-slate-900 truncate;
-}
-
-.email-info p {
-  @apply text-xs text-slate-600 truncate;
-}
-
-.header-actions {
-  @apply flex items-center gap-2;
-}
-
-.header-action {
-  @apply p-2 text-slate-400 hover:text-slate-600;
-}
-
-/* Desktop Chrome */
-.browser-chrome {
-  @apply h-12 bg-slate-200 border-b border-slate-300;
-}
-
-.chrome-controls {
-  @apply h-full flex items-center px-4;
-}
-
-.traffic-lights {
-  @apply flex items-center gap-2;
-}
-
-.traffic-light {
-  @apply w-3 h-3 rounded-full;
-}
-
-.traffic-light.red {
-  @apply bg-red-400;
-}
-
-.traffic-light.yellow {
-  @apply bg-yellow-400;
-}
-
-.traffic-light.green {
-  @apply bg-green-400;
-}
-
-.address-bar {
-  @apply flex-1 mx-4 bg-white rounded-md px-3 py-1.5 flex items-center gap-2 text-sm text-slate-600;
-}
-
-.lock-icon {
-  @apply w-4 h-4 text-green-600;
-}
-
-.browser-actions {
-  @apply flex items-center gap-2 text-slate-500;
-}
-
-.gmail-interface {
-  @apply bg-white border-b border-slate-200;
-}
-
-.gmail-header {
-  @apply flex items-center justify-between p-4;
+  @apply flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50;
 }
 
 .email-sender {
@@ -667,127 +412,121 @@ onMounted(() => {
 }
 
 .sender-avatar {
-  @apply w-10 h-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center text-sm;
+  @apply w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center;
 }
 
 .sender-info {
-  @apply min-w-0;
+  @apply text-sm;
 }
 
 .sender-name {
-  @apply font-semibold text-slate-900;
+  @apply font-medium text-slate-900;
 }
 
 .sender-email {
-  @apply text-sm text-slate-600;
+  @apply text-slate-600;
 }
 
 .email-meta {
-  @apply flex items-center gap-4;
-}
-
-.email-time {
-  @apply text-sm text-slate-600;
+  @apply flex items-center gap-4 text-sm text-slate-600;
 }
 
 .email-actions {
-  @apply flex items-center gap-2 text-slate-400;
+  @apply flex items-center gap-2;
 }
 
 .email-subject {
-  @apply px-4 pb-4;
+  @apply p-4 border-b border-slate-200;
 }
 
 .email-subject h3 {
-  @apply text-xl font-bold text-slate-900 mb-1;
+  @apply text-lg font-medium text-slate-900 mb-1;
 }
 
 .subject-meta {
   @apply flex items-center gap-2 text-sm text-slate-600;
 }
 
-.details-toggle {
-  @apply w-4 h-4 cursor-pointer hover:text-slate-900;
-}
-
-/* Email Content */
 .email-content {
-  @apply flex-1 overflow-auto bg-white;
-}
-
-.compilation-error,
-.loading-state,
-.empty-content {
-  @apply flex flex-col items-center justify-center h-64 text-center p-8;
+  @apply flex-1 overflow-auto;
 }
 
 .compilation-error {
-  @apply text-red-600;
-}
-
-.compilation-error svg {
-  @apply w-12 h-12 mb-4;
+  @apply flex items-start gap-3 p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg m-4;
 }
 
 .compilation-error h4 {
-  @apply text-lg font-semibold mb-2;
+  @apply font-medium mb-1;
 }
 
 .compilation-error p {
-  @apply mb-4 max-w-md;
+  @apply text-sm mb-3;
 }
 
 .retry-button {
-  @apply inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors;
+  @apply flex items-center gap-2 px-3 py-1 text-sm bg-red-100 hover:bg-red-200 rounded-md transition-colors;
 }
 
 .loading-state {
-  @apply text-slate-600;
+  @apply flex flex-col items-center justify-center p-8 text-slate-600;
 }
 
-.loading-state svg {
-  @apply w-8 h-8 mb-4;
+.loading-state p {
+  @apply mt-3 text-sm;
 }
 
 .empty-content {
-  @apply text-slate-400;
-}
-
-.empty-content svg {
-  @apply w-16 h-16 mb-4;
+  @apply flex flex-col items-center justify-center p-8 text-slate-500;
 }
 
 .empty-content h4 {
-  @apply text-lg font-semibold text-slate-600 mb-2;
+  @apply text-lg font-medium mt-4 mb-2;
+}
+
+.empty-content p {
+  @apply text-sm text-center;
 }
 
 .newsletter-iframe {
-  @apply w-full h-full border-none;
+  @apply w-full h-full border-0;
 }
 
-/* Modal */
+/* Device-specific styles */
+.device-desktop .newsletter-iframe {
+  @apply w-full;
+}
+
+.device-tablet .newsletter-iframe {
+  @apply max-w-3xl mx-auto;
+}
+
+.device-mobile .newsletter-iframe {
+  @apply max-w-sm mx-auto;
+}
+
+/* Modal styles */
 .modal-overlay {
-  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
 }
 
 .modal-content {
-  @apply bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden;
+  @apply bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col;
 }
 
 .modal-header {
-  @apply flex items-center justify-between p-4 border-b border-slate-200;
+  @apply flex items-center justify-between p-6 border-b border-slate-200;
 }
 
 .modal-header h3 {
-  @apply text-lg font-semibold text-slate-900;
+  @apply text-lg font-medium text-slate-900;
 }
 
 .modal-close {
-  @apply p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors;
+  @apply p-2 text-slate-400 hover:text-slate-600 rounded-md transition-colors;
 }
 
 .modal-body {
-  @apply flex flex-col h-full max-h-[70vh];
+  @apply flex-1 overflow-hidden flex flex-col;
 }
 
 .source-tabs {
@@ -795,7 +534,7 @@ onMounted(() => {
 }
 
 .source-tab {
-  @apply px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent transition-colors;
+  @apply px-6 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent transition-colors;
 }
 
 .source-tab.active {
@@ -803,46 +542,29 @@ onMounted(() => {
 }
 
 .source-container {
-  @apply flex-1 overflow-auto p-4 bg-slate-50;
+  @apply flex-1 overflow-auto p-6 bg-slate-50;
 }
 
 .source-container pre {
-  @apply text-sm font-mono bg-white rounded-lg p-4 overflow-auto;
+  @apply text-sm bg-white rounded-lg p-4 overflow-auto;
 }
 
 .source-actions {
-  @apply p-4 border-t border-slate-200 flex justify-end;
+  @apply flex items-center justify-end gap-3 p-6 border-t border-slate-200;
 }
 
 .copy-button {
-  @apply inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors;
+  @apply flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors;
 }
 
 /* Transitions */
 .modal-enter-active,
 .modal-leave-active {
-  @apply transition-all duration-300;
+  @apply transition-all duration-200;
 }
 
 .modal-enter-from,
 .modal-leave-to {
-  @apply opacity-0 scale-95;
-}
-
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .mobile-frame {
-    @apply w-full max-w-sm;
-  }
-  
-  .preview-controls {
-    @apply flex-col items-stretch gap-2;
-  }
-  
-  .device-selector,
-  .zoom-controls,
-  .preview-actions {
-    @apply justify-center;
-  }
+  @apply opacity-0 transform scale-95;
 }
 </style>
