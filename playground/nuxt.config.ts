@@ -39,7 +39,7 @@ export default defineNuxtConfig({
         minimumDistance: 8,
         accessibilityMode: true
       },
-      autoInstallTailwind: false, // We're configuring manually
+      autoInstallTailwind: true, // We're configuring manually
       theme: {
         primaryColor: 'blue',
         darkMode: true

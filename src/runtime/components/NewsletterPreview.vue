@@ -1,6 +1,7 @@
+<!-- NewsletterPreview.vue - Fixed Version -->
 <template>
   <div class="newsletter-preview-container">
-    <!-- Enhanced header with proper controls -->
+    <!-- Simplified header without device controls -->
     <div class="preview-header">
       <div class="preview-title">
         <Icon name="lucide:mail" class="w-5 h-5 text-slate-600" />
@@ -22,91 +23,53 @@
         >
           <Icon name="lucide:code" class="w-4 h-4" />
         </button>
-        <div class="device-selector">
-          <button
-            v-for="deviceOption in deviceOptions"
-            :key="deviceOption.value"
-            @click="currentDevice = deviceOption.value"
-            class="device-button"
-            :class="{ 'active': currentDevice === deviceOption.value }"
-            :title="deviceOption.label"
-          >
-            <Icon :name="deviceOption.icon" class="w-4 h-4" />
-          </button>
-        </div>
       </div>
     </div>
 
-    <!-- Enhanced preview content -->
-    <div class="preview-content" :class="deviceClasses">
-      <div class="email-client-frame">
-        <!-- Email client header -->
-        <template v-if="currentDevice === 'desktop'">
-          <div class="email-header">
-            <div class="email-sender">
-              <div class="sender-avatar">
-                <Icon name="lucide:user" class="w-4 h-4 text-slate-600" />
-              </div>
-              <div class="sender-info">
-                <div class="sender-name">{{ safeGetValue(newsletter, 'from_name', 'Your Company') }}</div>
-                <div class="sender-email">&lt;{{ safeGetValue(newsletter, 'from_email', 'newsletter@company.com') }}&gt;</div>
-              </div>
-            </div>
-            <div class="email-meta">
-              <span class="email-time">{{ formatTime() }}</span>
-              <div class="email-actions">
-                <Icon name="lucide:reply" class="w-4 h-4 text-slate-400" />
-                <Icon name="lucide:forward" class="w-4 h-4 text-slate-400" />
-                <Icon name="lucide:more-vertical" class="w-4 h-4 text-slate-400" />
-              </div>
-            </div>
-          </div>
-          <div class="email-subject">
-            <h3>{{ safeGetValue(newsletter, 'subject_line', 'Newsletter Subject Line') }}</h3>
-            <div class="subject-meta">
-              <span class="to-line">to me</span>
-              <Icon name="lucide:chevron-down" class="w-4 h-4 text-slate-400" />
-            </div>
-          </div>
-        </template>
-
-        <!-- Email content area -->
-        <div class="email-content" :style="contentStyles">
-          <!-- Compilation error -->
-          <div v-if="compilationError" class="compilation-error">
-            <Icon name="lucide:alert-triangle" class="w-5 h-5 text-amber-500" />
-            <div>
-              <h4>Compilation Error</h4>
-              <p>{{ compilationError }}</p>
-              <button @click="refreshPreview" class="retry-button">
-                <Icon name="lucide:refresh-cw" class="w-4 h-4" />
-                Try Again
-              </button>
-            </div>
-          </div>
-
-          <!-- Loading state -->
-          <div v-else-if="isCompiling" class="loading-state">
-            <Icon name="lucide:loader-2" class="w-8 h-8 animate-spin text-blue-500" />
-            <p>Compiling newsletter...</p>
-          </div>
-
-          <!-- Empty state -->
-          <div v-else-if="!compiledHtml" class="empty-content">
-            <Icon name="lucide:mail" class="w-12 h-12 text-slate-300" />
-            <h4>No Content Yet</h4>
-            <p>Add some blocks to see your newsletter preview</p>
-          </div>
-
-          <!-- Compiled newsletter -->
-          <iframe
-            v-else
-            ref="previewFrame"
-            :srcdoc="iframeContent"
-            class="newsletter-iframe"
-            @load="handleIframeLoad"
-          ></iframe>
+    <!-- Preview content with proper device responsive styles -->
+    <div class="preview-content">
+      <div 
+        class="email-preview-frame" 
+        :class="deviceClasses" 
+        :style="contentStyles"
+      >
+        
+        <!-- Loading state -->
+        <div v-if="isCompiling" class="loading-state">
+          <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-slate-400" />
+          <p>Compiling newsletter...</p>
         </div>
+
+        <!-- Error state -->
+        <div v-else-if="compilationError" class="compilation-error">
+          <Icon name="lucide:alert-triangle" class="w-5 h-5 text-red-600" />
+          <div>
+            <h4>Compilation Error</h4>
+            <p>{{ compilationError }}</p>
+            <button @click="refreshPreview" class="retry-button">
+              <Icon name="lucide:refresh-cw" class="w-4 h-4" />
+              Retry
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div v-else-if="!newsletter?.blocks?.length" class="empty-content">
+          <Icon name="lucide:file-text" class="w-12 h-12 text-slate-300" />
+          <h4>No Content Yet</h4>
+          <p>Add some blocks to your newsletter to see the preview here.</p>
+        </div>
+
+        <!-- Newsletter iframe -->
+        <iframe
+          v-else
+          ref="previewFrame"
+          :srcdoc="compiledHtml"
+          class="newsletter-iframe"
+          @load="handleIframeLoad"
+          frameborder="0"
+          scrolling="auto"
+        />
       </div>
     </div>
 
@@ -115,7 +78,7 @@
       <div v-if="showMjmlSource" class="modal-overlay" @click="showMjmlSource = false">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
-            <h3>MJML Source</h3>
+            <h3>Newsletter Source</h3>
             <button @click="showMjmlSource = false" class="modal-close">
               <Icon name="lucide:x" class="w-5 h-5" />
             </button>
@@ -125,14 +88,14 @@
               <button
                 @click="sourceTab = 'mjml'"
                 class="source-tab"
-                :class="{ 'active': sourceTab === 'mjml' }"
+                :class="{ active: sourceTab === 'mjml' }"
               >
                 MJML
               </button>
               <button
                 @click="sourceTab = 'html'"
                 class="source-tab"
-                :class="{ 'active': sourceTab === 'html' }"
+                :class="{ active: sourceTab === 'html' }"
               >
                 HTML
               </button>
@@ -140,12 +103,12 @@
             <div class="source-container">
               <pre><code>{{ sourceTab === 'mjml' ? compiledMjml : compiledHtml }}</code></pre>
             </div>
-            <div class="source-actions">
-              <button @click="copySource" class="copy-button">
-                <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" class="w-4 h-4" />
-                {{ copied ? 'Copied!' : 'Copy' }}
-              </button>
-            </div>
+          </div>
+          <div class="source-actions">
+            <button @click="copySource" class="copy-button">
+              <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" class="w-4 h-4" />
+              {{ copied ? 'Copied!' : 'Copy' }}
+            </button>
           </div>
         </div>
       </div>
@@ -173,7 +136,6 @@ const emit = defineEmits<{
 // Core state
 const compiledMjml = ref('')
 const compiledHtml = ref('')
-const currentDevice = ref(props.device)
 const showMjmlSource = ref(false)
 const sourceTab = ref('mjml')
 const copied = ref(false)
@@ -181,15 +143,90 @@ const copied = ref(false)
 // Preview frame reference
 const previewFrame = ref<HTMLIFrameElement | null>(null)
 
-// Device options with proper lucide icons
-const deviceOptions = [
-  { value: 'desktop', label: 'Desktop', icon: 'lucide:monitor' },
-  { value: 'tablet', label: 'Tablet', icon: 'lucide:tablet' },
-  { value: 'mobile', label: 'Mobile', icon: 'lucide:smartphone' }
-]
+// Watch for device prop changes and update internal state
+const currentDevice = ref(props.device)
+watch(() => props.device, (newDevice) => {
+  currentDevice.value = newDevice
+}, { immediate: true })
 
-// Composables
-const { debouncedCompile, isCompiling, compilationError } = useMjmlCompiler()
+// Composables - with fallback if useMjmlCompiler is not available
+let debouncedCompile, isCompiling, compilationError
+
+try {
+  const mjmlComposer = useMjmlCompiler()
+  debouncedCompile = mjmlComposer.debouncedCompile
+  isCompiling = mjmlComposer.isCompiling
+  compilationError = mjmlComposer.compilationError
+} catch (error) {
+  console.warn('useMjmlCompiler not available, using fallback')
+  
+  // Fallback compilation
+  isCompiling = ref(false)
+  compilationError = ref(null)
+  
+  debouncedCompile = async (mjmlContent) => {
+    isCompiling.value = true
+    compilationError.value = null
+    
+    try {
+      // Simple HTML wrapper for preview when MJML compiler is not available
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { 
+              margin: 0; 
+              padding: 20px; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: #f8fafc;
+            }
+            .email-container {
+              max-width: 600px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 8px;
+              padding: 20px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .block {
+              margin-bottom: 20px;
+              padding: 15px;
+              border: 1px solid #e5e7eb;
+              border-radius: 4px;
+            }
+            .block h1, .block h2, .block h3 { margin-top: 0; }
+            .block p { margin-bottom: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="block">
+              <h2>Newsletter Preview</h2>
+              <p>MJML compiler not available. Showing basic preview.</p>
+            </div>
+            ${mjmlContent ? `
+              <div class="block">
+                <h3>MJML Content:</h3>
+                <pre style="background: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">${mjmlContent}</pre>
+              </div>
+            ` : ''}
+          </div>
+        </body>
+        </html>
+      `
+      
+      return { html, mjml: mjmlContent }
+    } catch (error) {
+      compilationError.value = error.message
+      return { html: '<p>Compilation failed</p>', mjml: mjmlContent }
+    } finally {
+      isCompiling.value = false
+    }
+  }
+}
 
 // Safe value getter to prevent [object Object] display
 const safeGetValue = (obj: any, key: string, fallback: string = '') => {
@@ -201,124 +238,237 @@ const safeGetValue = (obj: any, key: string, fallback: string = '') => {
   return fallback
 }
 
-// Computed properties
+// Computed properties for responsive design
 const deviceClasses = computed(() => ({
   'device-desktop': currentDevice.value === 'desktop',
   'device-tablet': currentDevice.value === 'tablet',
   'device-mobile': currentDevice.value === 'mobile'
 }))
 
-const contentStyles = computed(() => ({
-  '--device-width': currentDevice.value === 'desktop' ? '600px' : 
-                   currentDevice.value === 'tablet' ? '768px' : '375px'
-}))
-
-const iframeContent = computed(() => {
-  if (!compiledHtml.value) return ''
+const contentStyles = computed(() => {
+  const styles: Record<string, string> = {}
   
-  return `
-    <!DOCTYPE html>
-    <html>
+  switch (currentDevice.value) {
+    case 'desktop':
+      styles['--device-width'] = '600px'
+      styles['--device-height'] = 'auto'
+      break
+    case 'tablet':
+      styles['--device-width'] = '480px'
+      styles['--device-height'] = 'auto'
+      break
+    case 'mobile':
+      styles['--device-width'] = '320px'
+      styles['--device-height'] = 'auto'
+      break
+  }
+  
+  return styles
+})
+
+// Methods
+const refreshPreview = async () => {
+  if (!props.newsletter?.blocks?.length) {
+    // Show empty state
+    compiledHtml.value = `
+      <!DOCTYPE html>
+      <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Newsletter Preview</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-          body {
-            margin: 0;
-            padding: 0;
+          body { 
+            margin: 0; 
+            padding: 40px; 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f8fafc;
+            text-align: center;
+            color: #64748b;
           }
-          .newsletter-container {
-            max-width: var(--device-width, 600px);
+          .empty-state {
+            max-width: 400px;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+          }
+          h3 { margin: 0 0 8px 0; color: #1e293b; }
+          p { margin: 0; }
+        </style>
+      </head>
+      <body>
+        <div class="empty-state">
+          <div class="empty-icon">📧</div>
+          <h3>No Content Yet</h3>
+          <p>Add some blocks to your newsletter to see the preview here.</p>
+        </div>
+      </body>
+      </html>
+    `
+    compiledMjml.value = ''
+    return
+  }
+  
+  try {
+    const mjmlContent = generateMjmlFromBlocks(props.newsletter.blocks)
+    const result = await debouncedCompile(mjmlContent)
+    
+    if (result && result.html) {
+      compiledMjml.value = mjmlContent
+      compiledHtml.value = result.html
+      
+      emit('update:compiled', { mjml: mjmlContent, html: result.html })
+    } else {
+      console.error('Invalid compilation result:', result)
+      compiledHtml.value = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { 
+              margin: 0; 
+              padding: 40px; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: #fef2f2;
+              text-align: center;
+              color: #dc2626;
+            }
+          </style>
+        </head>
+        <body>
+          <h3>Compilation Error</h3>
+          <p>Could not compile newsletter preview.</p>
+        </body>
+        </html>
+      `
+    }
+  } catch (error) {
+    console.error('Preview compilation error:', error)
+    compiledHtml.value = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { 
+            margin: 0; 
+            padding: 40px; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fef2f2;
+            text-align: center;
+            color: #dc2626;
           }
         </style>
       </head>
       <body>
-        <div class="newsletter-container">
-          ${compiledHtml.value}
-        </div>
+        <h3>Preview Error</h3>
+        <p>${error.message || 'Unknown error occurred'}</p>
       </body>
-    </html>
-  `
-})
-
-// Methods
-const formatTime = () => {
-  return new Date().toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  })
-}
-
-const refreshPreview = async () => {
-  if (!props.newsletter || !Array.isArray(props.newsletter.blocks)) {
-    compiledMjml.value = ''
-    compiledHtml.value = ''
-    return
-  }
-
-  const result = await debouncedCompile(props.newsletter, props.blockTypes)
-  
-  if (result) {
-    compiledMjml.value = result.mjml
-    compiledHtml.value = result.html
-    
-    // Emit compiled content
-    emit('update:compiled', { mjml: result.mjml, html: result.html })
-    
-    // Log any compilation errors/warnings
-    if (result.errors && result.errors.length > 0) {
-      console.warn('MJML compilation warnings:', result.errors)
-    }
+      </html>
+    `
   }
 }
 
-const compileBlockToMjml = (block: any, blockType: any) => {
-  if (!blockType.mjml_template) return ''
+const generateMjmlFromBlocks = (blocks: any[]) => {
+  if (!blocks?.length) return ''
   
-  let mjml = blockType.mjml_template
-  const content = block.content || {}
-
-  // Replace handlebars-style placeholders
-  Object.keys(content).forEach(key => {
-    const value = content[key]
-    if (value !== null && value !== undefined) {
-      // Handle both {{key}} and {{{key}}} patterns
-      mjml = mjml.replace(new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g'), String(value))
-      mjml = mjml.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value))
+  const bodyContent = blocks.map(block => {
+    if (!block) return ''
+    
+    const blockType = props.blockTypes.find(bt => bt.id === block.block_type)
+    if (!blockType) {
+      console.warn('Block type not found for:', block.block_type)
+      return `<mj-section><mj-column><mj-text>Unknown block type: ${block.block_type}</mj-text></mj-column></mj-section>`
     }
-  })
-
-  // Handle conditional blocks {{#if key}}...{{/if}}
-  mjml = mjml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
-    const value = block.content?.[key]
-    return (value && value !== '' && value !== null && value !== undefined) ? content : ''
-  })
-
-  return mjml
+    
+    let mjml = blockType.mjml_template || '<mj-section><mj-column><mj-text>No template</mj-text></mj-column></mj-section>'
+    
+    // Replace placeholders with actual values
+    if (block.content) {
+      mjml = mjml.replace(/\{\{(\w+)\}\}/g, (match: string, key: string) => {
+        const value = safeGetValue(block.content, key, '')
+        return value
+      })
+      
+      // Handle conditional content
+      mjml = mjml.replace(/\{\{if (\w+)\}\}(.*?)\{\{\/if\}\}/g, (match: string, key: string, content: string) => {
+        const value = block.content?.[key]
+        const shouldShow = value && value !== '' && value !== null && value !== undefined
+        return shouldShow ? content : ''
+      })
+    }
+    
+    return mjml
+  }).join('\n')
+  
+  const fullMjml = `
+<mjml>
+  <mj-head>
+    <mj-title>${props.newsletter?.subject || 'Newsletter'}</mj-title>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f8fafc">
+    <mj-container background-color="#ffffff" border-radius="8px" padding="20px">
+      ${bodyContent || '<mj-section><mj-column><mj-text>No content blocks</mj-text></mj-column></mj-section>'}
+    </mj-container>
+  </mj-body>
+</mjml>`.trim()
+  
+  return fullMjml
 }
 
 const handleIframeLoad = () => {
   if (!previewFrame.value) return
   
   try {
-    // Apply device-specific styles to iframe content
     const iframeDoc = previewFrame.value.contentDocument
     if (iframeDoc) {
+      // Ensure iframe content is properly sized
       const style = iframeDoc.createElement('style')
       style.textContent = `
+        html, body { 
+          margin: 0; 
+          padding: 0; 
+          width: 100%; 
+          height: auto;
+          overflow-x: hidden;
+        }
         body { 
           transform-origin: top left;
-          ${currentDevice.value === 'mobile' ? 'transform: scale(0.8);' : ''}
+          ${currentDevice.value === 'mobile' ? 'transform: scale(0.9);' : ''}
         }
       `
       iframeDoc.head.appendChild(style)
+      
+      // Auto-resize iframe to content
+      const resizeIframe = () => {
+        if (previewFrame.value && iframeDoc.body) {
+          const height = Math.max(
+            iframeDoc.body.scrollHeight,
+            iframeDoc.documentElement.scrollHeight,
+            500 // minimum height
+          )
+          previewFrame.value.style.height = `${height}px`
+        }
+      }
+      
+      // Initial resize
+      setTimeout(resizeIframe, 100)
+      
+      // Watch for content changes
+      const observer = new MutationObserver(resizeIframe)
+      observer.observe(iframeDoc.body, { childList: true, subtree: true })
     }
   } catch (error) {
     console.warn('Could not apply iframe styles:', error)
@@ -355,16 +505,15 @@ onMounted(() => {
   refreshPreview()
 })
 
-// Cleanup
 onUnmounted(() => {
-  // Clean up any timers or listeners if needed
+  // Cleanup if needed
 })
 </script>
 
 <style scoped>
 @reference 'tailwindcss';
 .newsletter-preview-container {
-  @apply h-full flex flex-col bg-white border-l border-slate-200;
+  @apply h-full flex flex-col bg-white;
 }
 
 .preview-header {
@@ -383,76 +532,47 @@ onUnmounted(() => {
   @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors;
 }
 
-.device-selector {
-  @apply flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200;
-}
-
-.device-button {
-  @apply p-2 text-slate-600 hover:text-slate-900 rounded-md transition-colors;
-}
-
-.device-button.active {
-  @apply bg-blue-100 text-blue-700;
-}
-
 .preview-content {
-  @apply flex-1 overflow-hidden;
+  @apply flex-1 overflow-auto p-4 bg-slate-50;
 }
 
-.email-client-frame {
-  @apply h-full flex flex-col;
+.email-preview-frame {
+  @apply mx-auto transition-all duration-300;
+  width: var(--device-width, 100%);
+  max-width: 100%;
 }
 
-.email-header {
-  @apply flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50;
+/* Device specific widths */
+.device-desktop {
+  width: 600px !important;
+  max-width: 100% !important;
 }
 
-.email-sender {
-  @apply flex items-center gap-3;
+.device-tablet {
+  width: 480px !important;
+  max-width: 100% !important;
 }
 
-.sender-avatar {
-  @apply w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center;
+.device-mobile {
+  width: 320px !important;
+  max-width: 100% !important;
 }
 
-.sender-info {
-  @apply text-sm;
+.newsletter-iframe {
+  @apply w-full border border-slate-200 rounded-lg bg-white;
+  min-height: 500px;
 }
 
-.sender-name {
-  @apply font-medium text-slate-900;
+.loading-state {
+  @apply flex flex-col items-center justify-center p-8 text-slate-600 min-h-[400px];
 }
 
-.sender-email {
-  @apply text-slate-600;
-}
-
-.email-meta {
-  @apply flex items-center gap-4 text-sm text-slate-600;
-}
-
-.email-actions {
-  @apply flex items-center gap-2;
-}
-
-.email-subject {
-  @apply p-4 border-b border-slate-200;
-}
-
-.email-subject h3 {
-  @apply text-lg font-medium text-slate-900 mb-1;
-}
-
-.subject-meta {
-  @apply flex items-center gap-2 text-sm text-slate-600;
-}
-
-.email-content {
-  @apply flex-1 overflow-auto;
+.loading-state p {
+  @apply mt-3 text-sm;
 }
 
 .compilation-error {
-  @apply flex items-start gap-3 p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg m-4;
+  @apply flex items-start gap-3 p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg;
 }
 
 .compilation-error h4 {
@@ -467,16 +587,8 @@ onUnmounted(() => {
   @apply flex items-center gap-2 px-3 py-1 text-sm bg-red-100 hover:bg-red-200 rounded-md transition-colors;
 }
 
-.loading-state {
-  @apply flex flex-col items-center justify-center p-8 text-slate-600;
-}
-
-.loading-state p {
-  @apply mt-3 text-sm;
-}
-
 .empty-content {
-  @apply flex flex-col items-center justify-center p-8 text-slate-500;
+  @apply flex flex-col items-center justify-center p-8 text-slate-500 min-h-[400px];
 }
 
 .empty-content h4 {
@@ -487,26 +599,9 @@ onUnmounted(() => {
   @apply text-sm text-center;
 }
 
-.newsletter-iframe {
-  @apply w-full h-full border-0;
-}
-
-/* Device-specific styles */
-.device-desktop .newsletter-iframe {
-  @apply w-full;
-}
-
-.device-tablet .newsletter-iframe {
-  @apply max-w-3xl mx-auto;
-}
-
-.device-mobile .newsletter-iframe {
-  @apply max-w-sm mx-auto;
-}
-
 /* Modal styles */
 .modal-overlay {
-  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
 }
 
 .modal-content {
