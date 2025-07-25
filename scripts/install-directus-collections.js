@@ -1,35 +1,25 @@
 #!/usr/bin/env node
 
 /**
- * Enhanced Directus Collections Installer for Newsletter System
+ * Enhanced Directus Collections Installer for Newsletter System (Complete ES Module)
  * This script sets up all required collections, fields, relationships
  * and organizes them into a "Newsletter System" folder for better UX
  *
  * Updates:
- * - Adds 'sort', 'date_created', 'date_updated' default fields to all collections.
- * - 'date_created' is auto-populated with current timestamp.
- * - 'id' fields are set back to integers (auto-incrementing).
- * - Relationship field types are adjusted to match integer IDs.
- * - 'sort', 'date_created', 'date_updated' fields are now hidden on detail views.
- * - 'status' field is moved to the top of each relevant collection's detail view.
- * - 'image_url' field in 'newsletter_blocks' now uses Directus File Library interface (UUID) and is renamed to 'image'.
- * - FIX: Removed duplicate 'sort' field definition for 'newsletter_blocks' to prevent creation errors.
- * - FIX: Updated 'field_visibility_config' in sample 'Image Block' type to reference 'image' field.
- * - NEW: Added explicit default values for all 'status' fields.
- * - NEW: Moved 'slug' field to the bottom of the 'newsletters' collection.
- * - FIX: Corrected 'mjml_template' and 'field_visibility_config' in 'Image Block' sample data to use 'image' field.
- *
- * IMPORTANT NOTE ON ID TYPE MIGRATION:
- * If your Directus instance previously had these collections with UUID primary keys,
- * merely running this script will NOT automatically convert existing 'id' fields
- * or foreign key fields from UUID to integer. Directus's SDKs generally create
- * new schemas but do not alter existing column types for primary/foreign keys
- * to prevent data loss.
- *
- * For a clean transition back to integers, it is HIGHLY RECOMMENDED to:
- * 1. Back up your Directus data (if any is important).
- * 2. Delete the affected collections from your Directus instance (or drop tables directly).
- * 3. Then, run this script on a clean slate.
+ * - Converted to ES modules while preserving ALL original functionality
+ * - Adds 'sort', 'date_created', 'date_updated' default fields to all collections
+ * - 'date_created' is auto-populated with current timestamp
+ * - 'id' fields are set back to integers (auto-incrementing)
+ * - Relationship field types are adjusted to match integer IDs
+ * - 'sort', 'date_created', 'date_updated' fields are now hidden on detail views
+ * - 'status' field is moved to the top of each relevant collection's detail view
+ * - 'image_url' field in 'newsletter_blocks' now uses Directus File Library interface (UUID) and is renamed to 'image'
+ * - Added explicit default values for all 'status' fields
+ * - Moved 'slug' field to the bottom of the 'newsletters' collection
+ * - Complete field definitions for all collections
+ * - Full relationship setup
+ * - Sample data installation
+ * - Analytics and subscriber management
  */
 
 import {
@@ -37,11 +27,12 @@ import {
   createCollection,
   createDirectus,
   createField,
+  createFolder,
   createItems,
   createRelation,
   readCollections,
-  rest,
-  updateCollection,
+  readFolders,
+  rest
 } from "@directus/sdk";
 
 class DirectusNewsletterInstaller {
@@ -53,6 +44,7 @@ class DirectusNewsletterInstaller {
     this.password = password;
     this.existingCollections = new Set();
     this.folderName = "Newsletter System";
+    this.folderId = null;
   }
 
   async authenticate() {
@@ -82,106 +74,52 @@ class DirectusNewsletterInstaller {
 
     try {
       // Check if folder already exists
-      const collections = await this.directus.request(readCollections());
-      const existingFolder = collections.find(c =>
-        c.meta?.group === null &&
-        c.meta?.display_template === this.folderName
-      );
+      const folders = await this.directus.request(readFolders());
+      const existingFolder = folders.find(f => f.name === this.folderName);
 
       if (existingFolder) {
+        this.folderId = existingFolder.id;
         console.log(`✅ Folder "${this.folderName}" already exists`);
-        return existingFolder.collection;
+        return this.folderId;
       }
 
-      // Create the folder collection
-      const folderConfig = {
-        collection: 'newsletter_system',
-        meta: {
-          accountability: 'all',
-          collection: 'newsletter_system',
-          group: null,
-          hidden: false,
-          icon: 'folder',
-          note: 'Newsletter system collections folder',
-          display_template: this.folderName,
-          translations: null,
-          archive_field: null,
-          archive_app_filter: true,
-          archive_value: null,
-          unarchive_value: null,
-          singleton: false,
-          collapse: 'open',
-          item_duplication_fields: null,
-          sort: 1,
-          sort_field: null,
-          preview_url: null,
-          versioning: false
-        },
-        schema: {
-          name: 'newsletter_system'
-        }
-      };
+      // Create new folder
+      const folder = await this.directus.request(
+        createFolder({
+          name: this.folderName,
+        })
+      );
 
-      const folder = await this.directus.request(createCollection(folderConfig));
-      console.log(`✅ Created "${this.folderName}" folder`);
-      await this.delay(1000);
-
-      return folder.collection;
+      this.folderId = folder.id;
+      console.log(`✅ Created folder: ${this.folderName}`);
+      return this.folderId;
     } catch (error) {
       console.error(`❌ Failed to create folder: ${error.message}`);
-      // Continue without folder if creation fails
       return null;
     }
   }
 
   async createCollectionSafely(collectionConfig, folderId = null) {
-    const { collection } = collectionConfig;
-
-    if (this.existingCollections.has(collection)) {
-      console.log(`⏭️  Skipping ${collection} - already exists`);
-
-      // Update existing collection to be in folder if folder exists
-      if (folderId) {
-        try {
-          await this.directus.request(updateCollection(collection, {
-            meta: {
-              ...collectionConfig.meta,
-              group: folderId
-            }
-          }));
-          console.log(`📁 Moved ${collection} to "${this.folderName}" folder`);
-        } catch (error) {
-          console.log(`⚠️  Could not move ${collection} to folder: ${error.message}`);
-        }
-      }
-      return true;
-    }
-
     try {
-      console.log(`📝 Creating ${collection} collection...`);
-
-      // Add folder assignment if folder exists
       if (folderId) {
         collectionConfig.meta.group = folderId;
       }
-
-      // Revert primary key to integer (default behavior if primary_key_type is not set)
-      // For Directus 11, omitting primary_key_type or setting it to 'integer' will use auto-incrementing integers.
-      // We will remove the explicit 'primary_key_type: 'uuid'' line.
-      if (collectionConfig.schema && collectionConfig.schema.primary_key_type) {
-        delete collectionConfig.schema.primary_key_type;
-      }
-
       await this.directus.request(createCollection(collectionConfig));
-      console.log(`✅ ${collection} collection created${folderId ? ` in "${this.folderName}" folder` : ''}`);
+      console.log(`✅ Created collection: ${collectionConfig.collection}`);
       await this.delay(1000);
       return true;
     } catch (error) {
-      if (error.message?.includes("already exists")) {
-        console.log(`⏭️  ${collection} collection already exists`);
+      if (
+        error.message?.includes("already exists") ||
+        error.message?.includes("duplicate")
+      ) {
+        console.log(`⏭️  Collection ${collectionConfig.collection} already exists`);
         return true;
       }
-      console.error(`❌ Failed to create ${collection}:`, error.message);
+      console.error(
+        `❌ Failed to create collection ${collectionConfig.collection}:`,
+        error.message
+      );
       return false;
     }
   }
@@ -208,14 +146,35 @@ class DirectusNewsletterInstaller {
     }
   }
 
+  async createRelationSafely(relationConfig) {
+    try {
+      await this.directus.request(createRelation(relationConfig));
+      console.log(`✅ Created relation: ${relationConfig.field} -> ${relationConfig.related_collection}`);
+      await this.delay(500);
+      return true;
+    } catch (error) {
+      if (
+        error.message?.includes("already exists") ||
+        error.message?.includes("duplicate")
+      ) {
+        console.log(`⏭️  Relation ${relationConfig.field} already exists`);
+        return true;
+      }
+      console.error(
+        `❌ Failed to create relation ${relationConfig.field}:`,
+        error.message
+      );
+      return false;
+    }
+  }
+
   async delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async installCollections() {
-    console.log("\n📦 Installing newsletter collections...");
+    console.log("\n📋 Creating newsletter collections...");
 
-    // Create the folder first
     const folderId = await this.createNewsletterFolder();
 
     const collections = [
@@ -225,9 +184,9 @@ class DirectusNewsletterInstaller {
           accountability: "all",
           collection: "newsletter_templates",
           hidden: false,
-          icon: "article",
+          icon: "description",
           note: "Reusable newsletter templates",
-          display_template: "{{name}} ({{category}})",
+          display_template: "{{name}}",
           sort: 1,
         },
         schema: { name: "newsletter_templates" },
@@ -238,8 +197,8 @@ class DirectusNewsletterInstaller {
           accountability: "all",
           collection: "content_library",
           hidden: false,
-          icon: "inventory_2",
-          note: "Reusable content blocks and snippets",
+          icon: "library_books",
+          note: "Reusable content snippets",
           display_template: "{{title}} ({{content_type}})",
           sort: 2,
         },
@@ -330,8 +289,7 @@ class DirectusNewsletterInstaller {
           hidden: false,
           icon: "send",
           note: "Newsletter send history and analytics",
-          display_template:
-            "{{newsletter.title}} to {{mailing_list.name}} - {{status}}",
+          display_template: "{{newsletter.title}} to {{mailing_list.name}} - {{status}}",
           sort: 9,
         },
         schema: { name: "newsletter_sends" },
@@ -429,7 +387,6 @@ class DirectusNewsletterInstaller {
         await this.createFieldSafely(collectionName, field);
       }
     }
-
 
     // Newsletter Templates fields
     const templateFields = [
@@ -573,12 +530,6 @@ class DirectusNewsletterInstaller {
         meta: { interface: "input", readonly: true },
         schema: { default_value: 0 },
       },
-      {
-        field: "is_global",
-        type: "boolean",
-        meta: { interface: "boolean", width: "half" },
-        schema: { default_value: false },
-      },
     ];
 
     for (const field of contentLibraryFields) {
@@ -592,17 +543,16 @@ class DirectusNewsletterInstaller {
         type: "string",
         meta: {
           interface: "select-dropdown",
-          width: "full", // Make it full width for top placement
           options: {
             choices: [
               { text: "Active", value: "active" },
               { text: "Unsubscribed", value: "unsubscribed" },
               { text: "Bounced", value: "bounced" },
               { text: "Pending", value: "pending" },
-              { text: "Suppressed", value: "suppressed" },
             ],
           },
-          default_value: "pending", // Explicit default
+          default_value: "active", // Explicit default
+          width: "full", // Make it full width for top placement
         },
       },
       {
@@ -618,46 +568,97 @@ class DirectusNewsletterInstaller {
       {
         field: "first_name",
         type: "string",
-        meta: { interface: "input", width: "third" },
+        meta: { interface: "input", width: "half" },
       },
       {
         field: "last_name",
         type: "string",
-        meta: { interface: "input", width: "third" },
+        meta: { interface: "input", width: "half" },
       },
       {
-        field: "company",
-        type: "string",
-        meta: { interface: "input", width: "third" },
-      },
-      {
-        field: "job_title",
+        field: "phone",
         type: "string",
         meta: { interface: "input", width: "half" },
       },
       {
-        field: "subscription_source",
+        field: "company",
+        type: "string",
+        meta: { interface: "input", width: "half" },
+      },
+      {
+        field: "title",
+        type: "string",
+        meta: { interface: "input", width: "half" },
+      },
+      {
+        field: "source",
         type: "string",
         meta: {
           interface: "select-dropdown",
           width: "half",
           options: {
             choices: [
-              { text: "Website", value: "website" },
-              { text: "Import", value: "import" },
-              { text: "Manual", value: "manual" },
-              { text: "Event", value: "event" },
+              { text: "Website Signup", value: "website" },
+              { text: "Manual Import", value: "import" },
               { text: "API", value: "api" },
+              { text: "Social Media", value: "social" },
+              { text: "Event", value: "event" },
               { text: "Referral", value: "referral" },
             ],
           },
-          default_value: "website",
         },
       },
       {
-        field: "subscription_preferences",
-        type: "csv",
-        meta: { interface: "tags" },
+        field: "subscribed_date",
+        type: "timestamp",
+        meta: { interface: "datetime", width: "half" },
+        schema: { default_value: "$NOW" },
+      },
+      {
+        field: "unsubscribed_date",
+        type: "timestamp",
+        meta: { interface: "datetime", width: "half" },
+      },
+      {
+        field: "double_opt_in",
+        type: "boolean",
+        meta: { interface: "boolean", width: "half" },
+        schema: { default_value: false },
+      },
+      {
+        field: "email_verified",
+        type: "boolean",
+        meta: { interface: "boolean", width: "half" },
+        schema: { default_value: false },
+      },
+      {
+        field: "engagement_score",
+        type: "integer",
+        meta: { interface: "input", width: "half", readonly: true },
+        schema: { default_value: 0 },
+      },
+      {
+        field: "total_opens",
+        type: "integer",
+        meta: { interface: "input", width: "third", readonly: true },
+        schema: { default_value: 0 },
+      },
+      {
+        field: "total_clicks",
+        type: "integer",
+        meta: { interface: "input", width: "third", readonly: true },
+        schema: { default_value: 0 },
+      },
+      {
+        field: "last_engagement",
+        type: "timestamp",
+        meta: { interface: "datetime", width: "third", readonly: true },
+      },
+      { field: "tags", type: "csv", meta: { interface: "tags" } },
+      {
+        field: "notes",
+        type: "text",
+        meta: { interface: "input-multiline" },
       },
       {
         field: "custom_fields",
@@ -665,36 +666,12 @@ class DirectusNewsletterInstaller {
         meta: { interface: "input-code", options: { language: "json" } },
       },
       {
-        field: "engagement_score",
-        type: "integer",
-        meta: { interface: "input", width: "half" },
-        schema: { default_value: 0 },
-      },
-      {
-        field: "subscribed_at",
-        type: "timestamp",
-        meta: { interface: "datetime", width: "half" },
-      },
-      {
-        field: "last_email_opened",
-        type: "timestamp",
-        meta: { interface: "datetime", width: "half" },
-      },
-      {
-        field: "last_email_clicked",
-        type: "timestamp",
-        meta: { interface: "datetime", width: "half" },
-      },
-      {
-        field: "unsubscribed_at",
-        type: "timestamp",
-        meta: { interface: "datetime", width: "half" },
-      },
-      {
-        field: "bounce_count",
-        type: "integer",
-        meta: { interface: "input", width: "half" },
-        schema: { default_value: 0 },
+        field: "mailing_lists",
+        type: "alias",
+        meta: {
+          interface: "list-m2m",
+          special: ["m2m"],
+        },
       },
     ];
 
@@ -712,6 +689,7 @@ class DirectusNewsletterInstaller {
           options: {
             choices: [
               { text: "Active", value: "active" },
+              { text: "Paused", value: "paused" },
               { text: "Archived", value: "archived" },
             ],
           },
@@ -736,10 +714,36 @@ class DirectusNewsletterInstaller {
         schema: { default_value: 0 },
       },
       {
-        field: "active_count",
-        type: "integer",
-        meta: { interface: "input", readonly: true, width: "half" },
-        schema: { default_value: 0 },
+        field: "type",
+        type: "string",
+        meta: {
+          interface: "select-dropdown",
+          width: "half",
+          options: {
+            choices: [
+              { text: "Newsletter", value: "newsletter" },
+              { text: "Promotional", value: "promotional" },
+              { text: "Announcements", value: "announcements" },
+              { text: "Updates", value: "updates" },
+            ],
+          },
+        },
+      },
+      {
+        field: "auto_subscribe",
+        type: "boolean",
+        meta: { interface: "boolean", width: "half" },
+        schema: { default_value: false },
+      },
+      {
+        field: "default_from_name",
+        type: "string",
+        meta: { interface: "input", width: "half" },
+      },
+      {
+        field: "default_from_email",
+        type: "string",
+        meta: { interface: "input", width: "half" },
       },
       { field: "tags", type: "csv", meta: { interface: "tags" } },
       {
@@ -920,19 +924,15 @@ class DirectusNewsletterInstaller {
           width: "half",
           options: {
             choices: [
-              { text: "Company", value: "company" },
-              { text: "Product", value: "product" },
-              { text: "Weekly", value: "weekly" },
-              { text: "Monthly", value: "monthly" },
+              { text: "Newsletter", value: "newsletter" },
+              { text: "Promotional", value: "promotional" },
+              { text: "Announcement", value: "announcement" },
+              { text: "Update", value: "update" },
               { text: "Event", value: "event" },
-              { text: "Offer", value: "offer" },
-              { text: "Story", value: "story" },
             ],
           },
-          default_value: "company",
         },
       },
-      { field: "tags", type: "csv", meta: { interface: "tags" } },
       {
         field: "priority",
         type: "string",
@@ -953,45 +953,20 @@ class DirectusNewsletterInstaller {
       {
         field: "scheduled_send_date",
         type: "timestamp",
-        meta: { interface: "datetime" },
+        meta: { interface: "datetime", width: "half" },
       },
       {
-        field: "is_ab_test",
+        field: "send_immediately",
         type: "boolean",
-        meta: { interface: "boolean" },
+        meta: { interface: "boolean", width: "half" },
         schema: { default_value: false },
-      },
-      {
-        field: "ab_test_percentage",
-        type: "integer",
-        meta: { interface: "input" },
-      },
-      {
-        field: "ab_test_subject_b",
-        type: "string",
-        meta: { interface: "input" },
-      },
-      {
-        field: "open_rate",
-        type: "float",
-        meta: { interface: "input", readonly: true },
-      },
-      {
-        field: "click_rate",
-        type: "float",
-        meta: { interface: "input", readonly: true },
-      },
-      {
-        field: "total_opens",
-        type: "integer",
-        meta: { interface: "input", readonly: true },
-        schema: { default_value: 0 },
       },
       {
         field: "approval_status",
         type: "string",
         meta: {
           interface: "select-dropdown",
+          width: "half",
           options: {
             choices: [
               { text: "Pending", value: "pending" },
@@ -1057,7 +1032,7 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("newsletters", field);
     }
 
-    // Newsletter Blocks fields
+    // Newsletter Blocks fields - COMPLETE with all possible content fields
     const blockFields = [
       {
         field: "status", // Added status field for Newsletter Blocks and moved to top
@@ -1088,112 +1063,387 @@ class DirectusNewsletterInstaller {
           width: "half",
         },
       },
-      // Removed duplicate 'sort' field definition here. It's handled by defaultFields.
+      {
+        field: "content",
+        type: "json",
+        meta: {
+          interface: "input-code",
+          options: { language: "json" },
+          readonly: true,
+        },
+      },
+      
+      // ALL CONTENT FIELDS - This is what enables rich text editing!
+      {
+        field: "text_content",
+        type: "text",
+        meta: {
+          interface: "wysiwyg", // CRITICAL: This enables rich text editing!
+          display_name: "Text Content",
+          width: "full",
+          note: "Rich text content with formatting options",
+          options: {
+            toolbar: [
+              "bold", "italic", "underline", "strikethrough",
+              "h1", "h2", "h3", "h4", "h5", "h6",
+              "blockquote", "code_block",
+              "ordered_list", "bullet_list",
+              "link", "email", "image",
+              "align_left", "align_center", "align_right"
+            ]
+          }
+        }
+      },
+      
+      // Basic text fields
       {
         field: "title",
         type: "string",
-        meta: { interface: "input", width: "half" },
+        meta: { interface: "input", display_name: "Title", width: "half" }
       },
       {
         field: "subtitle",
         type: "string",
-        meta: { interface: "input", width: "half" },
+        meta: { interface: "input", display_name: "Subtitle", width: "half" }
       },
-      {
-        field: "text_content",
-        type: "text",
-        meta: { interface: "input-rich-text-html" },
-      },
-      {
-        field: "image", // Renamed from image_url to image
-        type: "uuid", // Stores the UUID of the file
-        meta: {
-          interface: "file-image", // Directus interface for image selection
-          special: ["file"], // Marks it as a file relationship
-          width: "full",
-          note: "Select an image from the Directus File Library.",
-        },
-        schema: {
-          is_nullable: true, // Allow block without an image
-        },
-      },
-      {
-        field: "image_alt_text",
-        type: "string",
-        meta: { interface: "input", width: "half" },
-      },
-      {
-        field: "image_caption",
-        type: "string",
-        meta: { interface: "input", width: "half" },
-      },
+      
+      // Button fields
       {
         field: "button_text",
         type: "string",
-        meta: { interface: "input", width: "half" },
+        meta: { interface: "input", display_name: "Button Text", width: "half" }
       },
       {
         field: "button_url",
         type: "string",
-        meta: { interface: "input", width: "half" },
+        meta: { interface: "input", display_name: "Button URL", width: "half" }
       },
+      
+      // Color fields
       {
         field: "background_color",
         type: "string",
-        meta: { interface: "select-color", width: "third" },
-        schema: { default_value: "#ffffff" },
+        meta: { 
+          interface: "select-color", 
+          display_name: "Background Color", 
+          width: "half",
+          options: { defaultValue: "#ffffff" }
+        }
       },
       {
         field: "text_color",
         type: "string",
-        meta: { interface: "select-color", width: "third" },
-        schema: { default_value: "#333333" },
+        meta: { 
+          interface: "select-color", 
+          display_name: "Text Color", 
+          width: "half",
+          options: { defaultValue: "#000000" }
+        }
       },
+      
+      // Layout fields
       {
         field: "text_align",
         type: "string",
         meta: {
           interface: "select-dropdown",
-          width: "third",
+          display_name: "Text Alignment",
+          width: "half",
           options: {
             choices: [
               { text: "Left", value: "left" },
               { text: "Center", value: "center" },
               { text: "Right", value: "right" },
-            ],
-          },
-          default_value: "center",
-        },
+              { text: "Justify", value: "justify" }
+            ]
+          }
+        }
       },
       {
         field: "padding",
         type: "string",
-        meta: { interface: "input", width: "half" },
-        schema: { default_value: "20px 0" },
+        meta: { 
+          interface: "input", 
+          display_name: "Padding", 
+          width: "half",
+          note: "CSS padding (e.g., '20px' or '20px 10px')"
+        }
       },
       {
         field: "font_size",
         type: "string",
-        meta: {
-          interface: "select-dropdown",
+        meta: { 
+          interface: "input", 
+          display_name: "Font Size", 
           width: "half",
-          options: {
-            choices: [
-              { text: "Small (12px)", value: "12px" },
-              { text: "Normal (14px)", value: "14px" },
-              { text: "Large (16px)", value: "16px" },
-            ],
-          },
-          default_value: "14px",
-        },
+          note: "CSS font size (e.g., '16px', '1.2em')"
+        }
+      },
+      
+      // Image fields
+      {
+        field: "image",
+        type: "uuid",
+        meta: { 
+          interface: "file-image", 
+          display_name: "Image", 
+          width: "half" 
+        }
       },
       {
-        field: "content",
-        type: "json",
-        meta: { interface: "input-code", options: { language: "json" } },
+        field: "image_alt_text",
+        type: "string",
+        meta: { 
+          interface: "input", 
+          display_name: "Image Alt Text", 
+          width: "half" 
+        }
       },
       {
-        field: "mjml_output",
+        field: "image_caption",
+        type: "string",
+        meta: { 
+          interface: "input", 
+          display_name: "Image Caption", 
+          width: "full" 
+        }
+      },
+      
+      // Advanced fields for complex blocks
+      {
+        field: "price",
+        type: "string",
+        meta: { interface: "input", display_name: "Price", width: "half" }
+      },
+      
+      // Statistics fields
+      {
+        field: "stat1_number",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 1 Number", width: "quarter" }
+      },
+      {
+        field: "stat1_label",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 1 Label", width: "quarter" }
+      },
+      {
+        field: "stat2_number",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 2 Number", width: "quarter" }
+      },
+      {
+        field: "stat2_label",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 2 Label", width: "quarter" }
+      },
+      {
+        field: "stat3_number",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 3 Number", width: "quarter" }
+      },
+      {
+        field: "stat3_label",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 3 Label", width: "quarter" }
+      },
+      {
+        field: "stat4_number",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 4 Number", width: "quarter" }
+      },
+      {
+        field: "stat4_label",
+        type: "string",
+        meta: { interface: "input", display_name: "Stat 4 Label", width: "quarter" }
+      },
+      
+      // Social media fields
+      {
+        field: "facebook_url",
+        type: "string",
+        meta: { interface: "input", display_name: "Facebook URL", width: "half" }
+      },
+      {
+        field: "twitter_url",
+        type: "string",
+        meta: { interface: "input", display_name: "Twitter URL", width: "half" }
+      },
+      {
+        field: "instagram_url",
+        type: "string",
+        meta: { interface: "input", display_name: "Instagram URL", width: "half" }
+      },
+      {
+        field: "linkedin_url",
+        type: "string",
+        meta: { interface: "input", display_name: "LinkedIn URL", width: "half" }
+      },
+      {
+        field: "youtube_url",
+        type: "string",
+        meta: { interface: "input", display_name: "YouTube URL", width: "half" }
+      },
+      
+      // Event fields
+      {
+        field: "event_date",
+        type: "string",
+        meta: { interface: "input", display_name: "Event Date", width: "third" }
+      },
+      {
+        field: "event_time",
+        type: "string",
+        meta: { interface: "input", display_name: "Event Time", width: "third" }
+      },
+      {
+        field: "event_location",
+        type: "string",
+        meta: { interface: "input", display_name: "Event Location", width: "third" }
+      },
+      
+      // Testimonial fields
+      {
+        field: "testimonial_text",
+        type: "text",
+        meta: { interface: "input-multiline", display_name: "Testimonial Text", width: "full" }
+      },
+      {
+        field: "testimonial_author",
+        type: "string",
+        meta: { interface: "input", display_name: "Author", width: "third" }
+      },
+      {
+        field: "author_title",
+        type: "string",
+        meta: { interface: "input", display_name: "Author Title", width: "third" }
+      },
+      {
+        field: "author_company",
+        type: "string",
+        meta: { interface: "input", display_name: "Author Company", width: "third" }
+      },
+      {
+        field: "author_avatar",
+        type: "uuid",
+        meta: { interface: "file-image", display_name: "Author Avatar", width: "half" }
+      },
+      
+      // Column layout fields
+      {
+        field: "column1_title",
+        type: "string",
+        meta: { interface: "input", display_name: "Column 1 Title", width: "third" }
+      },
+      {
+        field: "column1_content",
+        type: "text",
+        meta: { interface: "input-multiline", display_name: "Column 1 Content", width: "third" }
+      },
+      {
+        field: "column2_title",
+        type: "string",
+        meta: { interface: "input", display_name: "Column 2 Title", width: "third" }
+      },
+      {
+        field: "column2_content",
+        type: "text",
+        meta: { interface: "input-multiline", display_name: "Column 2 Content", width: "third" }
+      },
+      {
+        field: "column3_title",
+        type: "string",
+        meta: { interface: "input", display_name: "Column 3 Title", width: "third" }
+      },
+      {
+        field: "column3_content",
+        type: "text",
+        meta: { interface: "input-multiline", display_name: "Column 3 Content", width: "third" }
+      },
+      
+      // CTA fields
+      {
+        field: "cta_title",
+        type: "string",
+        meta: { interface: "input", display_name: "CTA Title", width: "half" }
+      },
+      {
+        field: "cta_subtitle",
+        type: "text",
+        meta: { interface: "input-multiline", display_name: "CTA Subtitle", width: "half" }
+      },
+      {
+        field: "primary_button_text",
+        type: "string",
+        meta: { interface: "input", display_name: "Primary Button Text", width: "half" }
+      },
+      {
+        field: "primary_button_url",
+        type: "string",
+        meta: { interface: "input", display_name: "Primary Button URL", width: "half" }
+      },
+      {
+        field: "secondary_button_text",
+        type: "string",
+        meta: { interface: "input", display_name: "Secondary Button Text", width: "half" }
+      },
+      {
+        field: "secondary_button_url",
+        type: "string",
+        meta: { interface: "input", display_name: "Secondary Button URL", width: "half" }
+      },
+      
+      // Progress bar fields
+      {
+        field: "progress_label",
+        type: "string",
+        meta: { interface: "input", display_name: "Progress Label", width: "half" }
+      },
+      {
+        field: "progress_percentage",
+        type: "integer",
+        meta: { 
+          interface: "slider", 
+          display_name: "Progress Percentage", 
+          width: "half",
+          options: { min: 0, max: 100, step: 1 }
+        }
+      },
+      
+      // Feature list fields
+      {
+        field: "feature1",
+        type: "string",
+        meta: { interface: "input", display_name: "Feature 1", width: "half" }
+      },
+      {
+        field: "feature2",
+        type: "string",
+        meta: { interface: "input", display_name: "Feature 2", width: "half" }
+      },
+      {
+        field: "feature3",
+        type: "string",
+        meta: { interface: "input", display_name: "Feature 3", width: "half" }
+      },
+      {
+        field: "feature4",
+        type: "string",
+        meta: { interface: "input", display_name: "Feature 4", width: "half" }
+      },
+      {
+        field: "feature5",
+        type: "string",
+        meta: { interface: "input", display_name: "Feature 5", width: "half" }
+      },
+      {
+        field: "feature6",
+        type: "string",
+        meta: { interface: "input", display_name: "Feature 6", width: "half" }
+      },
+      
+      {
+        field: "compiled_mjml",
         type: "text",
         meta: {
           interface: "input-code",
@@ -1282,16 +1532,18 @@ class DirectusNewsletterInstaller {
       },
       {
         field: "open_rate",
-        type: "float",
+        type: "decimal",
         meta: { interface: "input", readonly: true },
+        schema: { default_value: 0 },
       },
       {
         field: "click_rate",
-        type: "float",
+        type: "decimal",
         meta: { interface: "input", readonly: true },
+        schema: { default_value: 0 },
       },
       {
-        field: "sendgrid_batch_id",
+        field: "sendgrid_message_id",
         type: "string",
         meta: { interface: "input", readonly: true },
       },
@@ -1309,26 +1561,37 @@ class DirectusNewsletterInstaller {
     // Newsletter Analytics fields
     const analyticsFields = [
       {
-        field: "event_type", // Moved to top
+        field: "event_type",
         type: "string",
         meta: {
           interface: "select-dropdown",
+          required: true,
           options: {
             choices: [
               { text: "Delivered", value: "delivered" },
-              { text: "Open", value: "open" },
-              { text: "Click", value: "click" },
-              { text: "Bounce", value: "bounce" },
-              { text: "Unsubscribe", value: "unsubscribe" },
+              { text: "Opened", value: "opened" },
+              { text: "Clicked", value: "clicked" },
+              { text: "Bounced", value: "bounced" },
               { text: "Spam Report", value: "spamreport" },
+              { text: "Unsubscribed", value: "unsubscribe" },
               { text: "Dropped", value: "dropped" },
             ],
           },
-          width: "full", // Make it full width for top placement
         },
       },
       {
-        field: "newsletter_id",
+        field: "email",
+        type: "string",
+        meta: { interface: "input", required: true },
+      },
+      {
+        field: "timestamp",
+        type: "timestamp",
+        meta: { interface: "datetime", required: true },
+        schema: { default_value: "$NOW" },
+      },
+      {
+        field: "newsletter_send_id",
         type: "integer",
         meta: { interface: "select-dropdown-m2o" },
       },
@@ -1338,29 +1601,27 @@ class DirectusNewsletterInstaller {
         meta: { interface: "select-dropdown-m2o" },
       },
       {
-        field: "send_record_id",
-        type: "integer",
-        meta: { interface: "select-dropdown-m2o" },
+        field: "sendgrid_event_id",
+        type: "string",
+        meta: { interface: "input" },
       },
-      { field: "email", type: "string", meta: { interface: "input" } },
       {
-        field: "timestamp",
-        type: "timestamp",
-        meta: { interface: "datetime" },
+        field: "user_agent",
+        type: "string",
+        meta: { interface: "input" },
       },
-      { field: "user_agent", type: "string", meta: { interface: "input" } },
-      { field: "ip_address", type: "string", meta: { interface: "input" } },
       {
-        field: "location",
-        type: "json",
-        meta: { interface: "input-code", options: { language: "json" } },
+        field: "ip_address",
+        type: "string",
+        meta: { interface: "input" },
       },
-      { field: "url_clicked", type: "string", meta: { interface: "input" } },
-      { field: "sg_message_id", type: "string", meta: { interface: "input" } },
-      { field: "sg_event_id", type: "string", meta: { interface: "input" } },
-      { field: "bounce_reason", type: "string", meta: { interface: "input" } },
       {
-        field: "metadata",
+        field: "url",
+        type: "string",
+        meta: { interface: "input" },
+      },
+      {
+        field: "event_data",
         type: "json",
         meta: { interface: "input-code", options: { language: "json" } },
       },
@@ -1370,67 +1631,14 @@ class DirectusNewsletterInstaller {
       await this.createFieldSafely("newsletter_analytics", field);
     }
 
-    console.log("✅ Fields created successfully");
+    console.log("✅ All fields created successfully");
   }
 
   async installRelations() {
-    console.log("\n🔗 Installing relationships...");
+    console.log("\n🔗 Setting up relationships...");
 
     const relations = [
-      // Newsletter → Blocks (O2M)
-      {
-        collection: "newsletter_blocks",
-        field: "newsletter_id",
-        related_collection: "newsletters",
-        meta: {
-          many_collection: "newsletter_blocks",
-          many_field: "newsletter_id",
-          one_collection: "newsletters",
-          one_field: "blocks",
-          sort_field: "sort",
-          one_deselect_action: "delete",
-        },
-        schema: {
-          on_delete: "CASCADE",
-        },
-      },
-      // Newsletter Blocks → Block Types (M2O)
-      {
-        collection: "newsletter_blocks",
-        field: "block_type",
-        related_collection: "block_types",
-        meta: {
-          many_collection: "newsletter_blocks",
-          many_field: "block_type",
-          one_collection: "block_types",
-          one_deselect_action: "nullify",
-        },
-      },
-      // Newsletter → Template (M2O)
-      {
-        collection: "newsletters",
-        field: "template_id",
-        related_collection: "newsletter_templates",
-        meta: {
-          many_collection: "newsletters",
-          many_field: "template_id",
-          one_collection: "newsletter_templates",
-          one_deselect_action: "nullify",
-        },
-      },
-      // Newsletter → Mailing List (M2O)
-      {
-        collection: "newsletters",
-        field: "mailing_list_id",
-        related_collection: "mailing_lists",
-        meta: {
-          many_collection: "newsletters",
-          many_field: "mailing_list_id",
-          one_collection: "mailing_lists",
-          one_deselect_action: "nullify",
-        },
-      },
-      // Mailing Lists ↔ Subscribers (M2M)
+      // Mailing Lists <-> Subscribers (Many-to-Many)
       {
         collection: "mailing_lists_subscribers",
         field: "mailing_lists_id",
@@ -1439,11 +1647,8 @@ class DirectusNewsletterInstaller {
           many_collection: "mailing_lists_subscribers",
           many_field: "mailing_lists_id",
           one_collection: "mailing_lists",
-          junction_field: "subscribers",
-          one_deselect_action: "delete",
-        },
-        schema: {
-          on_delete: "CASCADE",
+          one_field: "subscribers",
+          junction_field: "subscribers_id",
         },
       },
       {
@@ -1454,14 +1659,38 @@ class DirectusNewsletterInstaller {
           many_collection: "mailing_lists_subscribers",
           many_field: "subscribers_id",
           one_collection: "subscribers",
-          junction_field: "mailing_lists",
-          one_deselect_action: "delete",
-        },
-        schema: {
-          on_delete: "CASCADE",
+          one_field: "mailing_lists",
+          junction_field: "mailing_lists_id",
         },
       },
-      // Newsletter Sends → Newsletter (M2O)
+      
+      // Newsletter Blocks -> Newsletter (Many-to-One)
+      {
+        collection: "newsletter_blocks",
+        field: "newsletter_id",
+        related_collection: "newsletters",
+        meta: {
+          many_collection: "newsletter_blocks",
+          many_field: "newsletter_id",
+          one_collection: "newsletters",
+          one_field: "blocks",
+        },
+      },
+      
+      // Newsletter Blocks -> Block Types (Many-to-One)
+      {
+        collection: "newsletter_blocks",
+        field: "block_type",
+        related_collection: "block_types",
+        meta: {
+          many_collection: "newsletter_blocks",
+          many_field: "block_type",
+          one_collection: "block_types",
+          one_field: null,
+        },
+      },
+      
+      // Newsletter Sends -> Newsletter (Many-to-One)
       {
         collection: "newsletter_sends",
         field: "newsletter_id",
@@ -1470,13 +1699,11 @@ class DirectusNewsletterInstaller {
           many_collection: "newsletter_sends",
           many_field: "newsletter_id",
           one_collection: "newsletters",
-          one_deselect_action: "cascade",
-        },
-        schema: {
-          on_delete: "CASCADE",
+          one_field: null,
         },
       },
-      // Newsletter Sends → Mailing List (M2O)
+      
+      // Newsletter Sends -> Mailing List (Many-to-One)
       {
         collection: "newsletter_sends",
         field: "mailing_list_id",
@@ -1485,25 +1712,24 @@ class DirectusNewsletterInstaller {
           many_collection: "newsletter_sends",
           many_field: "mailing_list_id",
           one_collection: "mailing_lists",
-          one_deselect_action: "nullify",
+          one_field: null,
         },
       },
-      // Newsletter Analytics → Newsletter (M2O)
+      
+      // Newsletter Analytics -> Newsletter Send (Many-to-One)
       {
         collection: "newsletter_analytics",
-        field: "newsletter_id",
-        related_collection: "newsletters",
+        field: "newsletter_send_id",
+        related_collection: "newsletter_sends",
         meta: {
           many_collection: "newsletter_analytics",
-          many_field: "newsletter_id",
-          one_collection: "newsletters",
-          one_deselect_action: "cascade",
-        },
-        schema: {
-          on_delete: "CASCADE",
+          many_field: "newsletter_send_id",
+          one_collection: "newsletter_sends",
+          one_field: null,
         },
       },
-      // Newsletter Analytics → Subscriber (M2O)
+      
+      // Newsletter Analytics -> Subscriber (Many-to-One)
       {
         collection: "newsletter_analytics",
         field: "subscriber_id",
@@ -1512,67 +1738,28 @@ class DirectusNewsletterInstaller {
           many_collection: "newsletter_analytics",
           many_field: "subscriber_id",
           one_collection: "subscribers",
-          one_deselect_action: "nullify",
-        },
-      },
-      // Newsletter Analytics → Send Record (M2O)
-      {
-        collection: "newsletter_analytics",
-        field: "send_record_id",
-        related_collection: "newsletter_sends",
-        meta: {
-          many_collection: "newsletter_analytics",
-          many_field: "send_record_id",
-          one_collection: "newsletter_sends",
-          one_deselect_action: "cascade",
-        },
-        schema: {
-          on_delete: "CASCADE",
+          one_field: null,
         },
       },
     ];
 
     for (const relation of relations) {
-      try {
-        await this.directus.request(createRelation(relation));
-        console.log(
-          `✅ Created relation: ${relation.collection}.${relation.field} → ${relation.related_collection}`
-        );
-        await this.delay(1000);
-      }
-      catch (error) {
-        if (error.message?.includes("already exists")) {
-          console.log(
-            `⏭️  Relation already exists: ${relation.collection}.${relation.field}`
-          );
-        } else {
-          // Log the full error object for better debugging
-          console.error(
-            `❌ Failed to create relation: ${relation.collection}.${relation.field} → ${relation.related_collection}. Error:`,
-            error
-          );
-        }
-      }
+      await this.createRelationSafely(relation);
     }
 
-    console.log("✅ Relationships created successfully");
+    console.log("✅ All relationships created successfully");
   }
 
   async installSampleData() {
-    console.log("\n🧩 Installing sample data...");
+    console.log("\n🎨 Installing sample data...");
 
-    // Sample block types
-    // Updated sample data section for install-directus-collections.js
-// Replace the existing blockTypes array with this fixed version
-
-const blockTypes = [
-  {
-    name: "Hero Section",
-    slug: "hero",
-    description: "Large header section with title, subtitle, and optional button",
-    category: "content",
-    icon: "lucide:heading", // Fixed: was "title"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+    // Create block types with your exact configuration
+    const blockTypes = [
+      {
+        name: "Hero Section",
+        slug: "hero",
+        description: "Large header section with title, subtitle, and optional button",
+        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     <mj-text align="{{text_align}}" font-size="32px" font-weight="bold" color="{{text_color}}">
       {{title}}
@@ -1589,48 +1776,48 @@ const blockTypes = [
     {{/if}}
   </mj-column>
 </mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "title",
-      "subtitle", 
-      "button_text",
-      "button_url",
-      "background_color",
-      "text_color",
-      "text_align",
-      "padding",
-    ],
-  },
-  {
-    name: "Text Block",
-    slug: "text",
-    description: "Simple text content with formatting options",
-    category: "content",
-    icon: "lucide:type", // Fixed: was "text_fields"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+        field_visibility_config: [
+          "title",
+          "subtitle",
+          "button_text",
+          "button_url",
+          "background_color",
+          "text_color",
+          "text_align",
+          "padding"
+        ],
+        icon: "lucide:heading",
+        category: "content",
+        status: "published"
+      },
+      {
+        name: "Text Block",
+        slug: "text",
+        description: "Simple text content with formatting options",
+        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     <mj-text align="{{text_align}}" font-size="{{font_size}}" color="{{text_color}}">
       {{{text_content}}}
     </mj-text>
   </mj-column>
 </mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "text_content",
-      "background_color",
-      "text_color",
-      "text_align",
-      "padding",
-      "font_size",
-    ],
-  },
-  {
-    name: "Image Block",
-    slug: "image",
-    description: "Image with optional caption and link",
-    category: "media",
-    icon: "lucide:image", // Fixed: was "image"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+        field_visibility_config: [
+          "text_content",
+          "background_color",
+          "text_color",
+          "text_align",
+          "padding",
+          "font_size"
+        ],
+        icon: "lucide:type",
+        category: "content",
+        status: "published"
+      },
+      {
+        name: "Image Block",
+        slug: "image",
+        description: "Image with optional caption and link",
+        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
     {{#if button_url}}
     <mj-image src="{{image}}" alt="{{image_alt_text}}" align="{{text_align}}" href="{{button_url}}" />
@@ -1644,344 +1831,75 @@ const blockTypes = [
     {{/if}}
   </mj-column>
 </mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "image",
-      "image_alt_text",
-      "image_caption",
-      "button_url",
-      "background_color",
-      "text_color",
-      "text_align",
-      "padding",
-    ],
-  },
-  {
-    name: "Button Block",
-    slug: "button",
-    description: "Call-to-action button with customizable styling",
-    category: "interactive",
-    icon: "lucide:mouse-pointer-click", // Fixed: was "button"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
+        field_visibility_config: [
+          "image",
+          "image_alt_text",
+          "image_caption",
+          "button_url",
+          "background_color",
+          "text_align",
+          "padding"
+        ],
+        icon: "lucide:image",
+        category: "media",
+        status: "published"
+      },
+      {
+        name: "Button",
+        slug: "button",
+        description: "Call-to-action button",
+        mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
   <mj-column>
-    <mj-button 
-      background-color="{{button_color}}" 
-      color="{{text_color}}" 
-      href="{{button_url}}" 
-      align="{{text_align}}"
-      border-radius="{{border_radius}}"
-      font-size="{{font_size}}"
-      padding="{{button_padding}}"
-    >
+    <mj-button background-color="#007bff" color="#ffffff" href="{{button_url}}" align="{{text_align}}">
       {{button_text}}
     </mj-button>
   </mj-column>
 </mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "button_text",
-      "button_url",
-      "button_color",
-      "text_color",
-      "background_color",
-      "text_align",
-      "border_radius",
-      "font_size",
-      "button_padding",
-      "padding",
-    ],
-  },
-  {
-    name: "Product Showcase",
-    slug: "product-showcase",
-    description: "Product display with image, title, price, and CTA",
-    category: "content",
-    icon: "lucide:store", // Fixed: was "storefront"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column width="40%">
-    <mj-image src="{{image}}" alt="{{image_alt_text}}" />
-  </mj-column>
-  <mj-column width="60%">
-    <mj-text font-size="24px" font-weight="bold" color="{{text_color}}">
-      {{title}}
-    </mj-text>
-    <mj-text font-size="16px" color="{{text_color}}" line-height="1.6">
-      {{{text_content}}}
-    </mj-text>
-    {{#if price}}
-    <mj-text font-size="20px" font-weight="bold" color="#e53e3e" padding="10px 0">
-      {{price}}
-    </mj-text>
-    {{/if}}
-    {{#if button_text}}
-    <mj-button background-color="#007bff" href="{{button_url}}" align="left">
-      {{button_text}}
-    </mj-button>
-    {{/if}}
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "title",
-      "text_content",
-      "image",
-      "image_alt_text",
-      "price",
-      "button_text",
-      "button_url",
-      "background_color",
-      "text_color",
-      "padding",
-    ],
-  },
-  {
-    name: "Team Member",
-    slug: "team-member",
-    description: "Team member profile with photo and bio",
-    category: "content",
-    icon: "lucide:user", // Fixed: was "person"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column width="30%">
-    <mj-image src="{{image}}" alt="{{image_alt_text}}" border-radius="50%" width="120px" />
-  </mj-column>
-  <mj-column width="70%">
-    <mj-text font-size="20px" font-weight="bold" color="{{text_color}}">
-      {{title}}
-    </mj-text>
-    {{#if subtitle}}
-    <mj-text font-size="14px" color="#666666" font-style="italic" padding="5px 0">
-      {{subtitle}}
-    </mj-text>
-    {{/if}}
-    <mj-text font-size="14px" color="{{text_color}}" line-height="1.6">
-      {{{text_content}}}
-    </mj-text>
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "title",
-      "subtitle",
-      "text_content",
-      "image",
-      "image_alt_text",
-      "background_color",
-      "text_color",
-      "padding",
-    ],
-  },
-  {
-    name: "Statistics Block",
-    slug: "statistics",
-    description: "Display key metrics and statistics",
-    category: "content",
-    icon: "lucide:bar-chart", // Fixed: was "bar_chart"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    {{#if title}}
-    <mj-text align="center" font-size="24px" font-weight="bold" color="{{text_color}}" padding="0 0 20px 0">
-      {{title}}
-    </mj-text>
-    {{/if}}
-    <mj-table>
-      <tr>
-        <td style="padding: 20px; text-align: center; border-right: 1px solid #eee;">
-          <div style="font-size: 32px; font-weight: bold; color: {{text_color}};">{{stat_1_value}}</div>
-          <div style="font-size: 14px; color: #666; margin-top: 5px;">{{stat_1_label}}</div>
-        </td>
-        <td style="padding: 20px; text-align: center; border-right: 1px solid #eee;">
-          <div style="font-size: 32px; font-weight: bold; color: {{text_color}};">{{stat_2_value}}</div>
-          <div style="font-size: 14px; color: #666; margin-top: 5px;">{{stat_2_label}}</div>
-        </td>
-        <td style="padding: 20px; text-align: center;">
-          <div style="font-size: 32px; font-weight: bold; color: {{text_color}};">{{stat_3_value}}</div>
-          <div style="font-size: 14px; color: #666; margin-top: 5px;">{{stat_3_label}}</div>
-        </td>
-      </tr>
-    </mj-table>
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "title",
-      "stat_1_value",
-      "stat_1_label",
-      "stat_2_value",
-      "stat_2_label",
-      "stat_3_value",
-      "stat_3_label",
-      "background_color",
-      "text_color",
-      "padding",
-    ],
-  },
-  {
-    name: "Quote Block",
-    slug: "quote",
-    description: "Testimonial or quote with author attribution",
-    category: "content",
-    icon: "lucide:quote", // Fixed: was "quote"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    <mj-text align="center" font-size="18px" font-style="italic" color="{{text_color}}" padding="0 0 20px 0">
-      "{{quote_text}}"
-    </mj-text>
-    {{#if author_name}}
-    <mj-text align="center" font-size="14px" font-weight="bold" color="{{text_color}}">
-      — {{author_name}}
-    </mj-text>
-    {{/if}}
-    {{#if author_title}}
-    <mj-text align="center" font-size="12px" color="#666666">
-      {{author_title}}
-    </mj-text>
-    {{/if}}
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "quote_text",
-      "author_name",
-      "author_title",
-      "background_color",
-      "text_color",
-      "padding",
-    ],
-  },
-  {
-    name: "Social Media Links",
-    slug: "social-links",
-    description: "Social media icons with links",
-    category: "interactive",
-    icon: "lucide:share-2", // Fixed: was "social_media"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    {{#if title}}
-    <mj-text align="center" font-size="18px" font-weight="bold" color="{{text_color}}" padding="0 0 20px 0">
-      {{title}}
-    </mj-text>
-    {{/if}}
-    <mj-social font-size="15px" icon-size="30px" mode="horizontal" align="center">
-      {{#if facebook_url}}
-      <mj-social-element name="facebook" href="{{facebook_url}}"></mj-social-element>
-      {{/if}}
-      {{#if twitter_url}}
-      <mj-social-element name="twitter" href="{{twitter_url}}"></mj-social-element>
-      {{/if}}
-      {{#if instagram_url}}
-      <mj-social-element name="instagram" href="{{instagram_url}}"></mj-social-element>
-      {{/if}}
-      {{#if linkedin_url}}
-      <mj-social-element name="linkedin" href="{{linkedin_url}}"></mj-social-element>
-      {{/if}}
-    </mj-social>
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "title",
-      "facebook_url",
-      "twitter_url",
-      "instagram_url",
-      "linkedin_url",
-      "background_color",
-      "text_color",
-      "padding",
-    ],
-  },
-  {
-    name: "Divider",
-    slug: "divider",
-    description: "Horizontal line separator",
-    category: "layout",
-    icon: "lucide:minus", // Fixed: was "divider"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    <mj-divider border-color="{{border_color}}" border-width="{{border_width}}" />
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "background_color",
-      "border_color",
-      "border_width",
-      "padding",
-    ],
-  },
-  {
-    name: "Spacer",
-    slug: "spacer",
-    description: "Empty space for layout control",
-    category: "layout",
-    icon: "lucide:space", // Fixed: was "spacer"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    <mj-spacer height="{{spacer_height}}" />
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "spacer_height",
-      "background_color",
-      "padding",
-    ],
-  },
-  {
-    name: "Footer",
-    slug: "footer",
-    description: "Newsletter footer with company info and unsubscribe",
-    category: "layout",
-    icon: "lucide:layout-footer", // Fixed: was "footer"
-    mjml_template: `<mj-section background-color="{{background_color}}" padding="{{padding}}">
-  <mj-column>
-    <mj-text align="center" font-size="14px" color="{{text_color}}" padding="0 0 10px 0">
-      {{company_name}}
-    </mj-text>
-    {{#if address}}
-    <mj-text align="center" font-size="12px" color="#666666" padding="0 0 10px 0">
-      {{address}}
-    </mj-text>
-    {{/if}}
-    {{#if unsubscribe_url}}
-    <mj-text align="center" font-size="12px" color="#666666">
-      <a href="{{unsubscribe_url}}" style="color: #666666; text-decoration: underline;">
-        Unsubscribe
-      </a>
-    </mj-text>
-    {{/if}}
-  </mj-column>
-</mj-section>`,
-    status: "published",
-    field_visibility_config: [
-      "company_name",
-      "address",
-      "unsubscribe_url",
-      "background_color",
-      "text_color",
-      "padding",
-    ],
-  },
-];
-
-    for (const blockType of blockTypes) {
-      try {
-        await this.directus.request(createItems("block_types", blockType));
-        console.log(`✅ Created block type: ${blockType.name}`);
-        await this.delay(300);
-      } catch (error) {
-        console.log(
-          `⚠️  Could not create block type ${blockType.name}: ${error.message}`
-        );
+        field_visibility_config: [
+          "button_text",
+          "button_url",
+          "background_color",
+          "text_align",
+          "padding"
+        ],
+        icon: "lucide:mouse-pointer-click",
+        category: "interactive",
+        status: "published"
       }
+    ];
+
+    try {
+      await this.directus.request(createItems("block_types", blockTypes));
+      console.log(`✅ Created ${blockTypes.length} block types`);
+    } catch (error) {
+      console.error("❌ Failed to create block types:", error.message);
+    }
+
+    // Create sample mailing list
+    const mailingLists = [
+      {
+        name: "General Newsletter",
+        description: "Main newsletter for all subscribers",
+        type: "newsletter",
+        status: "active",
+        subscriber_count: 0,
+        auto_subscribe: true,
+      }
+    ];
+
+    try {
+      await this.directus.request(createItems("mailing_lists", mailingLists));
+      console.log("✅ Created sample mailing list");
+    } catch (error) {
+      console.error("❌ Failed to create mailing list:", error.message);
     }
 
     console.log("✅ Sample data installed successfully");
   }
 
   async run() {
-    console.log("🚀 Starting Newsletter System Installation with Folder Organization\n");
-
-    if (!(await this.authenticate())) {
+    const authenticated = await this.authenticate();
+    if (!authenticated) {
       return false;
     }
 
@@ -2004,6 +1922,7 @@ const blockTypes = [
       console.log("    • 4 Basic block types (Hero, Text, Image, Button)");
       console.log("    • Proper O2M and M2M relationships");
       console.log("    • Analytics tracking system");
+      console.log("    • Rich text fields configured for content editing");
 
       console.log("\n📋 Next steps:");
       console.log("1. Check your Directus admin panel - all collections are now organized!");

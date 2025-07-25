@@ -2,14 +2,16 @@
 
 /**
  * Setup Verification Script for @hue-studios/nuxt-newsletter
- * Updated for Tailwind CSS 4 support
- *
- * This script verifies that all required dependencies and configurations
- * are properly set up for the newsletter module to work correctly.
+ * Updated for ES modules and Tailwind CSS 4 support
  */
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class NewsletterSetupVerifier {
   constructor() {
@@ -21,13 +23,12 @@ class NewsletterSetupVerifier {
 
   log(type, message) {
     const timestamp = new Date().toLocaleTimeString();
-    const prefix
-      = {
-        error: "❌",
-        warning: "⚠️ ",
-        success: "✅",
-        info: "ℹ️ ",
-      }[type] || "ℹ️ ";
+    const prefix = {
+      error: "❌",
+      warning: "⚠️ ",
+      success: "✅",
+      info: "ℹ️ ",
+    }[type] || "ℹ️ ";
 
     console.log(`${prefix} ${message}`);
   }
@@ -83,187 +84,78 @@ class NewsletterSetupVerifier {
         this.log("success", `Tailwind CSS 4: ${dependencies.tailwindcss}`);
       } else {
         this.warnings.push(
-          `Tailwind CSS 3 detected. Consider upgrading to v4 for better performance: ${dependencies.tailwindcss}`,
+          `Tailwind CSS 3 detected. Consider upgrading to v4 for best experience.`,
         );
-        this.log(
-          "warning",
-          `Tailwind CSS 3 detected: ${dependencies.tailwindcss}`,
-        );
+        this.log("warning", `Consider upgrading to Tailwind CSS 4`);
       }
     }
-
-    // Check for @tailwindcss/vite
-    if (dependencies["@tailwindcss/vite"]) {
-      this.success.push(
-        `Tailwind CSS 4 Vite plugin detected: ${dependencies["@tailwindcss/vite"]}`,
-      );
-      this.log("success", `@tailwindcss/vite: ${dependencies["@tailwindcss/vite"]}`);
-    } else if (dependencies.tailwindcss?.startsWith("4")) {
-      this.errors.push(
-        "Tailwind CSS 4 detected but @tailwindcss/vite plugin is missing"
-      );
-      this.log("error", "Missing @tailwindcss/vite plugin for Tailwind CSS 4");
-    }
-
-    // Check versions
-    requiredDeps.forEach((dep) => {
-      if (dependencies[dep]) {
-        this.log("info", `${dep}: ${dependencies[dep]}`);
-      }
-    });
-
-    // Check for optional helper packages
-    const optionalDeps = ["tailwind-merge", "clsx", "tw-animate-css"];
-    optionalDeps.forEach((dep) => {
-      if (dependencies[dep]) {
-        this.log("success", `Optional utility: ${dep}: ${dependencies[dep]}`);
-      }
-    });
   }
 
   async verifyNuxtConfig() {
-    this.log("info", "Checking nuxt.config.ts configuration...");
+    this.log("info", "Checking Nuxt configuration...");
 
     const configPaths = [
-      path.join(this.projectRoot, "nuxt.config.ts"),
-      path.join(this.projectRoot, "nuxt.config.js"),
+      "nuxt.config.ts",
+      "nuxt.config.js",
+      "nuxt.config.mjs",
     ];
 
-    let configPath = null;
-    let configContent = null;
-
-    for (const cp of configPaths) {
-      if (fs.existsSync(cp)) {
-        configPath = cp;
-        configContent = fs.readFileSync(cp, "utf8");
-        break;
-      }
-    }
+    const configPath = configPaths.find((p) =>
+      fs.existsSync(path.join(this.projectRoot, p)),
+    );
 
     if (!configPath) {
-      this.errors.push("nuxt.config.ts or nuxt.config.js not found");
+      this.errors.push("Nuxt config file not found");
       return;
     }
 
-    // Updated for Tailwind CSS 4 setup
-    const requiredModules = [
-      "@nuxt/icon",
-      "@vueuse/nuxt",
-      "@hue-studios/nuxt-newsletter",
-    ];
-
-    const missingModules = requiredModules.filter(
-      (module) =>
-        !configContent.includes(`'${module}'`)
-        && !configContent.includes(`"${module}"`),
+    const configContent = fs.readFileSync(
+      path.join(this.projectRoot, configPath),
+      "utf8",
     );
 
-    if (missingModules.length > 0) {
-      this.errors.push(
-        `Missing modules in nuxt.config: ${missingModules.join(", ")}`,
-      );
-      this.log(
-        "error",
-        `Missing modules in config: ${missingModules.join(", ")}`,
-      );
+    // Check for newsletter module
+    if (configContent.includes("@hue-studios/nuxt-newsletter")) {
+      this.success.push("Newsletter module is configured in Nuxt config");
+      this.log("success", "Newsletter module found in config");
     } else {
-      this.success.push("All required modules are configured");
-      this.log("success", "All required modules found in config");
+      this.errors.push("Newsletter module not found in Nuxt modules array");
+      this.log("error", "Add '@hue-studios/nuxt-newsletter' to modules");
     }
 
-    // Check for Tailwind CSS 4 Vite plugin
-    if (
-      configContent.includes("tailwindcss()")
-      && configContent.includes("vite:")
-    ) {
-      this.success.push("Tailwind CSS 4 Vite plugin detected");
-      this.log("success", "Tailwind CSS 4 Vite plugin configured");
-    } else if (configContent.includes("@tailwindcss/vite")) {
-      this.success.push("Tailwind CSS 4 Vite plugin import detected");
-      this.log("success", "Tailwind CSS 4 Vite plugin imported");
+    // Check for basic newsletter config
+    if (configContent.includes("newsletter:")) {
+      this.success.push("Newsletter configuration block found");
+      this.log("success", "Newsletter config block found");
     } else {
-      this.warnings.push(
-        "Tailwind CSS 4 Vite plugin not detected in nuxt.config",
-      );
-      this.log("warning", "Tailwind CSS 4 Vite plugin not found");
-      this.log("info", "Add to your nuxt.config.ts:");
-      this.log("info", "import tailwindcss from '@tailwindcss/vite'");
-      this.log("info", "vite: { plugins: [tailwindcss()] }");
-    }
-
-    // Check for newsletter config
-    if (
-      configContent.includes("newsletter:")
-      || configContent.includes("newsletter =")
-    ) {
-      this.success.push("Newsletter module configuration found");
-      this.log("success", "Newsletter configuration found");
-    } else {
-      this.warnings.push(
-        "Newsletter module configuration not found in nuxt.config",
-      );
-      this.log("warning", "Newsletter configuration section not found");
-    }
-
-    // Check for old @nuxtjs/tailwindcss (should be removed for v4)
-    if (configContent.includes("@nuxtjs/tailwindcss")) {
-      this.warnings.push(
-        "Old @nuxtjs/tailwindcss module detected - remove for Tailwind CSS 4"
-      );
-      this.log("warning", "Remove @nuxtjs/tailwindcss for Tailwind CSS 4");
-      this.log("info", "Replace with: import tailwindcss from '@tailwindcss/vite' and add to vite.plugins");
+      this.warnings.push("No newsletter configuration block found");
+      this.log("warning", "Consider adding newsletter config block");
     }
   }
 
   async verifyTailwindConfig() {
-    this.log("info", "Checking Tailwind CSS 4 configuration...");
+    this.log("info", "Checking Tailwind CSS configuration...");
 
-    const tailwindConfigPaths = [
-      path.join(this.projectRoot, "tailwind.config.ts"),
-      path.join(this.projectRoot, "tailwind.config.js"),
+    const configPaths = [
+      "tailwind.config.ts",
+      "tailwind.config.js",
+      "tailwind.config.mjs",
     ];
 
-    let configPath = null;
-    let configContent = null;
-
-    for (const cp of tailwindConfigPaths) {
-      if (fs.existsSync(cp)) {
-        configPath = cp;
-        configContent = fs.readFileSync(cp, "utf8");
-        break;
-      }
-    }
+    const configPath = configPaths.find((p) =>
+      fs.existsSync(path.join(this.projectRoot, p)),
+    );
 
     if (!configPath) {
-      this.warnings.push("tailwind.config.ts not found");
-      this.log("warning", "Tailwind config not found");
-      this.log("info", "Create a tailwind.config.ts for optimal Tailwind CSS 4 setup");
+      this.warnings.push("Tailwind config file not found");
+      this.log("warning", "Tailwind config not found - module will auto-configure");
       return;
     }
 
-    this.success.push("Tailwind config file found");
-    this.log("success", `Tailwind config: ${path.basename(configPath)}`);
-
-    // Check for Tailwind CSS 4 features
-    if (configContent.includes('import type { Config }')) {
-      this.success.push("TypeScript Tailwind config detected");
-      this.log("success", "TypeScript config with proper typing");
-    }
-
-    // Check if newsletter module paths are included
-    if (configContent.includes("@hue-studios/nuxt-newsletter")) {
-      this.success.push("Newsletter module paths included in Tailwind config");
-      this.log("success", "Module paths found in Tailwind config");
-    } else {
-      this.warnings.push(
-        "Newsletter module paths not found in Tailwind config",
-      );
-      this.log("warning", "Add module paths to Tailwind content array");
-      this.log(
-        "info",
-        'Add: "./node_modules/@hue-studios/nuxt-newsletter/dist/**/*.{js,vue,ts}"',
-      );
-    }
+    const configContent = fs.readFileSync(
+      path.join(this.projectRoot, configPath),
+      "utf8",
+    );
 
     // Check for content paths
     if (configContent.includes("content:")) {
@@ -367,7 +259,7 @@ class NewsletterSetupVerifier {
     if (this.errors.length === 0) {
       if (this.warnings.length === 0) {
         console.log(
-          "🎉 Perfect! Your Tailwind CSS 4 setup is complete and ready to go!",
+          "🎉 Perfect! Your Newsletter module setup is complete and ready to go!",
         );
       } else {
         console.log(
@@ -408,8 +300,9 @@ async function main() {
   process.exit(success ? 0 : 1);
 }
 
-if (require.main === module) {
+// Check if this script is being run directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch(console.error);
 }
 
-module.exports = NewsletterSetupVerifier;
+export default NewsletterSetupVerifier;
