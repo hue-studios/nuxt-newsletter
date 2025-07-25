@@ -10,21 +10,21 @@
       <!-- Device Controls -->
       <div class="preview-controls">
         <div class="device-controls">
-          <button
+          <!-- <button
             @click="setDevice('desktop')"
             :class="{ active: currentDevice === 'desktop' }"
             class="device-button"
             title="Desktop preview"
           >
             <Icon name="lucide:monitor" class="w-4 h-4" />
-          </button>
+          </button> -->
           <button
             @click="setDevice('tablet')"
             :class="{ active: currentDevice === 'tablet' }"
             class="device-button"
             title="Tablet preview"
           >
-            <Icon name="lucide:tablet" class="w-4 h-4" />
+            <Icon name="lucide:monitor" class="w-4 h-4" />
           </button>
           <button
             @click="setDevice('mobile')"

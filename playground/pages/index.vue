@@ -31,7 +31,7 @@
         <div class="top-bar-content">
           <div class="newsletter-info">
             <h1 class="newsletter-title">
-              {{ newsletter.title || 'Untitled Newsletter' }}
+              {{ newsletter.title || newsletter.subject_line || 'Untitled Newsletter' }}
             </h1>
             <span class="status-badge" :class="statusClass">
               {{ newsletter.status || 'draft' }}
@@ -84,11 +84,42 @@
               <span class="hidden sm:inline">Preview</span>
             </button>
 
-            <!-- Save Button -->
-            <button @click="saveNewsletter" class="save-button" :disabled="saving">
-              <Icon :name="saving ? 'lucide:loader-2' : 'lucide:save'" :class="{ 'animate-spin': saving }" />
-              <span class="hidden sm:inline">{{ saving ? 'Saving...' : 'Save' }}</span>
-            </button>
+            <!-- Save Button with Enhanced States -->
+            <div class="save-group">
+              <button @click="saveNewsletter" class="save-button" :disabled="saving">
+                <Icon :name="saving ? 'lucide:loader-2' : 'lucide:save'" :class="{ 'animate-spin': saving }" />
+                <span class="hidden sm:inline">{{ saving ? 'Saving...' : (newsletter.id ? 'Update' : 'Save') }}</span>
+              </button>
+              
+              <!-- Save & Preview Button (Desktop only) -->
+              <button 
+                v-if="!isMobile" 
+                @click="saveAndRefreshPreview" 
+                class="save-preview-button" 
+                :disabled="saving"
+                title="Save and refresh preview"
+              >
+                <Icon name="lucide:eye" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Save Status Bar -->
+        <div v-if="saveStatus.message || autoSaveStatus" class="status-bar">
+          <div class="status-content">
+            <div v-if="saveStatus.message" :class="[
+              'status-message',
+              saveStatus.type === 'success' ? 'status-success' : 'status-error'
+            ]">
+              <Icon :name="saveStatus.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'" />
+              <span>{{ saveStatus.message }}</span>
+            </div>
+            
+            <div v-if="autoSaveStatus && !saveStatus.message" class="auto-save-status">
+              <Icon name="lucide:clock" />
+              <span>{{ autoSaveStatus }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -109,13 +140,25 @@
               <div v-if="showSettings" class="settings-form">
                 <div class="form-grid">
                   <div class="form-group">
-                    <label for="subject">Subject Line</label>
+                    <label for="title">Title</label>
+                    <input
+                      id="title"
+                      v-model="newsletter.title"
+                      type="text"
+                      placeholder="Newsletter title"
+                      class="form-input"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="subject">Subject Line*</label>
                     <input
                       id="subject"
                       v-model="newsletter.subject_line"
                       type="text"
                       placeholder="Enter email subject"
                       class="form-input"
+                      required
                     />
                   </div>
 
@@ -148,6 +191,17 @@
                       v-model="newsletter.from_email"
                       type="email"
                       placeholder="newsletter@yourcompany.com"
+                      class="form-input"
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="reply-to">Reply To</label>
+                    <input
+                      id="reply-to"
+                      v-model="newsletter.reply_to"
+                      type="email"
+                      placeholder="replies@yourcompany.com"
                       class="form-input"
                     />
                   </div>
@@ -226,23 +280,44 @@
         <!-- Preview Panel -->
         <div class="preview-panel" :class="{ 'hidden-mobile': !showPreview && isMobile }">
           <div class="preview-header">
-            <h3>Live Preview</h3>
-            <div class="device-selector">
-              <button
-                v-for="device in devices"
-                :key="device.type"
-                @click="currentDevice = device.type"
-                class="device-button"
-                :class="{ 'active': currentDevice === device.type }"
+            <div class="preview-info">
+              <h3>Live Preview</h3>
+              <div v-if="previewStatus.lastRefreshed" class="preview-timestamp">
+                Updated {{ formatTimeAgo(previewStatus.lastRefreshed) }}
+              </div>
+            </div>
+            
+            <div class="preview-controls">
+              <div class="device-selector">
+                <button
+                  v-for="device in devices"
+                  :key="device.type"
+                  @click="currentDevice = device.type"
+                  class="device-button"
+                  :class="{ 'active': currentDevice === device.type }"
+                >
+                  <Icon :name="device.icon" />
+                  <span class="sr-only">{{ device.label }}</span>
+                </button>
+              </div>
+              
+              <button 
+                @click="refreshPreview" 
+                :disabled="previewStatus.isRefreshing"
+                class="refresh-button"
+                title="Refresh preview"
               >
-                <Icon :name="device.icon" />
-                <span class="sr-only">{{ device.label }}</span>
+                <Icon 
+                  name="lucide:refresh-cw" 
+                  :class="{ 'animate-spin': previewStatus.isRefreshing }" 
+                />
               </button>
             </div>
           </div>
 
           <div class="preview-container">
             <NewsletterPreview
+              ref="previewComponent"
               :newsletter="newsletter"
               :block-types="blockTypes"
               :device="currentDevice"
@@ -279,7 +354,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+
+// Get newsletter ID from route if editing existing newsletter
+const route = useRoute()
+const newsletterId = computed(() => route.params.id)
 
 // Composables
 const { 
@@ -292,7 +372,13 @@ const {
   loadFromTemplate 
 } = useNewsletterEditor()
 
-const { fetchBlockTypes, fetchTemplates } = useDirectusNewsletter()
+const { 
+  fetchBlockTypes, 
+  fetchTemplates,
+  createNewsletter,
+  updateNewsletter,
+  fetchNewsletter
+} = useDirectusNewsletter()
 
 // Reactive state
 const loading = ref(true)
@@ -309,6 +395,24 @@ const showSettings = ref(true)
 const currentDevice = ref('mobile')
 
 const templateDropdown = ref(null)
+const previewComponent = ref(null)
+
+// Auto-save functionality
+const lastSaved = ref(null)
+const autoSaveTimer = ref(null)
+const autoSaveEnabled = ref(true)
+
+// Save status
+const saveStatus = ref({
+  message: '',
+  type: 'success'
+})
+
+// Preview status
+const previewStatus = ref({
+  isRefreshing: false,
+  lastRefreshed: null
+})
 
 // Notification system
 const notification = ref({
@@ -332,6 +436,16 @@ const statusClass = computed(() => {
   return `status-${status}`
 })
 
+const autoSaveStatus = computed(() => {
+  if (!autoSaveEnabled.value) return ''
+  if (saving.value) return 'Saving...'
+  if (lastSaved.value) {
+    const elapsed = Math.round((Date.now() - lastSaved.value) / 1000)
+    return `Last saved ${elapsed}s ago`
+  }
+  return ''
+})
+
 // Methods
 const initializeEditor = async () => {
   try {
@@ -346,10 +460,140 @@ const initializeEditor = async () => {
     blockTypes.value = blockTypesData
     templates.value = templatesData
 
+    // Load existing newsletter if editing
+    if (newsletterId.value) {
+      loadingMessage.value = 'Loading newsletter...'
+      const existingNewsletter = await fetchNewsletter(newsletterId.value)
+      
+      // Update the newsletter data from the composable
+      Object.assign(newsletter.value, existingNewsletter)
+      
+      // Refresh preview after loading
+      nextTick(() => {
+        refreshPreview()
+      })
+    }
+
     loading.value = false
   } catch (err) {
     error.value = err.message || 'Failed to initialize editor'
     loading.value = false
+  }
+}
+
+const saveNewsletter = async () => {
+  if (saving.value) return
+
+  try {
+    saving.value = true
+    clearSaveStatus()
+
+    // Validate required fields
+    if (!newsletter.value.subject_line?.trim()) {
+      throw new Error('Subject line is required')
+    }
+
+    // Auto-generate title from subject if not provided
+    if (!newsletter.value.title?.trim()) {
+      newsletter.value.title = newsletter.value.subject_line
+    }
+
+    // Prepare newsletter data for Directus
+    const newsletterData = {
+      ...newsletter.value,
+      // Transform blocks to match Directus format
+      blocks: newsletter.value.blocks.map(block => ({
+        id: block.id,
+        block_type: typeof block.block_type === 'string' ? block.block_type : block.block_type?.id,
+        content: block.content || {},
+        sort: block.sort || 0
+      })),
+      // Ensure required fields have fallbacks
+      from_name: newsletter.value.from_name || 'Newsletter',
+      from_email: newsletter.value.from_email || 'newsletter@example.com'
+    }
+
+    let result
+
+    if (newsletter.value.id) {
+      // Update existing newsletter
+      result = await updateNewsletter(newsletter.value.id, newsletterData)
+      showSaveStatus('Newsletter updated successfully!', 'success')
+    } else {
+      // Create new newsletter
+      result = await createNewsletter(newsletterData)
+      newsletter.value.id = result.id
+      showSaveStatus('Newsletter created successfully!', 'success')
+    }
+
+    lastSaved.value = Date.now()
+    
+    // Refresh preview after successful save
+    await refreshPreview()
+    
+    return result
+
+  } catch (err) {
+    console.error('Save failed:', err)
+    
+    // User-friendly error messages
+    let errorMessage = 'Failed to save newsletter'
+    
+    if (err.message.includes('Permission denied')) {
+      errorMessage = 'Permission denied. Please check your access rights.'
+    } else if (err.message.includes('required field')) {
+      errorMessage = err.message
+    } else if (err.message.includes('Invalid data')) {
+      errorMessage = 'Invalid data format. Please check all fields.'
+    } else if (err.response?.status === 422) {
+      errorMessage = 'Validation error. Please check required fields.'
+    }
+    
+    showSaveStatus(errorMessage, 'error')
+    throw err
+    
+  } finally {
+    saving.value = false
+  }
+}
+
+const saveAndRefreshPreview = async () => {
+  try {
+    await saveNewsletter()
+    
+    // Ensure preview is visible
+    if (!showPreview.value) {
+      showPreview.value = true
+    }
+    
+    showNotification('Newsletter saved and preview refreshed!', 'success')
+  } catch (error) {
+    // Error already handled in saveNewsletter
+  }
+}
+
+const refreshPreview = async () => {
+  if (!previewComponent.value) {
+    console.warn('Preview component not available')
+    return
+  }
+
+  try {
+    previewStatus.value.isRefreshing = true
+    
+    // Call the preview component's refresh method
+    await previewComponent.value.refreshPreview()
+    
+    previewStatus.value.lastRefreshed = Date.now()
+    
+    // Add a small delay for visual feedback
+    setTimeout(() => {
+      previewStatus.value.isRefreshing = false
+    }, 500)
+    
+  } catch (error) {
+    console.error('Preview refresh failed:', error)
+    previewStatus.value.isRefreshing = false
   }
 }
 
@@ -370,22 +614,16 @@ const selectTemplate = async (template) => {
 
 const togglePreview = () => {
   showPreview.value = !showPreview.value
+  if (showPreview.value) {
+    // Refresh preview when showing it
+    nextTick(() => {
+      refreshPreview()
+    })
+  }
 }
 
 const toggleSettings = () => {
   showSettings.value = !showSettings.value
-}
-
-const saveNewsletter = async () => {
-  saving.value = true
-  try {
-    // Implement save logic here
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate save
-    showNotification('Newsletter saved successfully!', 'success')
-  } catch (err) {
-    showNotification('Failed to save newsletter', 'error')
-  }
-  saving.value = false
 }
 
 const moveBlockUp = (index) => {
@@ -434,6 +672,45 @@ const hideNotification = () => {
   notification.value.show = false
 }
 
+const showSaveStatus = (message, type = 'success') => {
+  saveStatus.value = { message, type }
+  setTimeout(() => {
+    clearSaveStatus()
+  }, 5000)
+}
+
+const clearSaveStatus = () => {
+  saveStatus.value = { message: '', type: 'success' }
+}
+
+const formatTimeAgo = (timestamp) => {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ago`
+}
+
+// Auto-save functionality
+const triggerAutoSave = () => {
+  if (!autoSaveEnabled.value) return
+  
+  if (autoSaveTimer.value) {
+    clearTimeout(autoSaveTimer.value)
+  }
+  
+  autoSaveTimer.value = setTimeout(async () => {
+    if (!saving.value && newsletter.value.subject_line?.trim()) {
+      try {
+        await saveNewsletter()
+      } catch (error) {
+        console.warn('Auto-save failed:', error)
+      }
+    }
+  }, 3000) // Auto-save after 3 seconds of inactivity
+}
+
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
 }
@@ -443,6 +720,11 @@ const handleClickOutside = (event) => {
     showTemplateSelector.value = false
   }
 }
+
+// Watchers
+watch(newsletter, () => {
+  triggerAutoSave()
+}, { deep: true })
 
 // Lifecycle
 onMounted(async () => {
@@ -456,11 +738,23 @@ onMounted(async () => {
   if (!isMobile.value) {
     showPreview.value = true
   }
+
+  // Set up keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      saveNewsletter()
+    }
+  })
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   document.removeEventListener('click', handleClickOutside)
+  
+  if (autoSaveTimer.value) {
+    clearTimeout(autoSaveTimer.value)
+  }
 })
 </script>
 
@@ -560,6 +854,40 @@ onUnmounted(() => {
 
 .top-actions {
   @apply flex items-center gap-2;
+}
+
+/* Save Group */
+.save-group {
+  @apply flex items-center;
+}
+
+.save-preview-button {
+  @apply ml-1 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50;
+}
+
+/* Status Bar */
+.status-bar {
+  @apply border-t border-slate-100 bg-slate-50;
+}
+
+.status-content {
+  @apply px-4 py-2 flex items-center justify-between;
+}
+
+.status-message {
+  @apply flex items-center gap-2 text-sm font-medium;
+}
+
+.status-success {
+  @apply text-green-700;
+}
+
+.status-error {
+  @apply text-red-700;
+}
+
+.auto-save-status {
+  @apply flex items-center gap-2 text-sm text-slate-500;
 }
 
 /* Template Selector */
@@ -810,8 +1138,16 @@ onUnmounted(() => {
   @apply flex items-center justify-between p-4 bg-white border-b border-slate-200;
 }
 
-.preview-header h3 {
+.preview-info h3 {
   @apply text-sm font-semibold text-slate-900;
+}
+
+.preview-timestamp {
+  @apply text-xs text-slate-500 mt-1;
+}
+
+.preview-controls {
+  @apply flex items-center gap-3;
 }
 
 .device-selector {
@@ -828,6 +1164,10 @@ onUnmounted(() => {
 
 .device-button svg {
   @apply w-4 h-4;
+}
+
+.refresh-button {
+  @apply p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50;
 }
 
 .preview-container {
