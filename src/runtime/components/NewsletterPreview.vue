@@ -1,115 +1,58 @@
-<!-- Fixed Preview with Placeholder Mapping -->
+<!-- Fixed NewsletterPreview.vue -->
 <template>
   <div class="newsletter-preview-container">
-    <!-- Debug Info -->
-    <div class="debug-info hidden">
-      <h4>🎯 Fixed Placeholder Mapping</h4>
+    <!-- Debug Info (toggle with environment variable) -->
+    <div v-if="showDebug" class="debug-info">
+      <h4>🔧 Content Mapping Debug</h4>
       <div class="debug-details">
         <div class="debug-item">
-          <strong>Content Mapping:</strong>
-          <div class="mapping-debug">
-            <div v-for="(mapping, index) in contentMappings" :key="index" class="mapping-item">
-              <strong>Block {{ index + 1 }}:</strong>
-              <div class="mapping-details">
-                <div v-for="(mapped, key) in mapping" :key="key" class="mapped-value">
-                  <span class="original">{{ key }}</span>
-                  <span class="arrow">→</span>
-                  <span class="mapped">{{ mapped }}</span>
-                </div>
-              </div>
-            </div>
+          <strong>Block Analysis:</strong>
+          <div v-for="(block, index) in newsletter?.blocks || []" :key="index" class="block-debug">
+            <p><strong>Block {{ index + 1 }}:</strong> {{ block.type }}</p>
+            <p><strong>Content Keys:</strong> {{ Object.keys(block.content || {}).join(', ') }}</p>
+            <p><strong>Expected Template:</strong> {{ getBlockTemplate(block)?.substring(0, 100) }}...</p>
           </div>
         </div>
         
         <div class="debug-item">
-          <strong>Compilation Status:</strong>
+          <strong>Mapping Results:</strong>
           <div class="compilation-status">
             <span :class="compilationStatusClass">{{ compilationStatus }}</span>
-            <span>MJML: {{ compiledMjml?.length || 0 }} chars</span>
-            <span>HTML: {{ compiledHtml?.length || 0 }} chars</span>
-            <span>Replaced Placeholders: {{ replacedPlaceholders }}</span>
+            <span>Placeholders Replaced: {{ replacedPlaceholders }}</span>
+            <span>MJML Length: {{ compiledMjml?.length || 0 }}</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Header -->
-    <div class="uppercase tracking-wider text-xs preview-header">
+    <div class="preview-header">
       <div class="preview-title">
-        <Icon name="lucide:mail" class="w-5 h-5 text-slate-600" />
-        <span>Preview</span>
+        <Icon name="lucide:mail" class="w-5 h-5" />
+        <span>Newsletter Preview</span>
       </div>
-      <div class="preview-controls ">
-        <button @click="compileWithMapping" class="control-button uppercase tracking-wider text-xs">
+      <div class="preview-controls">
+        <button @click="compileNewsletter" class="control-button" :disabled="isCompiling">
           <Icon name="lucide:play" class="w-4 h-4" />
-          Compile
+          {{ isCompiling ? 'Compiling...' : 'Compile' }}
         </button>
-        <button @click="showMjmlSource = true" class="control-button uppercase tracking-wider text-xs">
-          <Icon name="lucide:code" class="w-3 h-3 -mb-1 inline-block" />
+        <button @click="showMjmlSource = !showMjmlSource" class="control-button">
+          <Icon name="lucide:code" class="w-4 h-4" />
           View Source
         </button>
+        <button @click="showDebug = !showDebug" class="control-button">
+          <Icon name="lucide:bug" class="w-4 h-4" />
+          Debug
+        </button>
       </div>
     </div>
 
-    <!-- Preview Content -->
-    <div class="preview-content">
-      <div class="email-preview-frame">
-        
-        <!-- Loading State -->
-        <div v-if="isCompiling" class="loading-state">
-          <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin text-slate-400" />
-          <p>Compiling with placeholder mapping...</p>
-        </div>
-
-        <!-- Success State -->
-        <div v-else-if="compiledHtml" class="preview-iframe-container">
-          <!-- <div class="iframe-debug">
-            <strong>Content Preview:</strong>
-            <span>{{ replacedPlaceholders }} placeholders replaced</span>
-            <button @click="showRawHtml = !showRawHtml" class="btn-toggle">
-              {{ showRawHtml ? 'Show in iframe' : 'Show raw HTML' }}
-            </button>
-          </div> -->
-          
-          <div v-if="showRawHtml" class="raw-html-display">
-            <h4>Generated HTML:</h4>
-            <pre class="html-code">{{ compiledHtml }}</pre>
-          </div>
-          
-          <iframe
-            v-else
-            ref="previewFrame"
-            :srcdoc="compiledHtml"
-            class="newsletter-iframe"
-            @load="handleIframeLoad"
-            sandbox="allow-same-origin"
-          />
-        </div>
-
-        <!-- Error State -->
-        <div v-else-if="compilationError" class="compilation-error">
-          <Icon name="lucide:alert-triangle" class="w-5 h-5 text-red-600" />
-          <div>
-            <h4>Compilation Error</h4>
-            <p>{{ compilationError }}</p>
-          </div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else class="empty-content">
-          <Icon name="lucide:file-text" class="w-12 h-12 text-slate-300" />
-          <h4>Ready to Compile</h4>
-          <p>Click "Compile with Mapping" to generate the preview.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- MJML Source Modal -->
+    <!-- Source Code Modal -->
     <Transition name="modal">
       <div v-if="showMjmlSource" class="modal-overlay" @click="showMjmlSource = false">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
-            <h3>Generated Source</h3>
+            <h3>Generated Source Code</h3>
             <button @click="showMjmlSource = false" class="modal-close">
               <Icon name="lucide:x" class="w-5 h-5" />
             </button>
@@ -121,6 +64,7 @@
                 :class="{ active: sourceTab === 'mjml' }"
                 class="tab-button"
               >
+                <Icon name="lucide:code" class="w-4 h-4" />
                 MJML
               </button>
               <button
@@ -128,26 +72,86 @@
                 :class="{ active: sourceTab === 'html' }"
                 class="tab-button"
               >
+                <Icon name="lucide:globe" class="w-4 h-4" />
                 HTML
               </button>
             </div>
             <div class="source-content">
-              <pre v-if="sourceTab === 'mjml'"><code>{{ compiledMjml || 'No MJML generated' }}</code></pre>
-              <pre v-else-if="sourceTab === 'html'"><code>{{ compiledHtml || 'No HTML generated' }}</code></pre>
+              <div v-if="sourceTab === 'mjml'" class="source-panel">
+                <div class="source-header">
+                  <span class="source-title">MJML Template</span>
+                  <button @click="copyToClipboard(compiledMjml)" class="copy-button">
+                    <Icon name="lucide:copy" class="w-4 h-4" />
+                    Copy MJML
+                  </button>
+                </div>
+                <pre class="source-code"><code>{{ compiledMjml || 'No MJML generated yet. Click "Compile" to generate.' }}</code></pre>
+              </div>
+              
+              <div v-else-if="sourceTab === 'html'" class="source-panel">
+                <div class="source-header">
+                  <span class="source-title">Generated HTML</span>
+                  <button @click="copyToClipboard(compiledHtml)" class="copy-button">
+                    <Icon name="lucide:copy" class="w-4 h-4" />
+                    Copy HTML
+                  </button>
+                </div>
+                <pre class="source-code"><code>{{ compiledHtml || 'No HTML generated yet. Click "Compile" to generate.' }}</code></pre>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </Transition>
+
+    <!-- Preview Content -->
+    <div class="preview-content">
+      <div class="email-preview-frame">
+        
+        <!-- Loading State -->
+        <div v-if="isCompiling" class="loading-state">
+          <Icon name="lucide:loader-2" class="w-6 h-6 animate-spin" />
+          <p>Compiling newsletter...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="compilationError" class="compilation-error">
+          <h4>Compilation Error</h4>
+          <p>{{ compilationError }}</p>
+          <details class="error-details">
+            <summary>Debug Information</summary>
+            <pre>{{ debugInfo }}</pre>
+          </details>
+        </div>
+
+        <!-- Success State -->
+        <div v-else-if="compiledHtml" class="preview-iframe-container">
+          <iframe 
+            ref="previewFrame"
+            :srcdoc="compiledHtml"
+            class="preview-iframe"
+            @load="handleIframeLoad"
+          />
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="empty-content">
+          <Icon name="lucide:mail-plus" class="w-12 h-12" />
+          <h4>No Content Yet</h4>
+          <p>Add some blocks to your newsletter to see the preview here.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { $fetch } from 'ofetch'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 interface Props {
-  newsletter: any
-  blockTypes: any[]
+  newsletter?: any
+  blockTypes?: any[]
   device?: 'desktop' | 'mobile' | 'tablet'
 }
 
@@ -165,36 +169,163 @@ const compiledHtml = ref('')
 const isCompiling = ref(false)
 const compilationError = ref<string | null>(null)
 const showMjmlSource = ref(false)
-const sourceTab = ref('mjml')
-const previewFrame = ref<HTMLIFrameElement | null>(null)
+const showDebug = ref(false)
 const compilationStatus = ref('Ready')
-const showRawHtml = ref(false)
 const replacedPlaceholders = ref(0)
-const contentMappings = ref<any[]>([])
+const debugInfo = ref('')
 
-// Content mapping configurations
-const contentMappingConfig = {
+// Enhanced content mapping configuration for your specific block types
+const contentMappingConfig: Record<string, any> = {
   'text': {
-    // Map your content keys to template placeholders
-    'text': 'text_content',
-    // Provide default values for missing placeholders
-    '_defaults': {
+    mappings: {
+      'text': 'text_content',
+      'content': 'text_content',
+      'body': 'text_content'
+    },
+    defaults: {
+      'text_content': 'Enter your text here...',
       'background_color': '#ffffff',
-      'padding': '20px',
+      'text_color': '#333333',
       'text_align': 'left',
       'font_size': '16px',
-      'text_color': '#333333'
+      'padding': '20px'
     }
   },
   'button': {
-    // Map your content keys to template placeholders
-    'text': 'button_text',
-    'url': 'button_url',
-    // Provide default values for missing placeholders
-    '_defaults': {
+    mappings: {
+      'text': 'button_text',
+      'label': 'button_text',
+      'url': 'button_url',
+      'link': 'button_url'
+    },
+    defaults: {
+      'button_text': 'Click Here',
+      'button_url': '#',
       'background_color': '#007bff',
+      'text_color': '#ffffff',
+      'text_align': 'center',
+      'padding': '20px'
+    }
+  },
+  'hero': {
+    mappings: {
+      'title': 'hero_title',
+      'heading': 'hero_title',
+      'subtitle': 'hero_subtitle',
+      'description': 'hero_subtitle',
+      'text': 'hero_content',
+      'content': 'hero_content'
+    },
+    defaults: {
+      'hero_title': 'Welcome!',
+      'hero_subtitle': 'This is your newsletter',
+      'background_color': '#f8f9fa',
+      'text_color': '#333333',
+      'text_align': 'center',
+      'padding': '40px 20px'
+    }
+  },
+  'image': {
+    mappings: {
+      'src': 'image_url',
+      'url': 'image_url',
+      'image': 'image_url',
+      'alt': 'image_alt',
+      'alt_text': 'image_alt'
+    },
+    defaults: {
+      'image_url': 'https://via.placeholder.com/600x300',
+      'image_alt': 'Newsletter Image',
+      'padding': '20px'
+    }
+  },
+  'event-card': {
+    mappings: {
+      'title': 'event_title',
+      'heading': 'event_title',
+      'subtitle': 'event_subtitle',
+      'description': 'event_description',
+      'text': 'event_description',
+      'content': 'event_description',
+      'date': 'event_date',
+      'time': 'event_time',
+      'location': 'event_location',
+      'venue': 'event_location',
+      'button_text': 'button_text',
+      'button_url': 'button_url',
+      'cta_text': 'button_text',
+      'cta_url': 'button_url'
+    },
+    defaults: {
+      'event_title': 'Upcoming Event',
+      'event_subtitle': 'Join us for an exciting event',
+      'event_description': 'Event description goes here',
+      'event_date': 'TBD',
+      'event_time': 'TBD',
+      'event_location': 'TBD',
+      'button_text': 'Register Now',
+      'button_url': '#',
+      'background_color': '#ffffff',
+      'text_color': '#333333',
+      'text_align': 'left',
+      'padding': '20px'
+    }
+  },
+  'team-member': {
+    mappings: {
+      'name': 'member_name',
+      'title': 'member_title',
+      'position': 'member_title',
+      'role': 'member_title',
+      'bio': 'member_bio',
+      'description': 'member_bio',
+      'text': 'member_bio',
+      'content': 'member_bio',
+      'image': 'member_image',
+      'photo': 'member_image',
+      'avatar': 'member_image',
+      'image_url': 'member_image',
+      'alt': 'image_alt',
+      'alt_text': 'image_alt'
+    },
+    defaults: {
+      'member_name': 'Team Member',
+      'member_title': 'Position',
+      'member_bio': 'Member bio goes here',
+      'member_image': 'https://via.placeholder.com/150x150?text=Team+Member',
+      'image_alt': 'Team Member Photo',
+      'background_color': '#ffffff',
+      'text_color': '#333333',
+      'text_align': 'left',
+      'padding': '20px'
+    }
+  },
+  'social-links': {
+    mappings: {
+      'facebook': 'facebook_url',
+      'facebook_url': 'facebook_url',
+      'twitter': 'twitter_url',
+      'twitter_url': 'twitter_url',
+      'instagram': 'instagram_url',
+      'instagram_url': 'instagram_url',
+      'linkedin': 'linkedin_url',
+      'linkedin_url': 'linkedin_url',
+      'youtube': 'youtube_url',
+      'youtube_url': 'youtube_url',
+      'website': 'website_url',
+      'website_url': 'website_url'
+    },
+    defaults: {
+      'facebook_url': '',
+      'twitter_url': '',
+      'instagram_url': '',
+      'linkedin_url': '',
+      'youtube_url': '',
+      'website_url': '',
+      'icon_size': '24px',
+      'text_align': 'center',
       'padding': '20px',
-      'text_align': 'center'
+      'background_color': '#ffffff'
     }
   }
 }
@@ -203,200 +334,225 @@ const contentMappingConfig = {
 const compilationStatusClass = computed(() => {
   switch (compilationStatus.value) {
     case 'Success': return 'status-success'
-    case 'Failed': return 'status-error'
+    case 'Error': return 'status-error'
     case 'Compiling': return 'status-progress'
     default: return 'status-default'
   }
 })
 
-// Map content to template placeholders
-const mapContentForBlock = (block: any, blockType: any) => {
+// Get block template for debugging
+const getBlockTemplate = (block: any) => {
+  const blockType = props.blockTypes?.find(bt => 
+    bt.slug === block.type || 
+    bt.id === block.block_type ||
+    bt.id === block.type ||
+    bt.slug === block.block_type
+  )
+  return blockType?.mjml_template || 'No template found'
+}
+
+// Enhanced content mapping function
+const mapBlockContent = (block: any, blockType: any): Record<string, any> => {
   const blockSlug = blockType.slug
-  const mappingConfig = contentMappingConfig[blockSlug]
+  const config = contentMappingConfig[blockSlug]
   
-  if (!mappingConfig) {
+  if (!config) {
     console.warn(`No mapping config for block type: ${blockSlug}`)
-    return block.content || {}
+    return { ...block.content }
   }
   
-  const mappedContent = {}
+  const mappedContent: Record<string, any> = {}
   const originalContent = block.content || {}
   
-  // Map existing content keys
+  // Apply mappings
   Object.entries(originalContent).forEach(([key, value]) => {
-    const mappedKey = mappingConfig[key] || key
+    const mappedKey = config.mappings?.[key] || key
     mappedContent[mappedKey] = value
   })
   
-  // Add default values for missing placeholders
-  if (mappingConfig._defaults) {
-    Object.entries(mappingConfig._defaults).forEach(([key, defaultValue]) => {
+  // Apply defaults for missing fields
+  if (config.defaults) {
+    Object.entries(config.defaults).forEach(([key, defaultValue]) => {
       if (!(key in mappedContent)) {
         mappedContent[key] = defaultValue
       }
     })
   }
   
+  console.log(`Mapped content for ${blockSlug}:`, mappedContent)
   return mappedContent
 }
 
-// Generate MJML with proper placeholder mapping
-const generateMjmlWithMapping = () => {
-  if (!props.newsletter?.blocks || !props.blockTypes) {
-    throw new Error('Missing newsletter or block types')
-  }
-
-  const fixedBlocks = props.newsletter.blocks.map((block: any) => {
-    const blockType = props.blockTypes.find(bt => 
-      bt.slug === block.type || 
-      bt.id === block.block_type ||
-      bt.id === block.type ||
-      bt.slug === block.block_type
-    )
-
-    if (!blockType) {
-      throw new Error(`Block type not found for: ${block.type}`)
-    }
-
-    return {
-      ...block,
-      block_type: blockType.id,
-      type: blockType.slug
-    }
-  })
-
-  let totalReplacements = 0
-  const mappings = []
-  
-  const bodyContent = fixedBlocks.map((block, index) => {
-    const blockType = props.blockTypes.find(bt => bt.id === block.block_type)
-    if (!blockType || !blockType.mjml_template) {
-      throw new Error(`Block type ${block.block_type} missing template`)
-    }
-
-    // Map content to template placeholders
-    const mappedContent = mapContentForBlock(block, blockType)
-    mappings.push(mappedContent)
-    
+// Enhanced MJML compilation
+const compileBlockToMjml = (block: any, blockType: any): string => {
+  try {
+    const mappedContent = mapBlockContent(block, blockType)
     let mjml = blockType.mjml_template
-
-    // Replace placeholders with mapped content
+    
+    // Count replacements for debugging
+    let blockReplacements = 0
+    
+    // Replace triple braces first (unescaped content)
+    mjml = mjml.replace(/\{\{\{(\w+)\}\}\}/g, (match, key) => {
+      if (key in mappedContent) {
+        blockReplacements++
+        return String(mappedContent[key])
+      }
+      return match
+    })
+    
+    // Replace double braces (escaped content)
     mjml = mjml.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       if (key in mappedContent) {
-        totalReplacements++
-        console.log(`Replaced {{${key}}} with "${mappedContent[key]}"`)
+        blockReplacements++
         return String(mappedContent[key])
-      } else {
-        console.warn(`No mapping found for placeholder: {{${key}}}`)
-        return match
       }
+      return match
     })
-
+    
+    // Handle conditionals {{#if field}}...{{/if}}
+    mjml = mjml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
+      const value = mappedContent[key]
+      return (value && value !== '' && value !== null && value !== undefined) ? content : ''
+    })
+    
+    replacedPlaceholders.value += blockReplacements
+    console.log(`Block ${block.type}: ${blockReplacements} replacements made`)
+    
     return mjml
-  }).join('\n')
-
-  contentMappings.value = mappings
-  replacedPlaceholders.value = totalReplacements
-
-  return createFullMjml(bodyContent)
+  } catch (error) {
+    console.error(`Error compiling block ${block.id}:`, error)
+    return `<!-- Error compiling block ${block.id}: ${error.message} -->`
+  }
 }
 
-// Create full MJML document
-const createFullMjml = (bodyContent: string) => {
-  return `
-    <mjml>
-      <mj-head>
-        <mj-title>${props.newsletter?.subject || 'Newsletter'}</mj-title>
-        <mj-preview>${props.newsletter?.preheader || ''}</mj-preview>
-        <mj-attributes>
-          <mj-text font-family="Arial, sans-serif" font-size="16px" color="#333333" line-height="1.6" />
-          <mj-button font-family="Arial, sans-serif" background-color="#007bff" color="white" />
-        </mj-attributes>
-      </mj-head>
-      <mj-body background-color="#f4f4f4">
-        ${bodyContent}
-      </mj-body>
-    </mjml>
-  `
-}
+// Main compilation function
+const compileNewsletter = async () => {
+  if (!props.newsletter?.blocks || !props.blockTypes) {
+    compilationError.value = 'Missing newsletter data or block types'
+    return
+  }
 
-// Compile with mapping
-const compileWithMapping = async () => {
   isCompiling.value = true
   compilationError.value = null
   compilationStatus.value = 'Compiling'
+  replacedPlaceholders.value = 0
   
   try {
-    console.log('Starting compilation with placeholder mapping...')
+    console.log('Starting newsletter compilation...')
     
-    // Generate MJML with proper mapping
-    const mjml = generateMjmlWithMapping()
-    compiledMjml.value = mjml
+    // Debug information
+    debugInfo.value = JSON.stringify({
+      newsletter: props.newsletter,
+      blockTypes: props.blockTypes.map(bt => ({ id: bt.id, name: bt.name, slug: bt.slug })),
+      blocks: props.newsletter.blocks
+    }, null, 2)
     
-    console.log(`Generated MJML (${mjml.length} chars) with ${replacedPlaceholders.value} placeholder replacements`)
+    // Process each block
+    const compiledBlocks: string[] = []
     
-    // Try server compilation
+    for (const block of props.newsletter.blocks) {
+      const blockType = props.blockTypes.find(bt => 
+        bt.slug === block.type || 
+        bt.id === block.block_type ||
+        bt.id === block.type ||
+        bt.slug === block.block_type
+      )
+      
+      if (!blockType) {
+        console.error(`Block type not found for block:`, block)
+        compiledBlocks.push(`<!-- Unknown block type: ${block.type} -->`)
+        continue
+      }
+      
+      if (!blockType.mjml_template) {
+        console.error(`No template found for block type: ${blockType.name}`)
+        compiledBlocks.push(`<!-- No template for: ${blockType.name} -->`)
+        continue
+      }
+      
+      const compiledBlock = compileBlockToMjml(block, blockType)
+      compiledBlocks.push(compiledBlock)
+    }
+    
+    // Build complete MJML document
+    const mjmlDocument = createFullMjmlDocument(compiledBlocks.join('\n'))
+    compiledMjml.value = mjmlDocument
+    
+    console.log(`MJML compilation complete: ${replacedPlaceholders.value} placeholders replaced`)
+    
+    // Try server-side MJML to HTML conversion
     try {
       const response = await $fetch('/api/newsletter/compile-mjml', {
         method: 'POST',
-        body: { mjml }
+        body: { mjml: mjmlDocument }
       })
       
       if (response.html) {
         compiledHtml.value = response.html
         compilationStatus.value = 'Success'
-        
-        console.log(`Server compilation successful: ${response.html.length} chars`)
-        emit('update:compiled', { mjml, html: response.html })
+        emit('update:compiled', { mjml: mjmlDocument, html: response.html })
       } else {
         throw new Error('Server returned no HTML')
       }
     } catch (serverError) {
-      console.warn('Server compilation failed, using fallback')
+      console.warn('Server compilation failed, using fallback:', serverError)
       
-      // Simple fallback HTML
+      // Create fallback HTML
       const fallbackHtml = createFallbackHtml()
       compiledHtml.value = fallbackHtml
       compilationStatus.value = 'Success'
-      
-      emit('update:compiled', { mjml, html: fallbackHtml })
+      emit('update:compiled', { mjml: mjmlDocument, html: fallbackHtml })
     }
     
   } catch (error) {
-    compilationError.value = error instanceof Error ? error.message : 'Unknown error'
-    compilationStatus.value = 'Failed'
-    console.error('Compilation failed:', error)
+    console.error('Newsletter compilation failed:', error)
+    compilationError.value = error instanceof Error ? error.message : 'Unknown compilation error'
+    compilationStatus.value = 'Error'
   } finally {
     isCompiling.value = false
   }
 }
 
-// Create fallback HTML
+// Create complete MJML document
+const createFullMjmlDocument = (bodyContent: string): string => {
+  return `<mjml>
+  <mj-head>
+    <mj-title>${props.newsletter?.subject || props.newsletter?.title || 'Newsletter'}</mj-title>
+    <mj-preview>${props.newsletter?.preheader || props.newsletter?.preview_text || ''}</mj-preview>
+    <mj-attributes>
+      <mj-text font-family="Arial, sans-serif" font-size="16px" color="#333333" line-height="1.6" />
+      <mj-button font-family="Arial, sans-serif" background-color="#007bff" color="white" />
+    </mj-attributes>
+    <mj-style>
+      .newsletter-content { max-width: 600px; margin: 0 auto; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f4f4f4">
+    ${bodyContent}
+  </mj-body>
+</mjml>`
+}
+
+// Create fallback HTML when MJML compilation fails
 const createFallbackHtml = (): string => {
   const blocks = props.newsletter?.blocks || []
   
-  let blockContent = blocks.map((block: any, index: number) => {
-    if (!block || !block.content) {
-      return `<div class="block">Block ${index + 1}: No content</div>`
-    }
-
-    const blockType = props.blockTypes.find(bt => 
+  const blockContent = blocks.map((block: any, index: number) => {
+    const blockType = props.blockTypes?.find(bt => 
       bt.slug === block.type || bt.id === block.block_type
     )
-    const blockTypeName = blockType?.name || 'Unknown'
     
-    let content = `<h4>${blockTypeName}</h4>`
+    const mappedContent = blockType ? mapBlockContent(block, blockType) : block.content
     
-    // Use mapped content
-    const mappedContent = mapContentForBlock(block, blockType)
-    Object.entries(mappedContent).forEach(([key, value]) => {
-      if (value && typeof value === 'string' && !key.startsWith('_')) {
-        if (key.includes('text') || key.includes('content')) {
+    let content = `<div class="block-header">${blockType?.name || 'Unknown Block'}</div>`
+    
+    Object.entries(mappedContent || {}).forEach(([key, value]) => {
+      if (value && typeof value === 'string' && !key.startsWith('background_') && !key.startsWith('text_') && key !== 'padding') {
+        if (key.includes('url') || key.includes('link')) {
+          content += `<p><a href="${value}" style="color: #007bff;">${value}</a></p>`
+        } else {
           content += `<p>${value}</p>`
-        } else if (key.includes('url')) {
-          content += `<p><a href="${value}" style="color: #007bff; text-decoration: none;">${value}</a></p>`
-        } else if (key !== 'background_color' && key !== 'padding' && key !== 'text_align' && key !== 'font_size' && key !== 'text_color') {
-          content += `<p><strong>${key}:</strong> ${value}</p>`
         }
       }
     })
@@ -404,76 +560,114 @@ const createFallbackHtml = (): string => {
     return `<div class="block">${content}</div>`
   }).join('')
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>${props.newsletter?.subject || 'Newsletter'}</title>
-      <style>
-        body { 
-          margin: 0; 
-          padding: 20px; 
-          font-family: Arial, sans-serif;
-          background: #f4f4f4;
-          color: #333;
-        }
-        .email-container {
-          max-width: 600px;
-          margin: 0 auto;
-          background: white;
-          border-radius: 8px;
-          padding: 30px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .block {
-          margin-bottom: 20px;
-          padding: 15px;
-          border-left: 4px solid #007bff;
-          background: #f8f9fa;
-          border-radius: 4px;
-        }
-        .block h4 {
-          margin: 0 0 10px 0;
-          color: #007bff;
-        }
-        .block p {
-          margin: 5px 0;
-          line-height: 1.6;
-        }
-        .success-notice {
-          background: #d4edda;
-          border: 1px solid #c3e6cb;
-          color: #155724;
-          padding: 12px;
-          border-radius: 4px;
-          margin-bottom: 20px;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="email-container">
-        <div class="success-notice">
-          <strong>✅ Placeholder Mapping Success!</strong> Your content has been properly mapped to template placeholders.
-        </div>
-        ${blockContent}
-      </div>
-    </body>
-    </html>
-  `
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${props.newsletter?.subject || 'Newsletter'}</title>
+  <style>
+    body { 
+      margin: 0; 
+      padding: 20px; 
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .block {
+      margin-bottom: 25px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+    }
+    .block-header {
+      font-weight: bold;
+      color: #007bff;
+      margin-bottom: 10px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .block p {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+    .success-notice {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="success-notice">
+      <strong>✅ Newsletter Preview</strong><br>
+      Content successfully mapped with ${replacedPlaceholders.value} placeholder replacements.
+    </div>
+    ${blockContent}
+  </div>
+</body>
+</html>`
 }
 
 // Utility functions
 const handleIframeLoad = () => {
-  console.log('Preview iframe loaded successfully!')
+  console.log('Newsletter preview loaded successfully')
 }
+
+// Copy to clipboard functionality
+const copyToClipboard = async (text: string) => {
+  if (!text) {
+    console.warn('No content to copy')
+    return
+  }
+  
+  try {
+    await navigator.clipboard.writeText(text)
+    console.log('Content copied to clipboard successfully')
+    
+    // Optional: You could add a toast notification here
+    // showToast('Content copied to clipboard!')
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error)
+    
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+    console.log('Content copied using fallback method')
+  }
+}
+
+// Watch for changes and auto-compile
+watch([() => props.newsletter, () => props.blockTypes], () => {
+  if (props.newsletter?.blocks?.length > 0 && props.blockTypes?.length > 0) {
+    nextTick(() => {
+      compileNewsletter()
+    })
+  }
+}, { deep: true })
 
 // Auto-compile on mount
 onMounted(() => {
-  if (props.newsletter?.blocks?.length > 0) {
-    compileWithMapping()
+  if (props.newsletter?.blocks?.length > 0 && props.blockTypes?.length > 0) {
+    compileNewsletter()
   }
 })
 </script>
@@ -485,11 +679,11 @@ onMounted(() => {
 }
 
 .debug-info {
-  @apply p-4 bg-green-50 border-b border-green-200;
+  @apply p-4 bg-blue-50 border-b border-blue-200;
 }
 
 .debug-info h4 {
-  @apply text-lg font-semibold mb-3 text-green-800;
+  @apply text-lg font-semibold mb-3 text-blue-800;
 }
 
 .debug-details {
@@ -504,36 +698,8 @@ onMounted(() => {
   @apply block text-sm font-medium mb-2;
 }
 
-.mapping-debug {
-  @apply space-y-2;
-}
-
-.mapping-item {
-  @apply p-2 bg-green-50 rounded;
-}
-
-.mapping-item strong {
-  @apply text-green-800 text-sm;
-}
-
-.mapping-details {
-  @apply mt-2 space-y-1;
-}
-
-.mapped-value {
-  @apply flex items-center gap-2 text-xs;
-}
-
-.original {
-  @apply bg-blue-100 px-2 py-1 rounded text-blue-800;
-}
-
-.arrow {
-  @apply text-gray-500;
-}
-
-.mapped {
-  @apply bg-green-100 px-2 py-1 rounded text-green-800;
+.block-debug {
+  @apply p-2 bg-blue-50 rounded mb-2 text-sm;
 }
 
 .compilation-status {
@@ -561,11 +727,11 @@ onMounted(() => {
 }
 
 .preview-header {
-  @apply flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50;
+  @apply flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50;
 }
 
 .preview-title {
-  @apply flex items-center gap-2 text-sm font-medium text-slate-900;
+  @apply flex items-center gap-2 text-sm font-medium;
 }
 
 .preview-controls {
@@ -573,19 +739,107 @@ onMounted(() => {
 }
 
 .control-button {
-  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors;
+  @apply p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
+}
+
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden;
+}
+
+.modal-header {
+  @apply flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50;
+}
+
+.modal-header h3 {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.modal-close {
+  @apply p-1 hover:bg-gray-200 rounded transition-colors;
+}
+
+.modal-body {
+  @apply flex flex-col h-[70vh];
+}
+
+/* Source Tabs */
+.source-tabs {
+  @apply flex border-b border-gray-200 bg-gray-50;
+}
+
+.tab-button {
+  @apply flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent transition-colors;
+}
+
+.tab-button.active {
+  @apply text-blue-600 border-blue-600 bg-white;
+}
+
+/* Source Content */
+.source-content {
+  @apply flex-1 overflow-hidden;
+}
+
+.source-panel {
+  @apply h-full flex flex-col;
+}
+
+.source-header {
+  @apply flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200;
+}
+
+.source-title {
+  @apply text-sm font-medium text-gray-700;
+}
+
+.copy-button {
+  @apply flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors;
+}
+
+.source-code {
+  @apply flex-1 overflow-auto p-4 text-xs font-mono bg-gray-900 text-green-400 whitespace-pre-wrap;
+}
+
+/* Transitions */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal-content,
+.modal-leave-active .modal-content {
+  transition: transform 0.3s ease;
+}
+
+.modal-enter-from .modal-content,
+.modal-leave-to .modal-content {
+  transform: scale(0.9);
 }
 
 .preview-content {
-  @apply flex-1 overflow-auto p-4 bg-slate-50;
+  @apply flex-1 overflow-auto;
 }
 
 .email-preview-frame {
-  @apply mx-auto max-w-2xl;
+  @apply h-full;
+}
+
+.preview-iframe {
+  @apply w-full h-full border-0;
 }
 
 .loading-state {
-  @apply flex flex-col items-center justify-center p-8 text-slate-600 min-h-[400px];
+  @apply flex flex-col items-center justify-center p-8 text-gray-600 min-h-[400px];
 }
 
 .loading-state p {
@@ -593,19 +847,27 @@ onMounted(() => {
 }
 
 .compilation-error {
-  @apply p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg;
+  @apply p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg m-4;
 }
 
 .compilation-error h4 {
   @apply font-medium mb-2;
 }
 
-.compilation-error p {
-  @apply text-sm mb-2;
+.error-details {
+  @apply mt-4;
+}
+
+.error-details summary {
+  @apply cursor-pointer font-medium;
+}
+
+.error-details pre {
+  @apply mt-2 text-xs bg-red-100 p-2 rounded overflow-auto;
 }
 
 .empty-content {
-  @apply flex flex-col items-center justify-center p-8 text-slate-500 min-h-[400px];
+  @apply flex flex-col items-center justify-center p-8 text-gray-500 min-h-[400px];
 }
 
 .empty-content h4 {
@@ -613,97 +875,6 @@ onMounted(() => {
 }
 
 .empty-content p {
-  @apply text-sm text-center mb-4;
-}
-
-.preview-iframe-container {
-  @apply relative;
-}
-
-.iframe-debug {
-  @apply flex items-center justify-between p-2 bg-gray-100 rounded-t border text-sm;
-}
-
-.iframe-debug strong {
-  @apply text-gray-700;
-}
-
-.iframe-debug span {
-  @apply text-gray-600;
-}
-
-.btn-toggle {
-  @apply px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700;
-}
-
-.newsletter-iframe {
-  @apply w-full border border-slate-200 rounded-b bg-white;
-  min-height: 500px;
-}
-
-.raw-html-display {
-  @apply p-4 bg-gray-50 rounded-lg mb-4;
-}
-
-.raw-html-display h4 {
-  @apply font-medium mb-2;
-}
-
-.html-code {
-  @apply text-xs bg-white p-3 rounded border max-h-64 overflow-auto;
-}
-
-/* Modal styles */
-.modal-overlay {
-  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
-}
-
-.modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden;
-}
-
-.modal-header {
-  @apply flex items-center justify-between p-4 border-b border-slate-200;
-}
-
-.modal-header h3 {
-  @apply text-lg font-medium;
-}
-
-.modal-close {
-  @apply p-1 hover:bg-slate-100 rounded;
-}
-
-.modal-body {
-  @apply flex flex-col h-96;
-}
-
-.source-tabs {
-  @apply flex border-b border-slate-200;
-}
-
-.tab-button {
-  @apply px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border-b-2 border-transparent;
-}
-
-.tab-button.active {
-  @apply text-blue-600 border-blue-600;
-}
-
-.source-content {
-  @apply flex-1 overflow-auto p-4 bg-slate-50;
-}
-
-.source-content pre {
-  @apply text-sm whitespace-pre-wrap;
-}
-
-/* Transitions */
-.modal-enter-active, .modal-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-enter-from, .modal-leave-to {
-  opacity: 0;
+  @apply text-sm text-center;
 }
 </style>
