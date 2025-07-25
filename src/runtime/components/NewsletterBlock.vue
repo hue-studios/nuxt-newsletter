@@ -128,8 +128,114 @@
             :key="field"
             class="space-y-2"
           >
+            <!-- Debug Field Info (remove in production) -->
+            <div v-if="debugMode" class="debug-field-info bg-yellow-50 border border-yellow-200 p-2 mb-2 rounded text-xs">
+              <strong>🔍 Field Debug: {{ field }}</strong><br>
+              <span>Rich Text: {{ isRichTextField(field) }}</span> | 
+              <span>Textarea: {{ isTextareaField(field) }}</span> | 
+              <span>Text: {{ isTextField(field) }}</span><br>
+              <span>Current Value: {{ localContent[field] }}</span>
+            </div>
+
+            <!-- Rich Text Editor (NEW: Tiptap Integration) -->
+            <div v-if="isRichTextField(field)" class="space-y-2">
+              <label :for="field" class="block text-sm font-medium text-slate-700">
+                {{ formatFieldName(field) }}
+                <span v-if="isRequiredField(field)" class="text-red-500">*</span>
+              </label>
+              
+              <!-- Tiptap Rich Text Editor -->
+              <div class="border border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all duration-200">
+                <!-- Toolbar -->
+                <div class="bg-slate-50 border-b border-slate-200 p-2 flex items-center gap-1">
+                  <div class="flex items-center gap-1 pr-2 border-r border-slate-300">
+                    <button
+                      type="button"
+                      @click="toggleBold(field)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'bold') }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Bold"
+                    >
+                      <Icon name="lucide:bold" class="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      @click="toggleItalic(field)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'italic') }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Italic"
+                    >
+                      <Icon name="lucide:italic" class="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      @click="toggleUnderline(field)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'underline') }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Underline"
+                    >
+                      <Icon name="lucide:underline" class="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div class="flex items-center gap-1 pr-2 border-r border-slate-300">
+                    <button
+                      type="button"
+                      @click="toggleHeading(field, 2)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'heading', { level: 2 }) }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold"
+                      title="Heading 2"
+                    >
+                      H2
+                    </button>
+                    <button
+                      type="button"
+                      @click="toggleHeading(field, 3)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'heading', { level: 3 }) }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold"
+                      title="Heading 3"
+                    >
+                      H3
+                    </button>
+                  </div>
+                  
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      @click="toggleBulletList(field)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'bulletList') }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Bullet List"
+                    >
+                      <Icon name="lucide:list" class="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      @click="toggleOrderedList(field)"
+                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'orderedList') }"
+                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Numbered List"
+                    >
+                      <Icon name="lucide:list-ordered" class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Editor Area -->
+                <div
+                  :ref="el => setEditorRef(field, el)"
+                  class="prose prose-sm max-w-none p-4 min-h-[120px] focus:outline-none"
+                  :style="{ minHeight: getEditorHeight(field) }"
+                ></div>
+              </div>
+              
+              <p class="text-xs text-slate-500">
+                Rich text editor with formatting options. Content will be used in your newsletter.
+              </p>
+            </div>
+
             <!-- Text Input -->
-            <div v-if="isTextField(field)" class="space-y-2">
+            <div v-else-if="isTextField(field)" class="space-y-2">
               <label :for="field" class="block text-sm font-medium text-slate-700">
                 {{ formatFieldName(field) }}
                 <span v-if="isRequiredField(field)" class="text-red-500">*</span>
@@ -182,7 +288,7 @@
               </div>
             </div>
 
-            <!-- Textarea -->
+            <!-- Textarea (Updated to exclude rich text fields) -->
             <div v-else-if="isTextareaField(field)" class="space-y-2">
               <label :for="field" class="block text-sm font-medium text-slate-700">
                 {{ formatFieldName(field) }}
@@ -296,8 +402,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { BlockType, NewsletterBlock as NewsletterBlockType } from '../../types';
+import { useTiptapEditor } from '../composables/useTiptapEditor';
 import ImageUpload from './ImageUpload.vue';
 
 interface Props {
@@ -308,22 +415,76 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits(['update'])
 
+// Existing state
 const isEditing = ref(false)
 const localContent = ref<Record<string, any>>({})
 
-// Initialize localContent from prop.block.content
+// NEW: Tiptap editor state
+const editors = ref<Record<string, any>>({})
+const editorRefs = ref<Record<string, HTMLElement>>({})
+
+// Debug mode (set to false in production)
+const debugMode = ref(true)
+
+// Test if Tiptap composable is available
 onMounted(() => {
+  console.log('=== NEWSLETTER BLOCK MOUNTED ===')
+  console.log('📦 Block:', props.block)
+  console.log('🔧 Block Type:', props.blockType)
+  console.log('📝 Initial Content:', props.block.content)
+  console.log('🏷️ Editable Fields:', getEditableFields(props.blockType))
+  
+  // Check which fields should be rich text
+  const fields = getEditableFields(props.blockType)
+  fields.forEach(field => {
+    console.log(`🔍 Field "${field}":`, {
+      isRichText: isRichTextField(field),
+      isTextarea: isTextareaField(field),
+      isText: isTextField(field),
+      currentValue: props.block.content[field]
+    })
+  })
+  
   localContent.value = { ...props.block.content }
+  console.log('💾 Local content initialized:', localContent.value)
+  
+  // Test Tiptap availability
+  try {
+    const testTiptap = useTiptapEditor({
+      content: '<p>Test</p>',
+      placeholder: 'Test...'
+    })
+    console.log('✅ Tiptap composable is available:', !!testTiptap.createEditor)
+  } catch (error) {
+    console.error('❌ Tiptap composable error:', error)
+  }
+  
+  console.log('===============================')
 })
 
 // Watch for changes in prop.block.content and update localContent
 watch(() => props.block.content, (newContent) => {
+  console.log('📦 Block content changed from parent:', newContent)
   localContent.value = { ...newContent }
+  
+  // Update all Tiptap editors with new content
+  Object.keys(editors.value).forEach(fieldName => {
+    const editor = editors.value[fieldName]
+    const newFieldContent = newContent[fieldName] || ''
+    if (editor && editor.getHTML() !== newFieldContent) {
+      console.log(`🔄 Updating editor ${fieldName} with new content:`, newFieldContent)
+      editor.commands.setContent(newFieldContent)
+    }
+  })
 }, { deep: true })
 
 // Emit updates to parent when localContent changes
 watch(localContent, (newVal) => {
+  console.log('=== LOCAL CONTENT UPDATED ===')
+  console.log('📝 New Content:', newVal)
+  console.log('🚀 Emitting update to parent')
   emit('update', { content: newVal })
+  console.log('=============================')
 }, { deep: true })
 
 const toggleEdit = () => {
@@ -346,8 +507,15 @@ const hasContent = computed(() => {
 
 // Enhanced field type detection
 const getEditableFields = (blockType: BlockType) => {
+  console.log('=== GET EDITABLE FIELDS ===')
+  console.log('📋 Block Type:', blockType)
+  console.log('🔧 Block Type Fields:', blockType.fields)
+  console.log('🏷️ Block Type Slug:', blockType.slug)
+  
   if (blockType.fields && Array.isArray(blockType.fields)) {
-    return blockType.fields.map(field => field.field || field.name || field).filter(Boolean)
+    const fields = blockType.fields.map(field => field.field || field.name || field).filter(Boolean)
+    console.log('✅ Fields from blockType.fields:', fields)
+    return fields
   }
   
   // Fallback to common fields based on block type
@@ -361,7 +529,31 @@ const getEditableFields = (blockType: BlockType) => {
     footer: ['company_name', 'address', 'unsubscribe_url', 'social_links']
   }
   
-  return commonFields[blockType.slug] || Object.keys(localContent.value)
+  const fallbackFields = commonFields[blockType.slug] || Object.keys(localContent.value)
+  console.log('🔄 Using fallback fields:', fallbackFields)
+  console.log('==========================')
+  
+  return fallbackFields
+}
+
+// NEW: Rich text field detection
+const isRichTextField = (field: string) => {
+  const richTextFields = [
+    'text_content', 
+    'content', 
+    'description', 
+    'subtitle',
+    'cta_subtitle',
+    'body'
+  ]
+  
+  const isRich = richTextFields.includes(field) || 
+                 field.includes('_content') || 
+                 field.includes('_text') ||
+                 field.includes('_description')
+  
+  console.log(`🎨 Field "${field}" is rich text:`, isRich)
+  return isRich
 }
 
 // Enhanced field type checks
@@ -370,8 +562,12 @@ const isTextField = (field: string) => {
   return textFields.includes(field) || (!isSpecialField(field) && !field.includes('_'))
 }
 
+// Updated to exclude rich text fields
 const isTextareaField = (field: string) => {
-  return field.includes('content') || field.includes('description') || field.includes('text_content')
+  return (field.includes('content') || 
+          field.includes('description') || 
+          field.includes('text_content')) && 
+         !isRichTextField(field) // Exclude rich text fields
 }
 
 const isEmailField = (field: string) => {
@@ -410,7 +606,108 @@ const isRequiredField = (field: string) => {
 const isSpecialField = (field: string) => {
   return isEmailField(field) || isUrlField(field) || isColorField(field) || 
          isImageField(field) || isNumberField(field) || isBooleanField(field) || 
-         isSelectField(field) || isTextareaField(field)
+         isSelectField(field) || isTextareaField(field) || isRichTextField(field)
+}
+
+// NEW: Tiptap editor management methods
+const setEditorRef = (fieldName: string, el: HTMLElement | null) => {
+  if (el) {
+    editorRefs.value[fieldName] = el
+    nextTick(() => initializeEditor(fieldName))
+  }
+}
+
+const initializeEditor = (fieldName: string) => {
+  const element = editorRefs.value[fieldName]
+  if (!element || editors.value[fieldName]) return
+
+  console.log(`🎨 Initializing Tiptap editor for field: ${fieldName}`)
+  console.log(`📝 Initial content:`, localContent.value[fieldName])
+
+  try {
+    const { createEditor } = useTiptapEditor({
+      content: localContent.value[fieldName] || '',
+      placeholder: getFieldPlaceholder(fieldName),
+      onUpdate: (content: string) => {
+        console.log(`📝 Tiptap content updated for ${fieldName}:`, content)
+        localContent.value[fieldName] = content
+        // The existing watch on localContent will emit the update
+      },
+      features: {
+        headings: true,
+        lists: true,
+        links: true,
+        alignment: false,
+        colors: false,
+        tables: false,
+        images: false
+      }
+    })
+
+    const editor = createEditor()
+    if (editor && element) {
+      // Mount editor to DOM
+      if (typeof editor.mount === 'function') {
+        editor.mount(element)
+      } else if (editor.options?.element) {
+        element.appendChild(editor.options.element)
+      }
+      
+      editors.value[fieldName] = editor
+      console.log(`✅ Editor successfully initialized for ${fieldName}`)
+    } else {
+      console.error(`❌ Failed to initialize editor for ${fieldName}`)
+    }
+  } catch (error) {
+    console.error(`💥 Error initializing Tiptap for ${fieldName}:`, error)
+  }
+}
+
+// NEW: Toolbar command methods
+const toggleBold = (fieldName: string) => {
+  const editor = editors.value[fieldName]
+  if (editor) {
+    console.log(`🔤 Toggling bold for ${fieldName}`)
+    editor.chain().focus().toggleBold().run()
+  }
+}
+
+const toggleItalic = (fieldName: string) => {
+  const editor = editors.value[fieldName]
+  if (editor) editor.chain().focus().toggleItalic().run()
+}
+
+const toggleUnderline = (fieldName: string) => {
+  const editor = editors.value[fieldName]
+  if (editor) editor.chain().focus().toggleUnderline().run()
+}
+
+const toggleHeading = (fieldName: string, level: number) => {
+  const editor = editors.value[fieldName]
+  if (editor) editor.chain().focus().toggleHeading({ level }).run()
+}
+
+const toggleBulletList = (fieldName: string) => {
+  const editor = editors.value[fieldName]
+  if (editor) editor.chain().focus().toggleBulletList().run()
+}
+
+const toggleOrderedList = (fieldName: string) => {
+  const editor = editors.value[fieldName]
+  if (editor) editor.chain().focus().toggleOrderedList().run()
+}
+
+const isEditorActive = (fieldName: string, name: string, attributes?: Record<string, any>) => {
+  const editor = editors.value[fieldName]
+  return editor ? editor.isActive(name, attributes) : false
+}
+
+const getEditorHeight = (field: string) => {
+  // Customize editor height based on field type
+  if (field.includes('content') || field.includes('description')) {
+    return '150px'
+  }
+  return '120px'
 }
 
 // Enhanced utility functions
@@ -515,6 +812,18 @@ const handleImageError = (event: Event) => {
 const handleImageUploadError = (error: string) => {
   console.error('Image upload error:', error)
 }
+
+// Clean up editors when component unmounts
+onBeforeUnmount(() => {
+  console.log('🧹 Cleaning up Tiptap editors')
+  Object.values(editors.value).forEach(editor => {
+    if (editor && typeof editor.destroy === 'function') {
+      editor.destroy()
+    }
+  })
+  editors.value = {}
+  editorRefs.value = {}
+})
 </script>
 
 <style scoped>
@@ -566,5 +875,29 @@ button, input, textarea, select {
 /* Hover animations */
 .newsletter-block .group:hover .group-hover\:opacity-100 {
   opacity: 1;
+}
+
+/* Debug field info styling */
+.debug-field-info {
+  font-family: monospace;
+  line-height: 1.3;
+}
+
+/* Tiptap editor styling */
+.prose {
+  max-width: none !important;
+}
+
+.prose p {
+  margin: 0.5em 0;
+}
+
+.prose h2, .prose h3 {
+  margin: 0.75em 0 0.25em 0;
+}
+
+.prose ul, .prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
 }
 </style>
