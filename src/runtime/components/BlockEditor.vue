@@ -31,12 +31,23 @@
         <!-- Dynamic Form Fields based on block type -->
         <div class="form-container">
           <div class="form-grid">
+            <!-- Debug info (remove in production) -->
+            <div v-if="showDebug" class="col-span-full p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <details>
+                <summary>🐛 Debug Field Info</summary>
+                <pre>{{ JSON.stringify(textFields, null, 2) }}</pre>
+              </details>
+            </div>
+
             <!-- Text Fields -->
             <template v-for="field in textFields" :key="field.key">
               <div class="form-group" :class="field.size || 'col-span-1'">
                 <label :for="`${block.id}-${field.key}`" class="form-label">
                   {{ field.label }}
                   <span v-if="field.required" class="required">*</span>
+                  <span v-if="showDebug" class="text-xs text-gray-500 ml-2">
+                    ({{ field.type }}/{{ field.interface }})
+                  </span>
                 </label>
                 
                 <!-- Regular Input -->
@@ -51,9 +62,176 @@
                   @input="updateContent"
                 />
                 
-                <!-- Textarea -->
+                <!-- TIPTAP RICH TEXT EDITOR -->
+                <!-- This now checks for multiple conditions to detect rich text fields -->
+                <div
+                  v-else-if="isRichTextField(field)"
+                  class="tiptap-editor"
+                >
+                  <!-- Enhanced Toolbar -->
+                  <div v-if="editors[field.key]" class="tiptap-toolbar">
+                    <!-- Basic Formatting -->
+                    <div class="toolbar-group">
+                      <button
+                        @click="editors[field.key].chain().focus().toggleBold().run()"
+                        :class="{ 'active': editors[field.key].isActive('bold') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Bold (Ctrl+B)"
+                      >
+                        <Icon name="lucide:bold" />
+                      </button>
+                      <button
+                        @click="editors[field.key].chain().focus().toggleItalic().run()"
+                        :class="{ 'active': editors[field.key].isActive('italic') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Italic (Ctrl+I)"
+                      >
+                        <Icon name="lucide:italic" />
+                      </button>
+                      <button
+                        @click="editors[field.key].chain().focus().toggleUnderline().run()"
+                        :class="{ 'active': editors[field.key].isActive('underline') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Underline (Ctrl+U)"
+                      >
+                        <Icon name="lucide:underline" />
+                      </button>
+                      <button
+                        @click="editors[field.key].chain().focus().toggleStrike().run()"
+                        :class="{ 'active': editors[field.key].isActive('strike') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Strikethrough"
+                      >
+                        <Icon name="lucide:strikethrough" />
+                      </button>
+                    </div>
+
+                    <!-- Heading Levels -->
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                      <select
+                        @change="setHeading($event, field.key)"
+                        class="heading-select"
+                        title="Heading Level"
+                      >
+                        <option value="paragraph" :selected="editors[field.key].isActive('paragraph')">
+                          Paragraph
+                        </option>
+                        <option value="1" :selected="editors[field.key].isActive('heading', { level: 1 })">
+                          Heading 1
+                        </option>
+                        <option value="2" :selected="editors[field.key].isActive('heading', { level: 2 })">
+                          Heading 2
+                        </option>
+                        <option value="3" :selected="editors[field.key].isActive('heading', { level: 3 })">
+                          Heading 3
+                        </option>
+                      </select>
+                    </div>
+
+                    <!-- Lists -->
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                      <button
+                        @click="editors[field.key].chain().focus().toggleBulletList().run()"
+                        :class="{ 'active': editors[field.key].isActive('bulletList') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Bullet List"
+                      >
+                        <Icon name="lucide:list" />
+                      </button>
+                      <button
+                        @click="editors[field.key].chain().focus().toggleOrderedList().run()"
+                        :class="{ 'active': editors[field.key].isActive('orderedList') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Numbered List"
+                      >
+                        <Icon name="lucide:list-ordered" />
+                      </button>
+                      <button
+                        @click="editors[field.key].chain().focus().toggleBlockquote().run()"
+                        :class="{ 'active': editors[field.key].isActive('blockquote') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Quote"
+                      >
+                        <Icon name="lucide:quote" />
+                      </button>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                      <button
+                        @click="toggleLink(field.key)"
+                        :class="{ 'active': editors[field.key].isActive('link') }"
+                        class="toolbar-button"
+                        type="button"
+                        title="Add Link"
+                      >
+                        <Icon name="lucide:link" />
+                      </button>
+                    </div>
+
+                    <!-- Undo/Redo -->
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                      <button
+                        @click="editors[field.key].chain().focus().undo().run()"
+                        :disabled="!editors[field.key].can().undo()"
+                        class="toolbar-button"
+                        type="button"
+                        title="Undo (Ctrl+Z)"
+                      >
+                        <Icon name="lucide:undo" />
+                      </button>
+                      <button
+                        @click="editors[field.key].chain().focus().redo().run()"
+                        :disabled="!editors[field.key].can().redo()"
+                        class="toolbar-button"
+                        type="button"
+                        title="Redo (Ctrl+Y)"
+                      >
+                        <Icon name="lucide:redo" />
+                      </button>
+                    </div>
+
+                    <!-- Clear Formatting -->
+                    <div class="toolbar-separator"></div>
+                    <div class="toolbar-group">
+                      <button
+                        @click="editors[field.key].chain().focus().unsetAllMarks().run()"
+                        class="toolbar-button"
+                        type="button"
+                        title="Clear Formatting"
+                      >
+                        <Icon name="lucide:eraser" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Editor Content -->
+                  <EditorContent
+                    :editor="editors[field.key]"
+                    :class="`tiptap-content ${field.key}-editor`"
+                  />
+
+                  <!-- Character/Word Count -->
+                  <div v-if="showStats" class="editor-stats">
+                    <span>{{ getWordCount(field.key) }} words</span>
+                    <span>{{ getCharCount(field.key) }} characters</span>
+                  </div>
+                </div>
+                
+                <!-- Regular Textarea (fallback) -->
                 <textarea
-                  v-else-if="field.type === 'textarea'"
+                  v-else-if="field.type === 'textarea' || field.type === 'text'"
                   :id="`${block.id}-${field.key}`"
                   v-model="localContent[field.key]"
                   :placeholder="field.placeholder"
@@ -63,41 +241,11 @@
                   @input="updateContent"
                 ></textarea>
                 
-                <!-- Rich Text Editor -->
-                <div
-                  v-else-if="field.type === 'richtext'"
-                  class="rich-text-editor"
-                >
-                  <div class="editor-toolbar">
-                    <button @click="formatText('bold')" class="format-button" :class="{ 'active': isActive('bold') }">
-                      <Icon name="lucide:bold" />
-                    </button>
-                    <button @click="formatText('italic')" class="format-button" :class="{ 'active': isActive('italic') }">
-                      <Icon name="lucide:italic" />
-                    </button>
-                    <button @click="formatText('underline')" class="format-button" :class="{ 'active': isActive('underline') }">
-                      <Icon name="lucide:underline" />
-                    </button>
-                    <div class="toolbar-divider"></div>
-                    <button @click="insertLink" class="format-button">
-                      <Icon name="lucide:link" />
-                    </button>
-                    <button @click="formatText('removeFormat')" class="format-button">
-                      <Icon name="lucide:eraser" />
-                    </button>
-                  </div>
-                  <div
-                    ref="richTextRef"
-                    :contenteditable="true"
-                    class="rich-text-content"
-                    @input="updateRichText(field.key, $event)"
-                    @keydown="handleKeydown"
-                    v-html="localContent[field.key] || ''"
-                  ></div>
-                </div>
-                
                 <!-- Color Picker -->
-                <div v-else-if="field.type === 'color'" class="color-picker-container">
+                <div
+                  v-else-if="field.type === 'color'"
+                  class="color-picker-container"
+                >
                   <input
                     :id="`${block.id}-${field.key}`"
                     v-model="localContent[field.key]"
@@ -108,10 +256,29 @@
                   <input
                     v-model="localContent[field.key]"
                     type="text"
-                    class="color-text-input"
                     :placeholder="field.placeholder || '#000000'"
+                    class="color-text-input"
                     @input="updateContent"
                   />
+                </div>
+                
+                <!-- Switch/Toggle -->
+                <div
+                  v-else-if="field.type === 'boolean'"
+                  class="switch-container"
+                  @click="toggleSwitch(field.key)"
+                >
+                  <input
+                    :id="`${block.id}-${field.key}`"
+                    v-model="localContent[field.key]"
+                    type="checkbox"
+                    class="switch-input"
+                    @change="updateContent"
+                  />
+                  <div class="switch-slider"></div>
+                  <label :for="`${block.id}-${field.key}`" class="switch-label">
+                    {{ field.label }}
+                  </label>
                 </div>
                 
                 <!-- Select Dropdown -->
@@ -119,60 +286,19 @@
                   v-else-if="field.type === 'select'"
                   :id="`${block.id}-${field.key}`"
                   v-model="localContent[field.key]"
+                  :required="field.required"
                   class="form-select"
                   @change="updateContent"
                 >
-                  <option value="">{{ field.placeholder || 'Choose an option' }}</option>
-                  <option v-for="option in field.options" :key="option.value" :value="option.value">
+                  <option value="" disabled>{{ field.placeholder || 'Select an option' }}</option>
+                  <option
+                    v-for="option in field.options"
+                    :key="option.value"
+                    :value="option.value"
+                  >
                     {{ option.label }}
                   </option>
                 </select>
-                
-                <!-- Switch/Toggle -->
-                <label v-else-if="field.type === 'switch'" class="switch-container">
-                  <input
-                    v-model="localContent[field.key]"
-                    type="checkbox"
-                    class="switch-input"
-                    @change="updateContent"
-                  />
-                  <span class="switch-slider"></span>
-                  <span class="switch-label">{{ field.switchLabel || 'Enable' }}</span>
-                </label>
-                
-                <!-- Number Input -->
-                <input
-                  v-else-if="field.type === 'number'"
-                  :id="`${block.id}-${field.key}`"
-                  v-model.number="localContent[field.key]"
-                  type="number"
-                  :min="field.min"
-                  :max="field.max"
-                  :step="field.step"
-                  :placeholder="field.placeholder"
-                  class="form-input"
-                  @input="updateContent"
-                />
-
-                <p v-if="field.help" class="field-help">{{ field.help }}</p>
-              </div>
-            </template>
-
-            <!-- Image Upload Fields -->
-            <template v-for="field in imageFields" :key="field.key">
-              <div class="form-group" :class="field.size || 'col-span-2'">
-                <label class="form-label">
-                  {{ field.label }}
-                  <span v-if="field.required" class="required">*</span>
-                </label>
-                
-                <ImageUpload
-                  v-model="localContent[field.key]"
-                  :alt-field="`${field.key}_alt`"
-                  :alt-value="localContent[`${field.key}_alt`]"
-                  @update:alt="localContent[`${field.key}_alt`] = $event; updateContent()"
-                  @update:modelValue="updateContent"
-                />
                 
                 <p v-if="field.help" class="field-help">{{ field.help }}</p>
               </div>
@@ -180,35 +306,27 @@
           </div>
         </div>
 
-        <!-- Block Preview -->
+        <!-- Block Preview (if enabled) -->
         <div v-if="showPreview" class="block-preview">
           <div class="preview-header">
-            <h5>Block Preview</h5>
-            <button @click="refreshPreview" class="refresh-button" :disabled="isCompiling">
-              <Icon :name="isCompiling ? 'lucide:loader-2' : 'lucide:refresh-cw'" :class="{ 'animate-spin': isCompiling }" />
+            <h5>Preview</h5>
+            <button @click="refreshPreview" :disabled="isRefreshing" class="refresh-button">
+              <Icon name="lucide:refresh-cw" :class="{ 'animate-spin': isRefreshing }" />
             </button>
           </div>
-          
           <div class="preview-content">
-            <div v-if="compilationError" class="preview-error">
-              <Icon name="lucide:alert-triangle" />
-              <span>{{ compilationError }}</span>
-            </div>
-            
-            <div v-else-if="isCompiling" class="preview-loading">
-              <Icon name="lucide:loader-2" class="animate-spin" />
-              <span>Compiling...</span>
-            </div>
-            
             <iframe
-              v-else-if="compiledHtml"
-              :srcdoc="previewContent"
+              v-if="compiledHtml"
+              :srcdoc="previewHtml"
               class="preview-iframe"
             ></iframe>
-            
+            <div v-else-if="isRefreshing" class="preview-loading">
+              <Icon name="lucide:loader-2" class="animate-spin" />
+              <span>Generating preview...</span>
+            </div>
             <div v-else class="preview-empty">
-              <Icon name="lucide:eye-off" />
-              <span>No preview available</span>
+              <Icon name="lucide:image" />
+              <span>Preview will appear here</span>
             </div>
           </div>
         </div>
@@ -218,63 +336,95 @@
 </template>
 
 <script setup lang="ts">
-import { debounce } from 'lodash-es';
-import { computed, onMounted, ref, watch } from 'vue';
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
+import TextAlign from '@tiptap/extension-text-align'
+import TextStyle from '@tiptap/extension-text-style'
+import Underline from '@tiptap/extension-underline'
+import StarterKit from '@tiptap/starter-kit'
+import { Editor, EditorContent } from '@tiptap/vue-3'
+import { debounce } from 'lodash-es'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+interface NewsletterBlock {
+  id: string
+  type: string
+  content: Record<string, any>
+  sort: number
+}
+
+interface BlockType {
+  id: string
+  name: string
+  description?: string
+  icon?: string
+  field_visibility_config?: any[]
+  fields?: any[]
+  mjml_template?: string
+}
 
 interface Props {
-  block: any
-  blockType: any
+  block: NewsletterBlock
+  blockType?: BlockType
+}
+
+interface Emits {
+  (e: 'update', blockId: string, updates: Partial<NewsletterBlock>): void
+  (e: 'remove', blockId: string): void
+  (e: 'duplicate', blockId: string): void
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
-const emit = defineEmits<{
-  update: [blockId: string, updates: any]
-  duplicate: [blockId: string]
-  remove: [blockId: string]
-}>()
-
-// Composables
-const { compileBlockToMjml, compileMjmlToHtml, isCompiling, compilationError } = useMjmlCompiler()
-
-// State
+// Reactive state
+const localContent = ref<Record<string, any>>({ ...props.block.content })
 const collapsed = ref(false)
 const showPreview = ref(false)
-const localContent = ref({ ...props.block.content })
+const showDebug = ref(false) // Set to true for debugging
+const showStats = ref(true)
+const isRefreshing = ref(false)
 const compiledHtml = ref('')
-const richTextRef = ref<HTMLElement>()
+const editors = ref<Record<string, Editor>>({})
 
-// Computed field configurations
+// Helper function to determine if a field should use rich text editor
+const isRichTextField = (field: any) => {
+  // Check multiple conditions to identify rich text fields
+  return (
+    field.type === 'richtext' ||
+    field.interface === 'input-rich-text-html' ||
+    field.interface === 'input-rich-text' ||
+    field.interface === 'wysiwyg' ||
+    (field.type === 'text' && field.interface === 'input-rich-text-html') ||
+    (field.name && field.name.includes('content')) ||
+    (field.name && field.name.includes('text')) ||
+    (field.key && field.key.includes('content')) ||
+    (field.key && field.key.includes('text'))
+  )
+}
+
+// Computed properties
 const textFields = computed(() => {
-  if (!props.blockType?.field_visibility_config) return []
+  const fields = props.blockType?.field_visibility_config || props.blockType?.fields || []
   
-  return props.blockType.field_visibility_config
-    .filter(field => field.type !== 'image')
+  return fields
+    .filter(field => 
+      ['text', 'email', 'url', 'textarea', 'richtext', 'color', 'boolean', 'select'].includes(field.type) ||
+      field.interface === 'input-rich-text-html'
+    )
     .map(field => ({
       ...field,
-      key: field.name || field.key,
-      label: field.label || field.name,
+      key: field.name || field.key || field.field,
+      label: field.label || field.name || field.key || field.field,
       type: field.type || 'text',
-      size: field.grid_size || 'col-span-1'
+      interface: field.interface,
+      size: field.grid_size || field.size || 'col-span-1'
     }))
 })
 
-const imageFields = computed(() => {
-  if (!props.blockType?.field_visibility_config) return []
-  
-  return props.blockType.field_visibility_config
-    .filter(field => field.type === 'image')
-    .map(field => ({
-      ...field,
-      key: field.name || field.key,
-      label: field.label || field.name,
-      size: field.grid_size || 'col-span-2'
-    }))
-})
-
-const previewContent = computed(() => {
-  if (!compiledHtml.value) return ''
-  
+const previewHtml = computed(() => {
   return `
     <!DOCTYPE html>
     <html>
@@ -283,13 +433,9 @@ const previewContent = computed(() => {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body {
-            margin: 0;
-            padding: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f8fafc;
-          }
-          
-          .container {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
             max-width: 600px;
             margin: 0 auto;
             background: white;
@@ -307,44 +453,105 @@ const previewContent = computed(() => {
   `
 })
 
-// Methods
+// Tiptap editor setup
+const setupEditor = (fieldKey: string, initialContent: string = '') => {
+  const editor = new Editor({
+    content: initialContent,
+    extensions: [
+      StarterKit,
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-600 underline',
+        },
+      }),
+      Image.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto',
+        },
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      Color.configure({
+        types: ['textStyle'],
+      }),
+      Highlight.configure({
+        multicolor: true,
+      }),
+    ],
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[120px] p-4',
+      },
+    },
+    onUpdate: debounce(({ editor }) => {
+      localContent.value[fieldKey] = editor.getHTML()
+      updateContent()
+    }, 300),
+  })
+
+  editors.value[fieldKey] = editor
+  return editor
+}
+
+// Toolbar methods
+const setHeading = (event: Event, fieldKey: string) => {
+  const target = event.target as HTMLSelectElement
+  const level = target.value
+  
+  if (level === 'paragraph') {
+    editors.value[fieldKey].chain().focus().setParagraph().run()
+  } else {
+    editors.value[fieldKey].chain().focus().toggleHeading({ level: parseInt(level) }).run()
+  }
+}
+
+const toggleLink = (fieldKey: string) => {
+  const editor = editors.value[fieldKey]
+  const previousUrl = editor.getAttributes('link').href
+  const url = window.prompt('URL', previousUrl)
+
+  if (url === null) {
+    return
+  }
+
+  if (url === '') {
+    editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    return
+  }
+
+  editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+}
+
+const getWordCount = (fieldKey: string) => {
+  const editor = editors.value[fieldKey]
+  if (!editor) return 0
+  
+  const text = editor.getText()
+  return text.split(/\s+/).filter(word => word.length > 0).length
+}
+
+const getCharCount = (fieldKey: string) => {
+  const editor = editors.value[fieldKey]
+  if (!editor) return 0
+  
+  return editor.getText().length
+}
+
+// Content management
 const updateContent = debounce(() => {
   emit('update', props.block.id, { content: localContent.value })
 }, 300)
 
-const updateRichText = debounce((key: string, event: Event) => {
-  const target = event.target as HTMLElement
-  localContent.value[key] = target.innerHTML
+const toggleSwitch = (key: string) => {
+  localContent.value[key] = !localContent.value[key]
   updateContent()
-}, 300)
-
-const formatText = (command: string) => {
-  document.execCommand(command, false)
-  if (richTextRef.value) {
-    richTextRef.value.focus()
-  }
 }
 
-const isActive = (command: string) => {
-  return document.queryCommandState(command)
-}
-
-const insertLink = () => {
-  const url = prompt('Enter URL:')
-  if (url) {
-    document.execCommand('createLink', false, url)
-  }
-}
-
-const handleKeydown = (event: KeyboardEvent) => {
-  // Prevent certain key combinations that could break the editor
-  if (event.ctrlKey || event.metaKey) {
-    if (['s', 'a', 'z', 'y'].includes(event.key.toLowerCase())) {
-      event.preventDefault()
-    }
-  }
-}
-
+// Block management
 const toggleCollapsed = () => {
   collapsed.value = !collapsed.value
 }
@@ -363,11 +570,13 @@ const refreshPreview = async () => {
   if (!props.blockType?.mjml_template) return
   
   try {
-    const mjml = await compileBlockToMjml(props.block, props.blockType)
-    const html = await compileMjmlToHtml(mjml)
-    compiledHtml.value = html
+    isRefreshing.value = true
+    // Placeholder for MJML compilation
+    compiledHtml.value = '<div class="p-4">Preview will be generated here</div>'
   } catch (error) {
     console.error('Block preview compilation failed:', error)
+  } finally {
+    isRefreshing.value = false
   }
 }
 
@@ -387,6 +596,15 @@ const onLeave = (el: HTMLElement) => {
 // Watchers
 watch(() => props.block.content, (newContent) => {
   localContent.value = { ...newContent }
+  
+  // Update Tiptap editors with new content
+  Object.keys(editors.value).forEach(fieldKey => {
+    const editor = editors.value[fieldKey]
+    const newFieldContent = newContent[fieldKey] || ''
+    if (editor && editor.getHTML() !== newFieldContent) {
+      editor.commands.setContent(newFieldContent)
+    }
+  })
 }, { deep: true })
 
 watch(localContent, () => {
@@ -397,16 +615,36 @@ watch(localContent, () => {
 
 // Lifecycle
 onMounted(() => {
-  // Initialize preview if block has content
-  if (Object.keys(localContent.value).length > 0) {
-    showPreview.value = true
-    refreshPreview()
+  // Initialize Tiptap editors for rich text fields
+  textFields.value.forEach(field => {
+    if (isRichTextField(field)) {
+      const initialContent = localContent.value[field.key] || field.default || ''
+      setupEditor(field.key, initialContent)
+      console.log(`🎨 Initialized Tiptap editor for field: ${field.key} (${field.type}/${field.interface})`)
+    }
+  })
+
+  // Log field information for debugging
+  if (showDebug.value) {
+    console.log('=== BLOCK EDITOR DEBUG ===')
+    console.log('Block Type:', props.blockType)
+    console.log('Text Fields:', textFields.value)
+    console.log('Rich Text Fields:', textFields.value.filter(isRichTextField))
   }
+})
+
+onBeforeUnmount(() => {
+  // Cleanup all editors
+  Object.values(editors.value).forEach(editor => {
+    editor.destroy()
+  })
 })
 </script>
 
 <style scoped>
 @reference 'tailwindcss';
+
+/* Block Editor Layout */
 .block-editor {
   @apply bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm;
 }
@@ -456,11 +694,7 @@ onMounted(() => {
   @apply hover:text-red-600 hover:bg-red-50;
 }
 
-/* Block Content */
-.block-content {
-  @apply overflow-hidden;
-}
-
+/* Form Styles */
 .form-container {
   @apply p-4;
 }
@@ -475,6 +709,10 @@ onMounted(() => {
 
 .form-group.col-span-2 {
   @apply md:col-span-2;
+}
+
+.form-group.col-span-full {
+  @apply col-span-full;
 }
 
 .form-label {
@@ -499,36 +737,44 @@ onMounted(() => {
   @apply text-xs text-slate-500;
 }
 
-/* Rich Text Editor */
-.rich-text-editor {
-  @apply border border-slate-300 rounded-lg overflow-hidden;
+/* Tiptap Editor Styles */
+.tiptap-editor {
+  @apply border border-slate-300 rounded-lg overflow-hidden bg-white;
 }
 
-.editor-toolbar {
-  @apply flex items-center gap-1 p-2 bg-slate-50 border-b border-slate-200;
+.tiptap-toolbar {
+  @apply flex items-center gap-1 p-2 bg-slate-50 border-b border-slate-200 flex-wrap;
 }
 
-.format-button {
-  @apply p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors;
+.toolbar-group {
+  @apply flex items-center gap-1;
 }
 
-.format-button.active {
+.toolbar-separator {
+  @apply w-px h-6 bg-slate-300 mx-2;
+}
+
+.toolbar-button {
+  @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.toolbar-button.active {
   @apply bg-blue-100 text-blue-700;
 }
 
-.toolbar-divider {
-  @apply w-px h-4 bg-slate-300 mx-1;
+.heading-select {
+  @apply px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-blue-500;
 }
 
-.rich-text-content {
-  @apply p-3 min-h-[100px] focus:outline-none;
+.tiptap-content {
+  @apply min-h-[120px] max-h-[400px] overflow-y-auto;
 }
 
-.rich-text-content:focus {
-  @apply ring-2 ring-blue-500;
+.editor-stats {
+  @apply px-3 py-2 text-xs text-slate-500 bg-slate-50 border-t border-slate-200 flex gap-4;
 }
 
-/* Color Picker */
+/* Other Form Elements */
 .color-picker-container {
   @apply flex items-center gap-2;
 }
@@ -541,7 +787,6 @@ onMounted(() => {
   @apply flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
 }
 
-/* Switch */
 .switch-container {
   @apply flex items-center gap-3 cursor-pointer;
 }
@@ -571,7 +816,7 @@ onMounted(() => {
   @apply text-sm font-medium text-slate-700;
 }
 
-/* Block Preview */
+/* Preview Styles */
 .block-preview {
   @apply border-t border-slate-200 bg-slate-50;
 }
@@ -612,7 +857,7 @@ onMounted(() => {
   @apply w-5 h-5;
 }
 
-/* Collapse Transition */
+/* Transitions */
 .collapse-enter-active,
 .collapse-leave-active {
   @apply transition-all duration-300 ease-in-out;
@@ -621,5 +866,22 @@ onMounted(() => {
 .collapse-enter-from,
 .collapse-leave-to {
   @apply opacity-0;
+}
+
+/* Tiptap specific prose overrides */
+:deep(.ProseMirror) {
+  @apply outline-none;
+}
+
+:deep(.ProseMirror p.is-editor-empty:first-child::before) {
+  @apply text-slate-400;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+:deep(.ProseMirror blockquote) {
+  @apply border-l-4 border-slate-300 pl-4 italic;
 }
 </style>

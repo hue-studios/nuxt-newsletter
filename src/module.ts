@@ -419,6 +419,13 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
         meta: {
           description: 'Newsletter module setup validation and configuration helpers'
         }
+      },
+      {
+        name: 'useTiptapEditor',
+        from: resolver.resolve('./runtime/composables/useTiptapEditor'),
+        meta: {
+          description: 'Advanced Tiptap rich text editor with full formatting capabilities'
+        }
       }
     ])
 
