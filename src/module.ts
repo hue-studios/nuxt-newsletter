@@ -539,6 +539,13 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
         meta: {
           description: 'Access progressive enhancement capabilities and adaptive features'
         }
+      },
+      {
+        name: 'useNewsletterContentMapping',
+        from: resolver.resolve('./runtime/composables/useNewsletterContentMapping'),
+        meta: {
+          description: 'Access content mapping configuration for newsletter blocks'
+        }
       }
     ])
 

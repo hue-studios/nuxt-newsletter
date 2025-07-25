@@ -11,7 +11,7 @@ export interface ContentMappingConfig {
   [blockType: string]: ContentMappingRule
 }
 
-// Default content mapping configuration
+// Comprehensive content mapping configuration including all block types
 const defaultMappingConfig: ContentMappingConfig = {
   'text': {
     mappings: {
@@ -68,189 +68,60 @@ const defaultMappingConfig: ContentMappingConfig = {
     },
     defaults: {
       'hero_title': 'Welcome!',
-      'hero_subtitle': 'This is your newsletter',
-      'hero_content': '',
+      'hero_subtitle': 'Your journey starts here',
+      'hero_content': 'Discover amazing things with us.',
       'background_color': '#f8f9fa',
       'text_color': '#333333',
       'title_color': '#2c3e50',
       'text_align': 'center',
       'padding': '40px 20px'
-    }
-  },
-  'image': {
-    mappings: {
-      'src': 'image_url',
-      'url': 'image_url',
-      'image': 'image_url',
-      'source': 'image_url',
-      'alt': 'image_alt',
-      'alt_text': 'image_alt',
-      'caption': 'image_caption'
-    },
-    defaults: {
-      'image_url': 'https://via.placeholder.com/600x300?text=Newsletter+Image',
-      'image_alt': 'Newsletter Image',
-      'image_caption': '',
-      'width': '100%',
-      'padding': '20px'
     },
     validators: {
-      'image_url': (value) => typeof value === 'string' && (value.startsWith('http') || value.startsWith('data:'))
+      'hero_title': (value) => typeof value === 'string' && value.length > 0
     }
   },
-  'event-card': {
+  // NEW: Statistics block mapping
+  'statistics': {
     mappings: {
-      'title': 'event_title',
-      'heading': 'event_title',
-      'name': 'event_title',
-      'subtitle': 'event_subtitle',
-      'subheading': 'event_subtitle',
-      'description': 'event_description',
-      'text': 'event_description',
-      'content': 'event_description',
-      'body': 'event_description',
-      'date': 'event_date',
-      'event_date': 'event_date',
-      'time': 'event_time',
-      'event_time': 'event_time',
-      'location': 'event_location',
-      'venue': 'event_location',
-      'event_location': 'event_location',
-      'place': 'event_location',
-      'button_text': 'button_text',
-      'cta_text': 'button_text',
-      'link_text': 'button_text',
-      'button_url': 'button_url',
-      'cta_url': 'button_url',
-      'link_url': 'button_url',
-      'url': 'button_url'
+      'stat_1_number': 'stat1_number',
+      'stat_1_label': 'stat1_label',
+      'stat_2_number': 'stat2_number',
+      'stat_2_label': 'stat2_label',
+      'stat_3_number': 'stat3_number',
+      'stat_3_label': 'stat3_label',
+      'stat_4_number': 'stat4_number',
+      'stat_4_label': 'stat4_label'
     },
     defaults: {
-      'event_title': 'Upcoming Event',
-      'event_subtitle': 'Join us for an exciting event',
-      'event_description': 'Event description goes here',
-      'event_date': 'TBD',
-      'event_time': 'TBD',
-      'event_location': 'TBD',
-      'button_text': 'Register Now',
-      'button_url': '#',
+      'stat1_number': '100+',
+      'stat1_label': 'Customers',
+      'stat2_number': '50+',
+      'stat2_label': 'Projects',
+      'stat3_number': '99%',
+      'stat3_label': 'Satisfaction',
+      'stat4_number': '24/7',
+      'stat4_label': 'Support',
       'background_color': '#ffffff',
       'text_color': '#333333',
-      'title_color': '#2c3e50',
-      'text_align': 'left',
-      'padding': '20px'
-    },
-    validators: {
-      'event_title': (value) => typeof value === 'string' && value.length > 0
+      'padding': '30px 20px'
     }
   },
-  'team-member': {
-    mappings: {
-      'name': 'member_name',
-      'member_name': 'member_name',
-      'full_name': 'member_name',
-      'title': 'member_title',
-      'position': 'member_title',
-      'role': 'member_title',
-      'job_title': 'member_title',
-      'member_title': 'member_title',
-      'bio': 'member_bio',
-      'description': 'member_bio',
-      'text': 'member_bio',
-      'content': 'member_bio',
-      'about': 'member_bio',
-      'member_bio': 'member_bio',
-      'image': 'member_image',
-      'photo': 'member_image',
-      'avatar': 'member_image',
-      'picture': 'member_image',
-      'image_url': 'member_image',
-      'member_image': 'member_image',
-      'alt': 'image_alt',
-      'alt_text': 'image_alt',
-      'image_alt': 'image_alt'
-    },
-    defaults: {
-      'member_name': 'Team Member',
-      'member_title': 'Position',
-      'member_bio': 'Member bio goes here',
-      'member_image': 'https://via.placeholder.com/150x150?text=Team+Member',
-      'image_alt': 'Team Member Photo',
-      'background_color': '#ffffff',
-      'text_color': '#333333',
-      'title_color': '#2c3e50',
-      'text_align': 'left',
-      'padding': '20px'
-    },
-    validators: {
-      'member_name': (value) => typeof value === 'string' && value.length > 0
-    }
-  },
-  'social-links': {
-    mappings: {
-      'facebook': 'facebook_url',
-      'facebook_url': 'facebook_url',
-      'fb_url': 'facebook_url',
-      'twitter': 'twitter_url',
-      'twitter_url': 'twitter_url',
-      'x_url': 'twitter_url',
-      'instagram': 'instagram_url',
-      'instagram_url': 'instagram_url',
-      'ig_url': 'instagram_url',
-      'linkedin': 'linkedin_url',
-      'linkedin_url': 'linkedin_url',
-      'youtube': 'youtube_url',
-      'youtube_url': 'youtube_url',
-      'yt_url': 'youtube_url',
-      'website': 'website_url',
-      'website_url': 'website_url',
-      'site_url': 'website_url',
-      'tiktok': 'tiktok_url',
-      'tiktok_url': 'tiktok_url',
-      'discord': 'discord_url',
-      'discord_url': 'discord_url'
-    },
-    defaults: {
-      'facebook_url': '',
-      'twitter_url': '',
-      'instagram_url': '',
-      'linkedin_url': '',
-      'youtube_url': '',
-      'website_url': '',
-      'tiktok_url': '',
-      'discord_url': '',
-      'icon_size': '24px',
-      'text_align': 'center',
-      'padding': '20px',
-      'background_color': '#ffffff'
-    }
-  },
+  // NEW: Product showcase mapping
   'product-showcase': {
     mappings: {
-      'title': 'title',
-      'heading': 'title',
       'name': 'title',
+      'product_name': 'title',
       'description': 'text_content',
-      'text': 'text_content',
-      'content': 'text_content',
-      'body': 'text_content',
-      'image': 'image',
+      'product_description': 'text_content',
       'image_url': 'image',
-      'photo': 'image',
-      'picture': 'image',
-      'alt': 'image_alt_text',
+      'product_image': 'image',
       'alt_text': 'image_alt_text',
-      'image_alt': 'image_alt_text',
-      'price': 'price',
       'cost': 'price',
       'amount': 'price',
-      'button_text': 'button_text',
       'cta_text': 'button_text',
       'link_text': 'button_text',
-      'button_url': 'button_url',
       'cta_url': 'button_url',
-      'link_url': 'button_url',
-      'url': 'button_url'
+      'link_url': 'button_url'
     },
     defaults: {
       'title': 'Product Name',
@@ -268,26 +139,98 @@ const defaultMappingConfig: ContentMappingConfig = {
       'title': (value) => typeof value === 'string' && value.length > 0
     }
   },
+  // NEW: Feature list mapping
+  'feature-list': {
+    mappings: {
+      'heading': 'title',
+      'item1': 'feature1',
+      'item2': 'feature2',
+      'item3': 'feature3',
+      'item4': 'feature4',
+      'item5': 'feature5',
+      'item6': 'feature6',
+      'cta_text': 'button_text',
+      'cta_url': 'button_url'
+    },
+    defaults: {
+      'title': 'Key Features',
+      'feature1': 'Easy to use interface',
+      'feature2': 'Fast performance',
+      'feature3': '24/7 customer support',
+      'feature4': 'Secure and reliable',
+      'feature5': 'Mobile responsive',
+      'feature6': 'Regular updates',
+      'button_text': 'Get Started',
+      'button_url': '#',
+      'background_color': '#ffffff',
+      'text_color': '#333333',
+      'text_align': 'left',
+      'padding': '30px 20px'
+    }
+  },
+  // NEW: Testimonial mapping
+  'testimonial': {
+    mappings: {
+      'quote': 'testimonial_text',
+      'text': 'testimonial_text',
+      'content': 'testimonial_text',
+      'author': 'testimonial_author',
+      'name': 'testimonial_author',
+      'title': 'author_title',
+      'job_title': 'author_title',
+      'company': 'author_company',
+      'avatar': 'author_avatar',
+      'image': 'author_avatar'
+    },
+    defaults: {
+      'testimonial_text': 'This product has completely transformed how we work. Highly recommended!',
+      'testimonial_author': 'John Doe',
+      'author_title': 'CEO',
+      'author_company': 'Tech Corp',
+      'author_avatar': 'https://via.placeholder.com/80x80?text=JD',
+      'background_color': '#f8f9fa',
+      'text_color': '#333333',
+      'text_align': 'center',
+      'padding': '40px 20px'
+    },
+    validators: {
+      'testimonial_text': (value) => typeof value === 'string' && value.length > 0,
+      'testimonial_author': (value) => typeof value === 'string' && value.length > 0
+    }
+  },
+  // NEW: Three column mapping
+  'three-column': {
+    mappings: {
+      'col1_title': 'column1_title',
+      'col1_content': 'column1_content',
+      'col2_title': 'column2_title',
+      'col2_content': 'column2_content',
+      'col3_title': 'column3_title',
+      'col3_content': 'column3_content'
+    },
+    defaults: {
+      'column1_title': 'Column 1',
+      'column1_content': 'Content for the first column goes here.',
+      'column2_title': 'Column 2',
+      'column2_content': 'Content for the second column goes here.',
+      'column3_title': 'Column 3',
+      'column3_content': 'Content for the third column goes here.',
+      'background_color': '#ffffff',
+      'text_color': '#333333',
+      'text_align': 'center',
+      'padding': '30px 20px'
+    }
+  },
+  // NEW: CTA section mapping
   'cta-section': {
     mappings: {
-      'title': 'cta_title',
       'heading': 'cta_title',
-      'headline': 'cta_title',
-      'subtitle': 'cta_subtitle',
       'subheading': 'cta_subtitle',
       'description': 'cta_description',
-      'text': 'cta_description',
-      'content': 'cta_description',
-      'body': 'cta_description',
-      'button_text': 'button_text',
-      'cta_text': 'button_text',
-      'action_text': 'button_text',
-      'link_text': 'button_text',
-      'button_url': 'button_url',
-      'cta_url': 'button_url',
-      'action_url': 'button_url',
-      'link_url': 'button_url',
-      'url': 'button_url'
+      'primary_text': 'button_text',
+      'primary_url': 'button_url',
+      'secondary_text': 'secondary_button_text',
+      'secondary_url': 'secondary_button_url'
     },
     defaults: {
       'cta_title': 'Take Action Now',
@@ -295,6 +238,8 @@ const defaultMappingConfig: ContentMappingConfig = {
       'cta_description': 'Join thousands of others who have already taken action.',
       'button_text': 'Get Started',
       'button_url': '#',
+      'secondary_button_text': 'Learn More',
+      'secondary_button_url': '#',
       'background_color': '#f8f9fa',
       'text_color': '#333333',
       'title_color': '#2c3e50',
@@ -304,6 +249,90 @@ const defaultMappingConfig: ContentMappingConfig = {
     validators: {
       'cta_title': (value) => typeof value === 'string' && value.length > 0,
       'button_text': (value) => typeof value === 'string' && value.length > 0
+    }
+  },
+  // Other existing mappings...
+  'image': {
+    mappings: {
+      'src': 'image_url',
+      'url': 'image_url',
+      'alt': 'image_alt_text',
+      'caption': 'image_caption'
+    },
+    defaults: {
+      'image_url': 'https://via.placeholder.com/600x300',
+      'image_alt_text': 'Image',
+      'image_caption': '',
+      'text_align': 'center',
+      'padding': '20px'
+    },
+    validators: {
+      'image_url': (value) => typeof value === 'string' && value.length > 0
+    }
+  },
+  'social-links': {
+    mappings: {
+      'heading': 'title',
+      'facebook': 'facebook_url',
+      'twitter': 'twitter_url',
+      'linkedin': 'linkedin_url',
+      'instagram': 'instagram_url',
+      'youtube': 'youtube_url'
+    },
+    defaults: {
+      'title': 'Follow Us on Social Media',
+      'facebook_url': '',
+      'twitter_url': '',
+      'linkedin_url': '',
+      'instagram_url': '',
+      'youtube_url': '',
+      'background_color': '#f8f9fa',
+      'text_color': '#333333',
+      'text_align': 'center',
+      'padding': '30px 20px'
+    }
+  },
+  'team-member': {
+    mappings: {
+      'name': 'member_title',
+      'position': 'subtitle',
+      'bio': 'text_content',
+      'photo': 'member_image',
+      'image': 'member_image'
+    },
+    defaults: {
+      'member_title': 'Team Member',
+      'subtitle': 'Position',
+      'text_content': 'Team member bio goes here.',
+      'member_image': 'https://via.placeholder.com/150x150?text=Photo',
+      'image_alt_text': 'Team Member Photo',
+      'background_color': '#ffffff',
+      'text_color': '#333333',
+      'padding': '30px 20px'
+    }
+  },
+  'event-card': {
+    mappings: {
+      'name': 'event_title',
+      'description': 'text_content',
+      'date': 'event_date',
+      'time': 'event_time',
+      'location': 'event_location',
+      'cta_text': 'button_text',
+      'cta_url': 'button_url'
+    },
+    defaults: {
+      'event_title': 'Upcoming Event',
+      'text_content': 'Event description goes here.',
+      'event_date': 'TBD',
+      'event_time': 'TBD',
+      'event_location': 'TBD',
+      'button_text': 'Register Now',
+      'button_url': '#',
+      'background_color': '#ffffff',
+      'text_color': '#333333',
+      'text_align': 'left',
+      'padding': '30px 20px'
     }
   },
   'divider': {
@@ -332,99 +361,76 @@ const defaultMappingConfig: ContentMappingConfig = {
 export function useNewsletterContentMapping(customConfig?: Partial<ContentMappingConfig>) {
   const mappingConfig = ref<ContentMappingConfig>({
     ...defaultMappingConfig,
-    ...customConfig
+    ...(customConfig || {})
   })
 
   const mappingStats = ref({
     totalMappings: 0,
-    successfulMappings: 0,
-    failedMappings: 0,
-    validationErrors: [] as string[]
+    totalDefaults: 0,
+    lastMapped: null as string | null
   })
 
-  // Update mapping configuration
-  const updateMappingConfig = (blockType: string, config: Partial<ContentMappingRule>) => {
-    if (!mappingConfig.value[blockType]) {
-      mappingConfig.value[blockType] = {
-        mappings: {},
-        defaults: {}
-      }
-    }
-
-    mappingConfig.value[blockType] = {
-      ...mappingConfig.value[blockType],
-      ...config,
-      mappings: {
-        ...mappingConfig.value[blockType].mappings,
-        ...config.mappings
-      },
-      defaults: {
-        ...mappingConfig.value[blockType].defaults,
-        ...config.defaults
-      }
-    }
-  }
-
-  // Map content for a specific block
+  // Enhanced mapping function with better error handling
   const mapBlockContent = (block: any, blockType: any): Record<string, any> => {
-    const blockSlug = blockType.slug
-    const config = mappingConfig.value[blockSlug]
+    const blockSlug = blockType?.slug || blockType?.type || 'unknown'
+    const originalContent = block?.content || {}
     
-    // Reset stats for this mapping
-    mappingStats.value.totalMappings = 0
-    mappingStats.value.successfulMappings = 0
-    mappingStats.value.failedMappings = 0
-    mappingStats.value.validationErrors = []
+    console.log(`🔄 Mapping content for block type: ${blockSlug}`)
+    console.log(`📝 Original content:`, originalContent)
 
+    const config = mappingConfig.value[blockSlug]
     if (!config) {
-      console.warn(`No mapping config found for block type: ${blockSlug}`)
-      return { ...block.content }
+      console.warn(`⚠️ No mapping config for block type: ${blockSlug}`)
+      return {
+        ...originalContent,
+        // Add basic defaults for unknown block types
+        background_color: '#ffffff',
+        text_color: '#333333',
+        text_align: 'left',
+        padding: '20px'
+      }
     }
 
     const mappedContent: Record<string, any> = {}
-    const originalContent = block.content || {}
+    let replacements = 0
 
     // Apply mappings
-    Object.entries(originalContent).forEach(([originalKey, value]) => {
-      mappingStats.value.totalMappings++
-      
-      const mappedKey = config.mappings[originalKey] || originalKey
-      
-      // Validate value if validator exists
-      if (config.validators && config.validators[mappedKey]) {
-        const isValid = config.validators[mappedKey](value)
-        if (!isValid) {
-          mappingStats.value.validationErrors.push(
-            `Invalid value for ${mappedKey}: ${value}`
-          )
-          mappingStats.value.failedMappings++
-          return
-        }
+    Object.entries(config.mappings || {}).forEach(([fromKey, toKey]) => {
+      if (originalContent[fromKey] !== undefined) {
+        mappedContent[toKey] = originalContent[fromKey]
+        replacements++
+        console.log(`✓ Mapped ${fromKey} → ${toKey}: "${originalContent[fromKey]}"`)
       }
-      
-      mappedContent[mappedKey] = value
-      mappingStats.value.successfulMappings++
-      
-      if (originalKey !== mappedKey) {
-        console.log(`✓ Mapped ${originalKey} → ${mappedKey}: "${value}"`)
+    })
+
+    // Copy unmapped properties directly
+    Object.entries(originalContent).forEach(([key, value]) => {
+      if (!(key in mappedContent) && !Object.values(config.mappings || {}).includes(key)) {
+        mappedContent[key] = value
       }
     })
 
     // Apply defaults for missing fields
-    Object.entries(config.defaults).forEach(([key, defaultValue]) => {
+    Object.entries(config.defaults || {}).forEach(([key, defaultValue]) => {
       if (!(key in mappedContent)) {
         mappedContent[key] = defaultValue
         console.log(`✓ Applied default ${key}: "${defaultValue}"`)
       }
     })
 
-    console.log(`Content mapping complete for ${blockSlug}:`, {
-      original: originalContent,
-      mapped: mappedContent,
-      stats: mappingStats.value
-    })
+    // Update stats
+    mappingStats.value.totalMappings += replacements
+    mappingStats.value.lastMapped = blockSlug
+
+    console.log(`📊 Block ${blockSlug}: ${replacements} replacements made`)
+    console.log(`📝 Mapped content:`, mappedContent)
 
     return mappedContent
+  }
+
+  // Update mapping configuration
+  const updateMappingConfig = (blockType: string, config: ContentMappingRule) => {
+    mappingConfig.value[blockType] = config
   }
 
   // Validate all content in a newsletter
