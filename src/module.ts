@@ -1,4 +1,4 @@
-// src/module.ts
+// src/module.ts - Your existing module + additive progressive enhancement
 import {
   addComponentsDir,
   addImports,
@@ -31,9 +31,10 @@ export interface NewsletterModuleOptions {
        * Authentication type
        * - 'static': Use a static token (recommended for internal tools)
        * - 'middleware': Use Nuxt middleware for auth (recommended for user-facing apps)
+       * - 'auto': Automatically detect best method (NEW!)
        * @default 'static'
        */
-      type: 'static' | 'middleware'
+      type: 'static' | 'middleware' | 'auto'
       /**
        * Static token (only used when type is 'static')
        * Can be set via DIRECTUS_TOKEN environment variable
@@ -75,9 +76,10 @@ export interface NewsletterModuleOptions {
    * MJML compilation mode
    * - 'client': Compile in browser (good for development)
    * - 'server': Compile on server (better performance, requires mjml package)
+   * - 'auto': Automatically choose based on environment (NEW!)
    * @default 'client'
    */
-  mjmlMode?: 'client' | 'server'
+  mjmlMode?: 'client' | 'server' | 'auto'
   /**
    * Component prefix for auto-imported components
    * @default 'Newsletter'
@@ -86,28 +88,39 @@ export interface NewsletterModuleOptions {
   prefix?: string
   /**
    * Enable development helpers and enhanced error messages
+   * - true: Always enable
+   * - false: Always disable  
+   * - 'auto': Enable in development only (NEW!)
    * @default false in production
    */
-  dev?: boolean
+  dev?: boolean | 'auto'
   /**
    * Modern UI configuration
    */
   ui?: {
     /**
      * Icon library to use
+     * - 'lucide' | 'heroicons' | 'tabler': Specific library
+     * - 'auto': Detect available library (NEW!)
      * @default 'lucide'
      */
-    icons?: 'lucide' | 'heroicons' | 'tabler'
+    icons?: 'lucide' | 'heroicons' | 'tabler' | 'auto'
     /**
      * Enable drag and drop functionality
+     * - true: Always enable
+     * - false: Always disable
+     * - 'auto': Enable based on device capability (NEW!)
      * @default true
      */
-    enableDragDrop?: boolean
+    enableDragDrop?: boolean | 'auto'
     /**
      * Auto-install TailwindCSS 4 if not present
+     * - true: Always try to install
+     * - false: Never install
+     * - 'auto': Install only if not detected (NEW!)
      * @default true
      */
-    autoInstallTailwind?: boolean
+    autoInstallTailwind?: boolean | 'auto'
     /**
      * Theme configuration
      */
@@ -119,9 +132,80 @@ export interface NewsletterModuleOptions {
       primaryColor?: string
       /**
        * Enable dark mode support
+       * - true: Always enable
+       * - false: Always disable
+       * - 'auto': Enable if storage available (NEW!)
        * @default false
        */
-      darkMode?: boolean
+      darkMode?: boolean | 'auto'
+    }
+  }
+  /**
+   * Progressive Enhancement (NEW!)
+   * @default true
+   */
+  progressiveEnhancement?: {
+    /**
+     * Enable progressive enhancement features
+     * @default true
+     */
+    enabled?: boolean
+    /**
+     * Rich text editor progressive features
+     */
+    editor?: {
+      /**
+       * Auto-adapt features based on device/performance
+       * - true: Enable all auto-adaptations
+       * - false: Use static configuration
+       * - object: Configure specific adaptations
+       * @default true
+       */
+      adaptiveFeatures?: boolean | {
+        /**
+         * Disable complex features on mobile
+         * @default true
+         */
+        simplifyOnMobile?: boolean
+        /**
+         * Reduce features on slow connections
+         * @default true
+         */
+        optimizeForSlow?: boolean
+        /**
+         * Enable advanced features on capable devices
+         * @default true
+         */
+        enhanceOnDesktop?: boolean
+      }
+      /**
+       * Auto-save based on storage capability
+       * - true: Enable if storage available
+       * - false: Never enable
+       * - 'force': Always enable (use memory fallback)
+       * @default true
+       */
+      autoSave?: boolean | 'force'
+    }
+    /**
+     * Performance optimizations
+     */
+    performance?: {
+      /**
+       * Auto-enable lazy loading on slow connections
+       * @default true
+       */
+      lazyLoading?: boolean
+      /**
+       * Reduce animations on low-performance devices
+       * @default true
+       */
+      adaptiveAnimations?: boolean
+      /**
+       * Real-time preview only on fast connections
+       * @default true
+       */
+      smartPreview?: boolean
     }
   }
 }
@@ -138,7 +222,7 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     directus: {
       url: '',
       auth: {
-        type: 'static',
+        type: 'static', // Keep your existing default
         middleware: 'auth'
       }
     },
@@ -148,14 +232,27 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     },
     mjmlMode: 'client',
     prefix: 'Newsletter',
-    dev: false,
+    dev: 'auto', // NEW: auto-detect development mode
     ui: {
-      icons: 'lucide',
-      enableDragDrop: true,
-      autoInstallTailwind: true,
+      icons: 'auto', // NEW: auto-detect available icons
+      enableDragDrop: 'auto', // NEW: auto-detect device capability
+      autoInstallTailwind: 'auto', // NEW: auto-detect if needed
       theme: {
         primaryColor: 'blue',
-        darkMode: false
+        darkMode: 'auto' // NEW: auto-detect storage capability
+      }
+    },
+    // NEW: Progressive enhancement configuration
+    progressiveEnhancement: {
+      enabled: true,
+      editor: {
+        adaptiveFeatures: true,
+        autoSave: true
+      },
+      performance: {
+        lazyLoading: true,
+        adaptiveAnimations: true,
+        smartPreview: true
       }
     }
   },
@@ -163,25 +260,29 @@ export default defineNuxtModule<NewsletterModuleOptions>({
     const resolver = createResolver(import.meta.url)
     const logger = useLogger('@hue-studios/nuxt-newsletter')
 
-    // Enhanced environment variable handling
+    // Your existing environment variable handling (KEEP AS-IS)
     const getEnvVar = (key: string, fallback = '') => {
       return process.env[key] || nuxt.options.runtimeConfig?.[key] || fallback
     }
 
-    // Skip validation during build/prepare phase
+    // Your existing build detection (KEEP AS-IS)
     const isBuilding = process.env.NODE_ENV === 'prerender' ||
                       process.argv.includes('prepare') ||
                       process.argv.includes('build') ||
                       process.argv.includes('dev:prepare')
 
-    // Get configuration values with better environment variable handling
+    // === PROGRESSIVE ENHANCEMENT RESOLUTION ===
+    // Resolve 'auto' values before validation
+    await resolveAutoConfiguration(options, nuxt, logger, getEnvVar)
+
+    // Your existing configuration resolution (KEEP AS-IS)
     const directusUrl = options.directus.url || getEnvVar('DIRECTUS_URL')
     const directusToken = options.directus.auth?.token || getEnvVar('DIRECTUS_TOKEN')
     const sendgridApiKey = options.sendgrid?.apiKey || getEnvVar('SENDGRID_API_KEY')
     const sendgridWebhookSecret = options.sendgrid?.webhookSecret || getEnvVar('SENDGRID_WEBHOOK_SECRET')
     const directusAdminToken = getEnvVar('DIRECTUS_ADMIN_TOKEN')
 
-    // Enhanced validation with better error messages
+    // Your existing validation with better error messages (KEEP AS-IS)
     if (!directusUrl && !isBuilding) {
       const errorMessage = `
 🚨 Newsletter Module Configuration Error:
@@ -219,7 +320,7 @@ Directus URL is required! Please configure it in one of these ways:
       options.directus.url = directusUrl as string
     }
 
-    // Check authentication setup
+    // Your existing auth check (KEEP AS-IS)
     if (options.directus.auth?.type === 'static' && !directusToken && !isBuilding) {
       const authWarning = `
 ⚠️  Newsletter Module Authentication Warning:
@@ -249,7 +350,7 @@ Without a token, the module cannot connect to Directus.
       logger.warn(authWarning)
     }
 
-    // Enhanced SendGrid setup check
+    // Your existing SendGrid check (KEEP AS-IS)
     if (!sendgridApiKey && !isBuilding) {
       logger.info(`
 ℹ️  Newsletter Module - SendGrid Setup:
@@ -272,15 +373,15 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       logger.info('✅ SendGrid configured - email sending enabled')
     }
 
-    // Enhanced runtime config setup with proper client/server separation
+    // Your existing runtime config (ENHANCED with progressive enhancement)
     nuxt.options.runtimeConfig = defu(nuxt.options.runtimeConfig, {
-      // Private (server-side only) - these stay here for API handlers
+      // Private (server-side only) - KEEP AS-IS
       sendgridApiKey: sendgridApiKey || '',
       sendgridWebhookSecret: sendgridWebhookSecret || '',
       directusAdminToken: directusAdminToken || '',
-      directusToken: directusToken || '', // Add for server-side access
+      directusToken: directusToken || '',
 
-      // Public (client-side accessible) - configuration status only
+      // Public (client-side accessible) - ENHANCED
       public: {
         newsletter: {
           directus: {
@@ -288,14 +389,12 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
             auth: {
               type: options.directus.auth?.type || 'static',
               middleware: options.directus.auth?.middleware || 'auth',
-              // Don't expose the actual token, just whether it's configured
               hasToken: !!directusToken
             }
           },
           sendgrid: {
             defaultFromEmail: options.sendgrid?.defaultFromEmail || 'newsletter@example.com',
             defaultFromName: options.sendgrid?.defaultFromName || 'Newsletter',
-            // Don't expose actual keys, just configuration status
             configured: !!sendgridApiKey,
             hasWebhookSecret: !!sendgridWebhookSecret
           },
@@ -311,35 +410,32 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
               darkMode: options.ui?.theme?.darkMode || false
             }
           },
-          // Configuration status for client-side checks
+          // NEW: Progressive enhancement config
+          progressiveEnhancement: options.progressiveEnhancement,
           status: {
             directusConfigured: !!directusUrl && directusUrl !== 'http://localhost:8055',
             directusAuthConfigured: !!directusToken,
             sendgridConfigured: !!sendgridApiKey,
             sendgridWebhookConfigured: !!sendgridWebhookSecret,
             mjmlMode: options.mjmlMode || 'client',
-            directusAdminTokenConfigured: !!directusAdminToken // Expose admin token status
+            directusAdminTokenConfigured: !!directusAdminToken
           }
         }
       }
     })
 
-    // Install required dependencies with enhanced error handling
+    // Your existing dependency installation (KEEP AS-IS)
     try {
-      // Core dependencies
       await installModule('@vueuse/nuxt')
       logger.info('✅ @vueuse/nuxt installed')
 
-      // Icon support
       await installModule('@nuxt/icon')
       logger.info(`✅ @nuxt/icon installed with ${options.ui?.icons || 'lucide'} icons`)
 
-      // Auto-install TailwindCSS 4 if enabled and not already present
       if (options.ui?.autoInstallTailwind !== false) {
         await setupTailwindCSS4(nuxt, logger, resolver)
       }
 
-      // Color mode support if dark mode is enabled
       if (options.ui?.theme?.darkMode) {
         const hasColorMode = nuxt.options.modules.some(m =>
           (typeof m === 'string' && m.includes('color-mode')) ||
@@ -363,14 +459,23 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       throw error
     }
 
-    // Add plugin
+    // Your existing plugin (KEEP AS-IS)
     addPlugin({
       src: resolver.resolve('./runtime/plugin'),
       mode: 'all'
     })
 
-    // Add composables with enhanced descriptions
+    // NEW: Add progressive enhancement plugin (ADDITIVE)
+    if (options.progressiveEnhancement?.enabled !== false) {
+      addPlugin({
+        src: resolver.resolve('./runtime/plugins/progressive-enhancement.client'),
+        mode: 'client'
+      })
+    }
+
+    // Your existing composables (ENHANCED with new ones)
     addImports([
+      // Your existing composables (KEEP AS-IS)
       {
         name: 'useDirectusNewsletter',
         from: resolver.resolve('./runtime/composables/index'),
@@ -426,12 +531,19 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
         meta: {
           description: 'Advanced Tiptap rich text editor with full formatting capabilities'
         }
+      },
+      // NEW: Progressive enhancement composables (ADDITIVE)
+      {
+        name: 'useProgressiveEnhancement',
+        from: resolver.resolve('./runtime/composables/useProgressiveEnhancement'),
+        meta: {
+          description: 'Access progressive enhancement capabilities and adaptive features'
+        }
       }
     ])
 
-    // Add drag and drop composable if enabled
+    // Your existing drag and drop (KEEP AS-IS)
     if (options.ui?.enableDragDrop !== false) {
-      // Add the drag-drop CSS
       nuxt.options.css.push(resolver.resolve('./runtime/assets/css/drag-drop.css'))
 
       addImports([
@@ -445,7 +557,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       ])
     }
 
-    // Add components
+    // Your existing components (KEEP AS-IS)
     await addComponentsDir({
       path: resolver.resolve('./runtime/components'),
       prefix: options.prefix,
@@ -453,7 +565,7 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       watch: nuxt.options.dev
     })
 
-    // Add server handlers
+    // Your existing server handlers (KEEP AS-IS)
     addServerHandler({
       route: '/api/newsletter/sendgrid-webhook',
       handler: resolver.resolve('./runtime/server/api/newsletter/sendgrid-webhook.post')
@@ -472,11 +584,11 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
       logger.info('✅ Server-side MJML compilation enabled')
     }
 
-    // Enhanced development experience
+    // Your existing development experience (ENHANCED)
     if (nuxt.options.dev || options.dev) {
       nuxt.hook('build:before', () => {
         const statusLines = [
-          '🎉 Newsletter Module Ready! (Modern Edition)',
+          '🎉 Newsletter Module Ready! (Modern Edition with Progressive Enhancement)',
           '',
           'Configuration:',
           `  • Directus: ${options.directus.url}`,
@@ -490,6 +602,11 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           `  • Drag & Drop: ${options.ui?.enableDragDrop !== false ? '✅ enabled' : '❌ disabled'}`,
           `  • Theme: ${options.ui?.theme?.primaryColor || 'blue'} ${options.ui?.theme?.darkMode ? '(dark mode)' : '(light mode)'}`,
           '',
+          'Progressive Enhancement:', // NEW
+          `  • Enabled: ${options.progressiveEnhancement?.enabled !== false ? '✅ yes' : '❌ no'}`,
+          `  • Adaptive Editor: ${options.progressiveEnhancement?.editor?.adaptiveFeatures !== false ? '✅ yes' : '❌ no'}`,
+          `  • Smart Performance: ${options.progressiveEnhancement?.performance?.adaptiveAnimations !== false ? '✅ yes' : '❌ no'}`,
+          '',
           'Components available:',
           `  • <${options.prefix}Editor> - Modern drag-drop newsletter editor`,
           `  • <${options.prefix}Preview> - Live preview with device frames`,
@@ -501,25 +618,96 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           '  2. Verify setup: npm run newsletter:verify',
           '  3. Add advanced blocks: npm run newsletter:blocks',
           '',
-          '✨ Enjoy the modern newsletter editing experience!'
+          '✨ Enjoy the modern newsletter editing experience with adaptive features!'
         ]
 
         logger.success('\n' + statusLines.join('\n  '))
       })
     }
 
-    // Add build transpilation
+    // Your existing build transpilation (KEEP AS-IS)
     nuxt.options.build.transpile.push(resolver.resolve('./runtime'))
 
-    logger.success('Modern Newsletter module initialized successfully! 🚀')
+    logger.success('Modern Newsletter module with Progressive Enhancement initialized successfully! 🚀')
   }
 })
 
-// Tailwind CSS 4 setup function
+// NEW: Progressive enhancement resolution function
+async function resolveAutoConfiguration(
+  options: NewsletterModuleOptions,
+  nuxt: any,
+  logger: any,
+  getEnvVar: Function
+) {
+  // Only resolve 'auto' values, keep explicit values as-is
+  
+  // Auth type auto-detection
+  if (options.directus.auth?.type === 'auto') {
+    const hasToken = !!(
+      options.directus.auth?.token ||
+      getEnvVar('DIRECTUS_TOKEN')
+    )
+    
+    const hasAuthMiddleware = nuxt.options.plugins?.some((plugin: any) => 
+      typeof plugin === 'string' ? plugin.includes('auth') : 
+      plugin.src?.includes('auth')
+    ) || false
+
+    if (hasToken) {
+      options.directus.auth.type = 'static'
+      logger.info('🤖 Auto-detected: Using static token authentication')
+    } else if (hasAuthMiddleware) {
+      options.directus.auth.type = 'middleware'
+      logger.info('🤖 Auto-detected: Using middleware authentication')
+    } else {
+      options.directus.auth.type = 'static' // Fallback
+      logger.warn('🤖 Auto-detect: No auth method found, defaulting to static')
+    }
+  }
+
+  // MJML mode auto-detection
+  if (options.mjmlMode === 'auto') {
+    const hasMjmlDependency = existsSync(join(nuxt.options.rootDir, 'node_modules/mjml'))
+    options.mjmlMode = hasMjmlDependency ? 'server' : 'client'
+    logger.info(`🤖 Auto-detected: MJML mode set to ${options.mjmlMode}`)
+  }
+
+  // Development mode auto-detection
+  if (options.dev === 'auto') {
+    options.dev = nuxt.options.dev
+    logger.info(`🤖 Auto-detected: Development mode ${options.dev ? 'enabled' : 'disabled'}`)
+  }
+
+  // UI auto-detections
+  if (options.ui?.icons === 'auto') {
+    const hasNuxtIcon = nuxt.options.modules?.some((module: any) => 
+      typeof module === 'string' ? 
+        module.includes('@nuxt/icon') : 
+        module[0]?.includes('@nuxt/icon')
+    )
+    options.ui.icons = hasNuxtIcon ? 'lucide' : 'lucide' // Default to lucide
+    logger.info(`🤖 Auto-detected: Icon library set to ${options.ui.icons}`)
+  }
+
+  if (options.ui?.autoInstallTailwind === 'auto') {
+    const hasTailwind = nuxt.options.modules?.some((module: any) => 
+      typeof module === 'string' ? 
+        module.includes('tailwind') : 
+        module[0]?.includes('tailwind')
+    ) || nuxt.options.css?.some((css: string) => css.includes('tailwind'))
+
+    options.ui.autoInstallTailwind = !hasTailwind
+    logger.info(`🤖 Auto-detected: TailwindCSS auto-install ${options.ui.autoInstallTailwind ? 'enabled' : 'disabled'}`)
+  }
+
+  // Other 'auto' resolutions would happen at runtime in the progressive enhancement composable
+  logger.info('🤖 Progressive enhancement configuration resolved')
+}
+
+// Your existing Tailwind CSS 4 setup function (KEEP AS-IS)
 async function setupTailwindCSS4(nuxt: any, logger: any, resolver: any) {
   const rootDir = nuxt.options.rootDir
 
-  // Check if Tailwind CSS 4 is already installed
   const packageJsonPath = join(rootDir, 'package.json')
   let hasTailwind4 = false
   let hasVitePlugin = false

@@ -1,3 +1,4 @@
+// src/runtime/composables/useTiptapEditor.ts
 import Color from '@tiptap/extension-color'
 import FontFamily from '@tiptap/extension-font-family'
 import Highlight from '@tiptap/extension-highlight'
@@ -22,75 +23,132 @@ export interface TiptapEditorOptions {
   debounceMs?: number
   extensions?: any[]
   editorProps?: Record<string, any>
+  features?: {
+    headings?: boolean
+    lists?: boolean
+    links?: boolean
+    alignment?: boolean
+    colors?: boolean
+    tables?: boolean
+    images?: boolean
+  }
 }
 
 export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
   const editor = ref<Editor | null>(null)
   const isReady = ref(false)
+  const isInitialized = ref(false)
 
-  const defaultExtensions = [
-    StarterKit.configure({
-      heading: {
-        levels: [1, 2, 3, 4, 5, 6],
-      },
-    }),
-    Underline,
-    Link.configure({
-      openOnClick: false,
-      HTMLAttributes: {
-        class: 'text-blue-600 underline hover:text-blue-800',
-        target: '_blank',
-        rel: 'noopener noreferrer',
-      },
-    }),
-    Image.configure({
-      HTMLAttributes: {
-        class: 'max-w-full h-auto rounded-lg',
-      },
-    }),
-    Table.configure({
-      resizable: true,
-      HTMLAttributes: {
-        class: 'border-collapse border border-slate-300',
-      },
-    }),
-    TableRow,
-    TableHeader.configure({
-      HTMLAttributes: {
-        class: 'bg-slate-100 font-semibold',
-      },
-    }),
-    TableCell.configure({
-      HTMLAttributes: {
-        class: 'border border-slate-300 p-2',
-      },
-    }),
-    TextAlign.configure({
-      types: ['heading', 'paragraph'],
-    }),
-    TextStyle,
-    Color.configure({
-      types: ['textStyle'],
-    }),
-    FontFamily.configure({
-      types: ['textStyle'],
-    }),
-    Highlight.configure({
-      multicolor: true,
-      HTMLAttributes: {
-        class: 'bg-yellow-200',
-      },
-    }),
-  ]
+  // Default features
+  const features = {
+    headings: true,
+    lists: true,
+    links: true,
+    alignment: true,
+    colors: false,
+    tables: false,
+    images: false,
+    ...options.features
+  }
+
+  // Build extensions based on features
+  const buildExtensions = () => {
+    const extensions = [
+      StarterKit.configure({
+        heading: features.headings ? {
+          levels: [1, 2, 3, 4, 5, 6],
+        } : false,
+        bulletList: features.lists,
+        orderedList: features.lists,
+        blockquote: features.lists,
+      }),
+      Underline,
+    ]
+
+    if (features.links) {
+      extensions.push(
+        Link.configure({
+          openOnClick: false,
+          HTMLAttributes: {
+            class: 'text-blue-600 underline hover:text-blue-800',
+            target: '_blank',
+            rel: 'noopener noreferrer',
+          },
+        })
+      )
+    }
+
+    if (features.images) {
+      extensions.push(
+        Image.configure({
+          HTMLAttributes: {
+            class: 'max-w-full h-auto rounded-lg',
+          },
+        })
+      )
+    }
+
+    if (features.tables) {
+      extensions.push(
+        Table.configure({
+          resizable: true,
+          HTMLAttributes: {
+            class: 'border-collapse border border-slate-300',
+          },
+        }),
+        TableRow,
+        TableHeader.configure({
+          HTMLAttributes: {
+            class: 'bg-slate-100 font-semibold border border-slate-300 p-2',
+          },
+        }),
+        TableCell.configure({
+          HTMLAttributes: {
+            class: 'border border-slate-300 p-2',
+          },
+        })
+      )
+    }
+
+    if (features.alignment) {
+      extensions.push(
+        TextAlign.configure({
+          types: ['heading', 'paragraph'],
+        })
+      )
+    }
+
+    if (features.colors) {
+      extensions.push(
+        TextStyle,
+        Color.configure({
+          types: ['textStyle'],
+        }),
+        FontFamily.configure({
+          types: ['textStyle'],
+        }),
+        Highlight.configure({
+          multicolor: true,
+          HTMLAttributes: {
+            class: 'bg-yellow-200',
+          },
+        })
+      )
+    }
+
+    return [...extensions, ...(options.extensions || [])]
+  }
 
   const defaultEditorProps = {
     attributes: {
-      class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[120px] p-4 border-0',
+      class: 'prose prose-sm max-w-none focus:outline-none min-h-[120px] p-4',
       'data-placeholder': options.placeholder || 'Start typing...',
     },
   }
 
   const createEditor = () => {
+    if (isInitialized.value) return editor.value
+
     const onUpdateHandler = options.onUpdate
       ? debounce((content: string) => {
           options.onUpdate!(content)
@@ -99,7 +157,7 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
 
     editor.value = new Editor({
       content: options.content || '',
-      extensions: options.extensions || defaultExtensions,
+      extensions: buildExtensions(),
       editorProps: {
         ...defaultEditorProps,
         ...options.editorProps,
@@ -111,9 +169,11 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
         : undefined,
       onCreate: () => {
         isReady.value = true
+        isInitialized.value = true
       },
       onDestroy: () => {
         isReady.value = false
+        isInitialized.value = false
       },
     })
 
@@ -125,12 +185,13 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
       editor.value.destroy()
       editor.value = null
       isReady.value = false
+      isInitialized.value = false
     }
   }
 
   // Content methods
   const setContent = (content: string) => {
-    if (editor.value) {
+    if (editor.value && content !== getContent()) {
       editor.value.commands.setContent(content)
     }
   }
@@ -169,12 +230,16 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
   }
 
   const toggleHighlight = () => {
-    editor.value?.chain().focus().toggleHighlight().run()
+    if (features.colors) {
+      editor.value?.chain().focus().toggleHighlight().run()
+    }
   }
 
   // Heading methods
   const setHeading = (level: 1 | 2 | 3 | 4 | 5 | 6) => {
-    editor.value?.chain().focus().toggleHeading({ level }).run()
+    if (features.headings) {
+      editor.value?.chain().focus().toggleHeading({ level }).run()
+    }
   }
 
   const setParagraph = () => {
@@ -183,25 +248,33 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
 
   // List methods
   const toggleBulletList = () => {
-    editor.value?.chain().focus().toggleBulletList().run()
+    if (features.lists) {
+      editor.value?.chain().focus().toggleBulletList().run()
+    }
   }
 
   const toggleOrderedList = () => {
-    editor.value?.chain().focus().toggleOrderedList().run()
+    if (features.lists) {
+      editor.value?.chain().focus().toggleOrderedList().run()
+    }
   }
 
   const toggleBlockquote = () => {
-    editor.value?.chain().focus().toggleBlockquote().run()
+    if (features.lists) {
+      editor.value?.chain().focus().toggleBlockquote().run()
+    }
   }
 
   // Alignment methods
   const setTextAlign = (alignment: 'left' | 'center' | 'right' | 'justify') => {
-    editor.value?.chain().focus().setTextAlign(alignment).run()
+    if (features.alignment) {
+      editor.value?.chain().focus().setTextAlign(alignment).run()
+    }
   }
 
   // Link methods
   const setLink = (url: string) => {
-    if (url) {
+    if (features.links && url) {
       editor.value
         ?.chain()
         .focus()
@@ -212,10 +285,14 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
   }
 
   const unsetLink = () => {
-    editor.value?.chain().focus().extendMarkRange('link').unsetLink().run()
+    if (features.links) {
+      editor.value?.chain().focus().extendMarkRange('link').unsetLink().run()
+    }
   }
 
   const toggleLink = (url?: string) => {
+    if (!features.links) return
+    
     if (editor.value?.isActive('link')) {
       unsetLink()
     } else if (url) {
@@ -225,62 +302,22 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
 
   // Image methods
   const setImage = (src: string, alt?: string, title?: string) => {
-    editor.value?.chain().focus().setImage({ src, alt, title }).run()
-  }
-
-  // Table methods
-  const insertTable = (rows = 3, cols = 3, withHeaderRow = true) => {
-    editor.value
-      ?.chain()
-      .focus()
-      .insertTable({ rows, cols, withHeaderRow })
-      .run()
-  }
-
-  const addRowBefore = () => {
-    editor.value?.chain().focus().addRowBefore().run()
-  }
-
-  const addRowAfter = () => {
-    editor.value?.chain().focus().addRowAfter().run()
-  }
-
-  const addColumnBefore = () => {
-    editor.value?.chain().focus().addColumnBefore().run()
-  }
-
-  const addColumnAfter = () => {
-    editor.value?.chain().focus().addColumnAfter().run()
-  }
-
-  const deleteRow = () => {
-    editor.value?.chain().focus().deleteRow().run()
-  }
-
-  const deleteColumn = () => {
-    editor.value?.chain().focus().deleteColumn().run()
-  }
-
-  const deleteTable = () => {
-    editor.value?.chain().focus().deleteTable().run()
+    if (features.images) {
+      editor.value?.chain().focus().setImage({ src, alt, title }).run()
+    }
   }
 
   // Color methods
   const setColor = (color: string) => {
-    editor.value?.chain().focus().setColor(color).run()
+    if (features.colors) {
+      editor.value?.chain().focus().setColor(color).run()
+    }
   }
 
   const unsetColor = () => {
-    editor.value?.chain().focus().unsetColor().run()
-  }
-
-  // Font family methods
-  const setFontFamily = (fontFamily: string) => {
-    editor.value?.chain().focus().setFontFamily(fontFamily).run()
-  }
-
-  const unsetFontFamily = () => {
-    editor.value?.chain().focus().unsetFontFamily().run()
+    if (features.colors) {
+      editor.value?.chain().focus().unsetColor().run()
+    }
   }
 
   // History methods
@@ -339,10 +376,6 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
     return getText().length
   }
 
-  const getCharacterCountWithSpaces = () => {
-    return editor.value?.storage.characterCount?.characters() ?? 0
-  }
-
   // Focus methods
   const focus = (position?: 'start' | 'end' | number) => {
     if (position === 'start') {
@@ -360,7 +393,12 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
     editor.value?.commands.blur()
   }
 
-  // Cleanup
+  // Auto-initialize if content is provided
+  if (options.content !== undefined) {
+    createEditor()
+  }
+
+  // Cleanup on unmount
   onBeforeUnmount(() => {
     destroyEditor()
   })
@@ -369,6 +407,7 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
     // Editor instance
     editor,
     isReady,
+    isInitialized,
     
     // Lifecycle
     createEditor,
@@ -408,23 +447,9 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
     // Images
     setImage,
     
-    // Tables
-    insertTable,
-    addRowBefore,
-    addRowAfter,
-    addColumnBefore,
-    addColumnAfter,
-    deleteRow,
-    deleteColumn,
-    deleteTable,
-    
     // Colors
     setColor,
     unsetColor,
-    
-    // Font family
-    setFontFamily,
-    unsetFontFamily,
     
     // History
     undo,
@@ -454,7 +479,6 @@ export const useTiptapEditor = (options: TiptapEditorOptions = {}) => {
     // Statistics
     getWordCount,
     getCharacterCount,
-    getCharacterCountWithSpaces,
     
     // Focus
     focus,
