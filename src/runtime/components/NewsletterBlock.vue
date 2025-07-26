@@ -1,66 +1,49 @@
 <template>
-  <div class="newsletter-block">
-    <!-- Enhanced Block Preview (when not editing) -->
+  <div class="newsletter-block-wrapper">
+    <!-- View Mode -->
     <div
       v-if="!isEditing"
-      class="group relative bg-white rounded-xl border border-slate-200/60 overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer"
       @click="toggleEdit"
+      class="newsletter-block-preview group cursor-pointer relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300"
     >
-      <!-- Preview Content -->
-      <div class="p-4">
+      <!-- Block Type Badge -->
+      <div class="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm">
+        <Icon :name="blockType.icon || 'lucide:square'" class="w-4 h-4 text-slate-600" />
+        <span class="text-xs font-medium text-slate-700">{{ blockType.name }}</span>
+      </div>
+
+      <!-- Content Preview -->
+      <div class="p-6 pt-14">
+        <!-- Show actual content preview based on what's filled -->
         <div v-if="hasContent" class="space-y-3">
+          <!-- Title/Heading Preview -->
+          <div v-if="localContent.title || localContent.heading" class="text-lg font-semibold text-slate-900 line-clamp-2">
+            {{ localContent.title || localContent.heading }}
+          </div>
+
+          <!-- Subtitle Preview -->
+          <div v-if="localContent.subtitle" class="text-sm text-slate-600 line-clamp-2">
+            {{ localContent.subtitle }}
+          </div>
+
           <!-- Text Content Preview -->
-          <div v-if="localContent.title" class="space-y-1">
-            <h4 class="text-lg font-semibold text-slate-900 line-clamp-2">
-              {{ localContent.title }}
-            </h4>
-          </div>
-          
-          <div v-if="localContent.subtitle" class="space-y-1">
-            <p class="text-slate-600 line-clamp-2">
-              {{ localContent.subtitle }}
-            </p>
-          </div>
+          <div v-if="localContent.text_content" class="text-sm text-slate-700 line-clamp-3" v-html="stripHtml(localContent.text_content)"></div>
 
-          <div v-if="localContent.text_content" class="space-y-1">
-            <div class="text-slate-700 line-clamp-3" v-html="localContent.text_content"></div>
-          </div>
-
-          <!-- CTA Preview -->
-          <div v-if="localContent.button_text || localContent.primary_button_text" class="flex flex-wrap gap-2">
-            <div
-              v-if="localContent.button_text"
-              class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg"
-              :style="{ 
-                backgroundColor: localContent.button_color || '#3b82f6',
-                color: getContrastColor(localContent.button_color || '#3b82f6')
-              }"
-            >
+          <!-- Button Preview -->
+          <div v-if="localContent.button_text" class="flex flex-wrap gap-2 mt-3">
+            <div class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white">
               {{ localContent.button_text }}
             </div>
-            <div
-              v-if="localContent.primary_button_text"
-              class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg"
-              :style="{ 
-                backgroundColor: localContent.primary_button_color || '#3b82f6',
-                color: getContrastColor(localContent.primary_button_color || '#3b82f6')
-              }"
-            >
-              {{ localContent.primary_button_text }}
-            </div>
-            <div
-              v-if="localContent.secondary_button_text"
-              class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700"
-            >
+            <div v-if="localContent.secondary_button_text" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700">
               {{ localContent.secondary_button_text }}
             </div>
           </div>
 
           <!-- Image Preview -->
-          <div v-if="localContent.image_url" class="aspect-video bg-slate-100 rounded-lg overflow-hidden">
+          <div v-if="localContent.image || localContent.image_url" class="aspect-video bg-slate-100 rounded-lg overflow-hidden">
             <img
-              :src="getImageUrl(localContent.image_url)"
-              :alt="localContent.image_alt || 'Block image'"
+              :src="getImageUrl(localContent.image || localContent.image_url)"
+              :alt="localContent.image_alt || localContent.image_alt_text || 'Block image'"
               class="w-full h-full object-cover"
               @error="handleImageError"
             />
@@ -100,301 +83,255 @@
       <div class="bg-gradient-to-r from-blue-50 to-blue-100/50 border-b border-blue-200/60 p-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <Icon name="lucide:edit-3" class="w-4 h-4 text-white" />
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+              <Icon :name="blockType.icon || 'lucide:square'" class="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-slate-900">Edit {{ blockType.name }}</h3>
-              <p class="text-sm text-slate-600">{{ blockType.description || 'Customize your content block' }}</p>
+              <h3 class="text-sm font-semibold text-slate-900">{{ blockType.name }}</h3>
+              <p class="text-xs text-slate-600">{{ blockType.description }}</p>
             </div>
           </div>
-          <div class="flex items-center space-x-2">
-            <button
-              @click="toggleEdit"
-              class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200"
-            >
-              <Icon name="lucide:check" class="w-4 h-4 mr-2" />
-              Done
-            </button>
+          <button
+            @click="toggleEdit"
+            class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+          >
+            <Icon name="lucide:check" class="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Debug Info (if debug mode is enabled) -->
+      <div v-if="debugMode" class="debug-field-info">
+        <div class="bg-amber-50 border-b border-amber-200 p-3">
+          <h4 class="text-xs font-semibold text-amber-800 mb-2">Debug Info:</h4>
+          <div class="text-xs space-y-1 text-amber-700">
+            <div>Block ID: {{ block.id }}</div>
+            <div>Block Type: {{ blockType.slug }}</div>
+            <div>Fields: {{ getEditableFields(blockType).map(f => f).join(', ') }}</div>
+            <div>Current Content: <pre class="mt-1 p-2 bg-amber-100 rounded text-xs overflow-auto">{{ JSON.stringify(localContent, null, 2) }}</pre></div>
           </div>
         </div>
       </div>
 
-      <!-- Enhanced Form Fields -->
-      <div class="p-6">
-        <div class="space-y-6">
-          <div
-            v-for="field in getEditableFields(blockType)"
-            :key="field"
-            class="space-y-2"
-          >
-            <!-- Debug Field Info (remove in production) -->
-            <div v-if="debugMode" class="debug-field-info bg-yellow-50 border border-yellow-200 p-2 mb-2 rounded text-xs">
-              <strong>🔍 Field Debug: {{ field }}</strong><br>
-              <span>Rich Text: {{ isRichTextField(field) }}</span> | 
-              <span>Textarea: {{ isTextareaField(field) }}</span> | 
-              <span>Text: {{ isTextField(field) }}</span><br>
-              <span>Current Value: {{ localContent[field] }}</span>
-            </div>
+      <!-- Enhanced Fields Editor -->
+      <div class="p-6 space-y-6">
+        <div v-for="field in getEditableFields(blockType)" :key="field" class="field-group">
+          <label :for="`${block.id}-${field}`" class="block text-sm font-medium text-slate-700 mb-2">
+            {{ formatFieldName(field) }}
+            <span v-if="isRequiredField(field)" class="text-red-500 ml-1">*</span>
+          </label>
 
-            <!-- Rich Text Editor (NEW: Tiptap Integration) -->
-            <div v-if="isRichTextField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-                <span v-if="isRequiredField(field)" class="text-red-500">*</span>
-              </label>
-              
-              <!-- Tiptap Rich Text Editor -->
-              <div class="border border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all duration-200">
-                <!-- Toolbar -->
-                <div class="bg-slate-50 border-b border-slate-200 p-2 flex items-center gap-1">
-                  <div class="flex items-center gap-1 pr-2 border-r border-slate-300">
-                    <button
-                      type="button"
-                      @click="toggleBold(field)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'bold') }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                      title="Bold"
-                    >
-                      <Icon name="lucide:bold" class="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      @click="toggleItalic(field)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'italic') }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                      title="Italic"
-                    >
-                      <Icon name="lucide:italic" class="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      @click="toggleUnderline(field)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'underline') }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                      title="Underline"
-                    >
-                      <Icon name="lucide:underline" class="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  <div class="flex items-center gap-1 pr-2 border-r border-slate-300">
-                    <button
-                      type="button"
-                      @click="toggleHeading(field, 2)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'heading', { level: 2 }) }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold"
-                      title="Heading 2"
-                    >
-                      H2
-                    </button>
-                    <button
-                      type="button"
-                      @click="toggleHeading(field, 3)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'heading', { level: 3 }) }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors text-xs font-bold"
-                      title="Heading 3"
-                    >
-                      H3
-                    </button>
-                  </div>
-                  
-                  <div class="flex items-center gap-1">
-                    <button
-                      type="button"
-                      @click="toggleBulletList(field)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'bulletList') }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                      title="Bullet List"
-                    >
-                      <Icon name="lucide:list" class="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      @click="toggleOrderedList(field)"
-                      :class="{ 'bg-blue-100 text-blue-700': isEditorActive(field, 'orderedList') }"
-                      class="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                      title="Numbered List"
-                    >
-                      <Icon name="lucide:list-ordered" class="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                
-                <!-- Editor Area -->
-                <div
-                  :ref="el => setEditorRef(field, el)"
-                  class="prose prose-sm max-w-none p-4 min-h-[120px] focus:outline-none"
-                  :style="{ minHeight: getEditorHeight(field) }"
-                ></div>
+          <!-- Rich Text Editor (Tiptap) -->
+          <div v-if="isRichTextField(field)" class="rich-text-editor">
+            <!-- Editor Toolbar -->
+            <div class="editor-toolbar" v-if="editors[field]">
+              <div class="toolbar-group">
+                <button
+                  @click="toggleBold(field)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'bold') }]"
+                  title="Bold"
+                >
+                  <Icon name="lucide:bold" class="w-4 h-4" />
+                </button>
+                <button
+                  @click="toggleItalic(field)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'italic') }]"
+                  title="Italic"
+                >
+                  <Icon name="lucide:italic" class="w-4 h-4" />
+                </button>
+                <button
+                  @click="toggleUnderline(field)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'underline') }]"
+                  title="Underline"
+                >
+                  <Icon name="lucide:underline" class="w-4 h-4" />
+                </button>
               </div>
-              
-              <p class="text-xs text-slate-500">
-                Rich text editor with formatting options. Content will be used in your newsletter.
-              </p>
-            </div>
 
-            <!-- Text Input -->
-            <div v-else-if="isTextField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-                <span v-if="isRequiredField(field)" class="text-red-500">*</span>
-              </label>
-              <input
-                :id="field"
-                v-model="localContent[field]"
-                type="text"
-                :placeholder="getFieldPlaceholder(field)"
-                class="block w-full px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                :class="getFieldClasses(field)"
-              />
-              <p v-if="getFieldHint(field)" class="text-xs text-slate-500">
-                {{ getFieldHint(field) }}
-              </p>
-            </div>
+              <div class="toolbar-divider"></div>
 
-            <!-- Email Input -->
-            <div v-else-if="isEmailField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-                <span v-if="isRequiredField(field)" class="text-red-500">*</span>
-              </label>
-              <input
-                :id="field"
-                v-model="localContent[field]"
-                type="email"
-                :placeholder="getFieldPlaceholder(field)"
-                class="block w-full px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-              />
-            </div>
+              <div class="toolbar-group">
+                <button
+                  @click="toggleHeading(field, 2)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'heading', { level: 2 }) }]"
+                  title="Heading 2"
+                >
+                  <Icon name="lucide:heading-2" class="w-4 h-4" />
+                </button>
+                <button
+                  @click="toggleHeading(field, 3)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'heading', { level: 3 }) }]"
+                  title="Heading 3"
+                >
+                  <Icon name="lucide:heading-3" class="w-4 h-4" />
+                </button>
+              </div>
 
-            <!-- URL Input -->
-            <div v-else-if="isUrlField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-                <span v-if="isRequiredField(field)" class="text-red-500">*</span>
-              </label>
-              <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Icon name="lucide:link" class="w-4 h-4 text-slate-400" />
-                </div>
-                <input
-                  :id="field"
-                  v-model="localContent[field]"
-                  type="url"
-                  :placeholder="getFieldPlaceholder(field)"
-                  class="block w-full pl-10 pr-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                />
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button
+                  @click="toggleBulletList(field)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'bulletList') }]"
+                  title="Bullet List"
+                >
+                  <Icon name="lucide:list" class="w-4 h-4" />
+                </button>
+                <button
+                  @click="toggleOrderedList(field)"
+                  :class="['toolbar-btn', { active: isEditorActive(field, 'orderedList') }]"
+                  title="Numbered List"
+                >
+                  <Icon name="lucide:list-ordered" class="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            <!-- Textarea (Updated to exclude rich text fields) -->
-            <div v-else-if="isTextareaField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-                <span v-if="isRequiredField(field)" class="text-red-500">*</span>
-              </label>
-              <textarea
-                :id="field"
-                v-model="localContent[field]"
-                rows="4"
-                :placeholder="getFieldPlaceholder(field)"
-                class="block w-full px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 resize-none"
-              ></textarea>
-              <p v-if="field.includes('html')" class="text-xs text-slate-500">
-                Supports HTML formatting: &lt;strong&gt;, &lt;em&gt;, &lt;a&gt;, etc.
-              </p>
-            </div>
+            <!-- Editor Content Area -->
+            <div 
+              :ref="el => setEditorRef(field, el as HTMLElement)" 
+              class="min-h-[150px] prose prose-sm max-w-none border border-slate-300 rounded-b-lg p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+            />
+          </div>
 
-            <!-- Color Picker -->
-            <div v-else-if="isColorField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-              </label>
-              <div class="flex items-center space-x-3">
-                <div class="relative">
-                  <input
-                    :id="field"
-                    v-model="localContent[field]"
-                    type="color"
-                    class="w-12 h-12 border border-slate-300 rounded-xl shadow-sm cursor-pointer"
-                  />
-                </div>
-                <input
-                  v-model="localContent[field]"
-                  type="text"
-                  :placeholder="getFieldPlaceholder(field)"
-                  class="flex-1 px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                />
-              </div>
-            </div>
+          <!-- Regular Text Input -->
+          <input
+            v-else-if="isTextField(field)"
+            :id="`${block.id}-${field}`"
+            v-model="localContent[field]"
+            @input="updateContent"
+            type="text"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            :placeholder="getFieldPlaceholder(field)"
+          />
 
-            <!-- Image Upload -->
-            <ImageUpload
-              v-else-if="isImageField(field)"
+          <!-- Textarea -->
+          <textarea
+            v-else-if="isTextareaField(field)"
+            :id="`${block.id}-${field}`"
+            v-model="localContent[field]"
+            @input="updateContent"
+            rows="4"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-y"
+            :placeholder="getFieldPlaceholder(field)"
+          />
+
+          <!-- Email Input -->
+          <div v-else-if="isEmailField(field)" class="relative">
+            <Icon name="lucide:mail" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              :id="`${block.id}-${field}`"
               v-model="localContent[field]"
-              :label="formatFieldName(field)"
+              @input="updateContent"
+              type="email"
+              class="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              :placeholder="getFieldPlaceholder(field)"
+            />
+          </div>
+
+          <!-- URL Input -->
+          <div v-else-if="isUrlField(field)" class="relative">
+            <Icon name="lucide:link" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              :id="`${block.id}-${field}`"
+              v-model="localContent[field]"
+              @input="updateContent"
+              type="url"
+              class="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              :placeholder="getFieldPlaceholder(field)"
+            />
+          </div>
+
+          <!-- Color Picker -->
+          <div v-else-if="isColorField(field)" class="flex items-center space-x-3">
+            <input
+              :id="`${block.id}-${field}`"
+              v-model="localContent[field]"
+              @input="updateContent"
+              type="color"
+              class="h-10 w-20 border border-slate-300 rounded cursor-pointer"
+            />
+            <input
+              v-model="localContent[field]"
+              @input="updateContent"
+              type="text"
+              class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              placeholder="#000000"
+            />
+            <div class="w-10 h-10 rounded border border-slate-300 shadow-inner" :style="{ backgroundColor: localContent[field] || '#ffffff' }"></div>
+          </div>
+
+          <!-- Image Upload/Input -->
+          <div v-else-if="isImageField(field)" class="space-y-3">
+            <ImageUpload
+              :model-value="localContent[field]"
+              @update:model-value="(value) => updateFieldValue(field, value)"
               @error="handleImageUploadError"
             />
-
-            <!-- Number Input -->
-            <div v-else-if="isNumberField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-              </label>
-              <input
-                :id="field"
-                v-model.number="localContent[field]"
-                type="number"
-                :placeholder="getFieldPlaceholder(field)"
-                class="block w-full px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+            <div v-if="localContent[field]" class="relative group">
+              <img
+                :src="getImageUrl(localContent[field])"
+                alt="Preview"
+                class="w-full h-48 object-cover rounded-lg border border-slate-200"
+                @error="handleImageError"
               />
-            </div>
-
-            <!-- Checkbox -->
-            <div v-else-if="isBooleanField(field)" class="flex items-center space-x-3">
-              <input
-                :id="field"
-                v-model="localContent[field]"
-                type="checkbox"
-                class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 focus:ring-2"
-              />
-              <label :for="field" class="text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-              </label>
-            </div>
-
-            <!-- Select Dropdown -->
-            <div v-else-if="isSelectField(field)" class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-              </label>
-              <select
-                :id="field"
-                v-model="localContent[field]"
-                class="block w-full px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+              <button
+                @click="localContent[field] = ''"
+                class="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <option value="">Select an option</option>
-                <option v-for="option in getSelectOptions(field)" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Fallback -->
-            <div v-else class="space-y-2">
-              <label :for="field" class="block text-sm font-medium text-slate-700">
-                {{ formatFieldName(field) }}
-              </label>
-              <input
-                :id="field"
-                v-model="localContent[field]"
-                type="text"
-                :placeholder="getFieldPlaceholder(field)"
-                class="block w-full px-4 py-3 text-sm border border-slate-300 rounded-xl shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-              />
+                <Icon name="lucide:x" class="w-4 h-4" />
+              </button>
             </div>
           </div>
+
+          <!-- Number Input -->
+          <input
+            v-else-if="isNumberField(field)"
+            :id="`${block.id}-${field}`"
+            v-model.number="localContent[field]"
+            @input="updateContent"
+            type="number"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            :placeholder="getFieldPlaceholder(field)"
+          />
+
+          <!-- Boolean/Checkbox -->
+          <label v-else-if="isBooleanField(field)" class="flex items-center space-x-3 cursor-pointer">
+            <input
+              :id="`${block.id}-${field}`"
+              v-model="localContent[field]"
+              @change="updateContent"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <span class="text-sm text-slate-700">Enable {{ formatFieldName(field) }}</span>
+          </label>
+
+          <!-- Select/Dropdown -->
+          <select
+            v-else-if="isSelectField(field)"
+            :id="`${block.id}-${field}`"
+            v-model="localContent[field]"
+            @change="updateContent"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          >
+            <option value="">Select {{ formatFieldName(field) }}</option>
+            <option v-for="option in getFieldOptions(field)" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+
+          <!-- Default fallback to text input -->
+          <input
+            v-else
+            :id="`${block.id}-${field}`"
+            v-model="localContent[field]"
+            @input="updateContent"
+            type="text"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            :placeholder="getFieldPlaceholder(field)"
+          />
         </div>
       </div>
     </div>
@@ -402,14 +339,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { BlockType, NewsletterBlock as NewsletterBlockType } from '../../types';
-import { useTiptapEditor } from '../composables/useTiptapEditor';
-import ImageUpload from './ImageUpload.vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { BlockType, NewsletterBlock as NewsletterBlockType } from '../../types'
+import { useTiptapEditor } from '../composables/useTiptapEditor'
+import ImageUpload from './ImageUpload.vue'
 
 interface Props {
   block: NewsletterBlockType
   blockType: BlockType
+  disabled?: boolean
 }
 
 const props = defineProps<Props>()
@@ -419,14 +357,14 @@ const emit = defineEmits(['update'])
 const isEditing = ref(false)
 const localContent = ref<Record<string, any>>({})
 
-// NEW: Tiptap editor state
+// Tiptap editor state
 const editors = ref<Record<string, any>>({})
 const editorRefs = ref<Record<string, HTMLElement>>({})
 
 // Debug mode (set to false in production)
-const debugMode = ref(true)
+const debugMode = ref(false) // Set to true for development
 
-// Test if Tiptap composable is available
+// Initialize content
 onMounted(() => {
   console.log('=== NEWSLETTER BLOCK MOUNTED ===')
   console.log('📦 Block:', props.block)
@@ -478,12 +416,17 @@ watch(() => props.block.content, (newContent) => {
   })
 }, { deep: true })
 
-// Emit updates to parent when localContent changes
+// Emit updates to parent when localContent changes - FIXED TO INCLUDE ID
 watch(localContent, (newVal) => {
   console.log('=== LOCAL CONTENT UPDATED ===')
   console.log('📝 New Content:', newVal)
   console.log('🚀 Emitting update to parent')
-  emit('update', { content: newVal })
+  // CRITICAL FIX: Include block ID in update
+  emit('update', { 
+    id: props.block.id,
+    type: props.block.type,
+    content: { ...newVal }
+  })
   console.log('=============================')
 }, { deep: true })
 
@@ -505,69 +448,54 @@ const hasContent = computed(() => {
   })
 })
 
-// Enhanced field type detection
-const getEditableFields = (blockType: BlockType) => {
+// Enhanced field type detection - FIXED to match your Directus field names
+const getEditableFields = (blockType: BlockType): string[] => {
   console.log('=== GET EDITABLE FIELDS ===')
   console.log('📋 Block Type:', blockType)
   console.log('🔧 Block Type Fields:', blockType.fields)
   console.log('🏷️ Block Type Slug:', blockType.slug)
   
+  // Use field_visibility_config if available
+  if (blockType.field_visibility_config && Array.isArray(blockType.field_visibility_config)) {
+    return blockType.field_visibility_config
+  }
+  
+  // Fallback to fields array
   if (blockType.fields && Array.isArray(blockType.fields)) {
     const fields = blockType.fields.map(field => field.field || field.name || field).filter(Boolean)
-    console.log('✅ Fields from blockType.fields:', fields)
+    console.log('✅ Fields found:', fields)
     return fields
   }
   
-  // Fallback to common fields based on block type
-  const commonFields: Record<string, string[]> = {
-    header: ['title', 'subtitle', 'button_text', 'button_url', 'background_color', 'text_color'],
-    text: ['text_content', 'background_color', 'text_color'],
-    image: ['image_url', 'image_alt', 'image_link', 'caption'],
-    button: ['button_text', 'button_url', 'button_color', 'text_color'],
-    'cta-section': ['cta_title', 'cta_subtitle', 'primary_button_text', 'primary_button_url', 'secondary_button_text', 'secondary_button_url'],
-    'product-showcase': ['title', 'subtitle', 'price', 'image_url', 'button_text', 'button_url'],
-    footer: ['company_name', 'address', 'unsubscribe_url', 'social_links']
-  }
-  
-  const fallbackFields = commonFields[blockType.slug] || Object.keys(localContent.value)
-  console.log('🔄 Using fallback fields:', fallbackFields)
-  console.log('==========================')
-  
+  // Final fallback based on block type slug
+  const fallbackFields = getDefaultFieldsForBlockType(blockType.slug)
+  console.log('⚠️ Using fallback fields:', fallbackFields)
   return fallbackFields
 }
 
-// NEW: Rich text field detection
+// Default fields for block types without field_visibility_config
+const getDefaultFieldsForBlockType = (slug: string): string[] => {
+  const defaultFields: Record<string, string[]> = {
+    'hero': ['title', 'subtitle', 'button_text', 'button_url', 'background_color', 'text_color', 'text_align', 'padding'],
+    'text': ['text_content', 'background_color', 'text_color', 'text_align', 'padding', 'font_size'],
+    'image': ['image', 'image_alt_text', 'image_caption', 'button_url', 'background_color', 'text_align', 'padding'],
+    'button': ['button_text', 'button_url', 'background_color', 'text_align', 'padding']
+  }
+  
+  return defaultFields[slug] || ['content']
+}
+
+// Field type detection functions
 const isRichTextField = (field: string) => {
-  const richTextFields = [
-    'text_content', 
-    'content', 
-    'description', 
-    'subtitle',
-    'cta_subtitle',
-    'body'
-  ]
-  
-  const isRich = richTextFields.includes(field) || 
-                 field.includes('_content') || 
-                 field.includes('_text') ||
-                 field.includes('_description')
-  
-  console.log(`🎨 Field "${field}" is rich text:`, isRich)
-  return isRich
+  return field === 'text_content' || field === 'body_content' || field === 'description_rich'
 }
 
-// Enhanced field type checks
 const isTextField = (field: string) => {
-  const textFields = ['title', 'subtitle', 'button_text', 'company_name', 'address', 'caption', 'image_alt']
-  return textFields.includes(field) || (!isSpecialField(field) && !field.includes('_'))
+  return !isRichTextField(field) && !isTextareaField(field) && !isSpecialField(field)
 }
 
-// Updated to exclude rich text fields
 const isTextareaField = (field: string) => {
-  return (field.includes('content') || 
-          field.includes('description') || 
-          field.includes('text_content')) && 
-         !isRichTextField(field) // Exclude rich text fields
+  return (field.includes('description') || field.includes('excerpt') || field.includes('summary')) && !isRichTextField(field)
 }
 
 const isEmailField = (field: string) => {
@@ -583,11 +511,11 @@ const isColorField = (field: string) => {
 }
 
 const isImageField = (field: string) => {
-  return field.includes('image') && !field.includes('alt')
+  return field === 'image' || field === 'author_avatar' || (field.includes('image') && !field.includes('alt') && !field.includes('caption'))
 }
 
 const isNumberField = (field: string) => {
-  return field.includes('price') || field.includes('quantity') || field.includes('number')
+  return field.includes('price') || field.includes('quantity') || field.includes('number') || field.includes('percentage')
 }
 
 const isBooleanField = (field: string) => {
@@ -595,11 +523,11 @@ const isBooleanField = (field: string) => {
 }
 
 const isSelectField = (field: string) => {
-  return field.includes('type') || field.includes('style') || field.includes('alignment')
+  return field === 'text_align' || field.includes('type') || field.includes('style') || field.includes('alignment')
 }
 
 const isRequiredField = (field: string) => {
-  const requiredFields = ['title', 'button_text', 'text_content', 'image_url']
+  const requiredFields = ['title', 'button_text', 'text_content', 'image', 'button_url']
   return requiredFields.includes(field)
 }
 
@@ -609,7 +537,7 @@ const isSpecialField = (field: string) => {
          isSelectField(field) || isTextareaField(field) || isRichTextField(field)
 }
 
-// NEW: Tiptap editor management methods
+// Tiptap editor management methods
 const setEditorRef = (fieldName: string, el: HTMLElement | null) => {
   if (el) {
     editorRefs.value[fieldName] = el
@@ -663,7 +591,7 @@ const initializeEditor = (fieldName: string) => {
   }
 }
 
-// NEW: Toolbar command methods
+// Toolbar command methods
 const toggleBold = (fieldName: string) => {
   const editor = editors.value[fieldName]
   if (editor) {
@@ -702,106 +630,81 @@ const isEditorActive = (fieldName: string, name: string, attributes?: Record<str
   return editor ? editor.isActive(name, attributes) : false
 }
 
-const getEditorHeight = (field: string) => {
-  // Customize editor height based on field type
-  if (field.includes('content') || field.includes('description')) {
-    return '150px'
-  }
-  return '120px'
+// Field value update
+const updateFieldValue = (fieldName: string, value: any) => {
+  localContent.value[fieldName] = value
+  updateContent()
 }
 
-// Enhanced utility functions
+const updateContent = () => {
+  // This will trigger the watch on localContent
+}
+
+// Utility functions
 const formatFieldName = (field: string) => {
   return field
     .replace(/_/g, ' ')
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, str => str.toUpperCase())
-    .trim()
+    .replace(/\b\w/g, l => l.toUpperCase())
 }
 
 const getFieldPlaceholder = (field: string) => {
   const placeholders: Record<string, string> = {
-    title: 'Enter a compelling title...',
-    subtitle: 'Add a subtitle or description...',
-    button_text: 'Call to Action',
-    button_url: 'https://example.com',
-    text_content: 'Enter your content here...',
-    image_alt: 'Describe the image...',
-    email: 'example@company.com',
-    company_name: 'Your Company Name',
-    address: '123 Main St, City, State 12345',
-    price: '$99.99',
-    cta_title: 'Ready to get started?',
-    cta_subtitle: 'Join thousands of satisfied customers',
-    background_color: '#ffffff',
-    text_color: '#000000',
-    button_color: '#3b82f6'
-  }
-  
-  // Handle color fields specifically
-  if (field.includes('color')) {
-    if (field.includes('background')) return '#ffffff'
-    if (field.includes('text')) return '#000000'
-    return '#3b82f6'
+    'title': 'Enter title...',
+    'subtitle': 'Enter subtitle...',
+    'text_content': 'Enter your content...',
+    'button_text': 'Button Label',
+    'button_url': 'https://example.com',
+    'image': 'https://example.com/image.jpg',
+    'image_url': 'https://example.com/image.jpg',
+    'image_alt_text': 'Describe the image...',
+    'image_caption': 'Optional caption...',
+    'background_color': '#ffffff',
+    'text_color': '#333333',
+    'text_align': 'left',
+    'padding': '20px',
+    'font_size': '16px',
+    'email': 'email@example.com',
+    'price': '99.99',
+    'quantity': '1'
   }
   
   return placeholders[field] || `Enter ${formatFieldName(field).toLowerCase()}...`
 }
 
-const getFieldHint = (field: string) => {
-  const hints: Record<string, string> = {
-    button_url: 'Use https:// for external links',
-    image_alt: 'Helpful for accessibility and email clients that block images',
-    text_content: 'You can use basic HTML formatting',
-    price: 'Include currency symbol if needed'
-  }
-  
-  return hints[field]
-}
-
-const getFieldClasses = (field: string) => {
-  return {
-    'border-red-300 focus:border-red-500 focus:ring-red-500/20': isRequiredField(field) && !localContent.value[field]
-  }
-}
-
-const getSelectOptions = (field: string) => {
-  const options: Record<string, Array<{value: string, label: string}>> = {
-    alignment: [
+const getFieldOptions = (field: string): { value: string; label: string }[] => {
+  if (field === 'text_align') {
+    return [
       { value: 'left', label: 'Left' },
       { value: 'center', label: 'Center' },
       { value: 'right', label: 'Right' }
-    ],
-    style: [
-      { value: 'default', label: 'Default' },
-      { value: 'rounded', label: 'Rounded' },
-      { value: 'outlined', label: 'Outlined' }
     ]
   }
   
-  return options[field] || []
+  return []
 }
 
-// Enhanced utility functions
-const { directusUrl } = useNewsletter()
-
-const getImageUrl = (imageId: string) => {
-  if (!imageId) return ''
-  if (imageId.startsWith('http')) return imageId
-  return `${directusUrl.value}/assets/${imageId}`
+const stripHtml = (html: string): string => {
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  return tmp.textContent || tmp.innerText || ''
 }
 
-const getContrastColor = (backgroundColor: string) => {
-  if (!backgroundColor) return '#ffffff'
-  
-  // Simple contrast calculation
-  const hex = backgroundColor.replace('#', '')
-  const r = parseInt(hex.substr(0, 2), 16)
-  const g = parseInt(hex.substr(2, 2), 16)
-  const b = parseInt(hex.substr(4, 2), 16)
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000
-  
-  return brightness > 128 ? '#000000' : '#ffffff'
+const getImageUrl = (url: string): string => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/')) return url
+  return `/${url}`
+}
+
+const getContrastColor = (bgColor: string): string => {
+  if (!bgColor) return '#000000'
+  const color = bgColor.substring(1)
+  const rgb = parseInt(color, 16)
+  const r = (rgb >> 16) & 0xff
+  const g = (rgb >> 8) & 0xff
+  const b = (rgb >> 0) & 0xff
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return luma < 128 ? '#ffffff' : '#000000'
 }
 
 const handleImageError = (event: Event) => {
@@ -827,6 +730,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+@reference 'tailwindcss';
 .newsletter-block {
   position: relative;
 }
@@ -844,6 +748,27 @@ onBeforeUnmount(() => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Editor Toolbar */
+.editor-toolbar {
+  @apply flex items-center gap-1 p-2 bg-slate-50 border border-slate-300 border-b-0 rounded-t-lg;
+}
+
+.toolbar-group {
+  @apply flex items-center gap-1;
+}
+
+.toolbar-btn {
+  @apply p-1.5 text-slate-600 hover:bg-slate-200 rounded transition-colors;
+}
+
+.toolbar-btn.active {
+  @apply bg-slate-200 text-blue-600;
+}
+
+.toolbar-divider {
+  @apply w-px h-6 bg-slate-300 mx-1;
 }
 
 /* Enhanced color input styling */

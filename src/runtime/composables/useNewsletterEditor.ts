@@ -1,93 +1,88 @@
 // src/runtime/composables/useNewsletterEditor.ts
-import { computed, nextTick, ref } from 'vue';
-import type { NewsletterBlock, NewsletterData } from '../../types';
+import { computed, nextTick, ref, watch } from 'vue'
+import type { BlockType, NewsletterBlock, NewsletterData } from '../../types'
 
-export function useNewsletterEditor(initialData?: NewsletterData) {
-  const newsletter = ref<NewsletterData>(initialData || {
-    title: '',
-    subject_line: '',
-    preview_text: '',
+export interface NewsletterEditorState {
+  newsletter: NewsletterData
+  blocks: NewsletterBlock[]
+  subject: string
+  preheader: string
+  isTransitioning: boolean
+}
+
+export function useNewsletterEditor(initialNewsletter?: Partial<NewsletterData>) {
+  // State
+  const newsletter = ref<NewsletterData>({
+    id: initialNewsletter?.id || undefined,
+    title: initialNewsletter?.title || '',
+    subject_line: initialNewsletter?.subject_line || '',
+    preview_text: initialNewsletter?.preview_text || '',
+    from_name: initialNewsletter?.from_name || '',
+    from_email: initialNewsletter?.from_email || '',
+    reply_to: initialNewsletter?.reply_to || '',
+    category: initialNewsletter?.category || '',
+    status: initialNewsletter?.status || 'draft',
     blocks: [],
-    status: 'draft'
+    ...initialNewsletter
   })
 
-  // Add transitioning state to prevent rapid operations
+  const blocks = ref<NewsletterBlock[]>(initialNewsletter?.blocks || [])
   const isTransitioning = ref(false)
 
-  // Expose subject and preheader as computed properties for convenience
+  // Computed properties
   const subject = computed({
     get: () => newsletter.value.subject_line,
-    set: (value) => { 
-      newsletter.value.subject_line = value; 
-      newsletter.value.title = value; 
-    }
-  });
-
-  const preheader = computed({
-    get: () => newsletter.value.preview_text || '',
-    set: (value) => { newsletter.value.preview_text = value; }
-  });
-
-  const blocks = computed({
-    get: () => newsletter.value.blocks || [],
-    set: (value) => {
-      newsletter.value.blocks = value
+    set: (value: string) => {
+      newsletter.value.subject_line = value
+      newsletter.value.title = value // Keep title in sync
     }
   })
 
-  const addBlock = (type: string, index?: number): NewsletterBlock => {
+  const preheader = computed({
+    get: () => newsletter.value.preview_text,
+    set: (value: string) => {
+      newsletter.value.preview_text = value
+    }
+  })
+
+  // Methods
+  const addBlock = (blockType: BlockType, content: Record<string, any> = {}): NewsletterBlock => {
     const newBlock: NewsletterBlock = {
-      id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      content: {},
-      sort: index !== undefined ? index : blocks.value.length
+      id: generateBlockId(),
+      type: blockType.slug,
+      block_type: blockType.id,
+      content,
+      sort: blocks.value.length
     }
-
-    if (index !== undefined) {
-      // Insert at specific position
-      const newBlocks = [...blocks.value]
-      newBlocks.splice(index, 0, newBlock)
-      // Update sort values
-      newBlocks.forEach((block, idx) => {
-        block.sort = idx
-      })
-      blocks.value = newBlocks
-    } else {
-      // Add to end
-      blocks.value = [...blocks.value, newBlock]
-    }
-
+    
+    blocks.value.push(newBlock)
+    syncBlocksToNewsletter()
     return newBlock
   }
 
   const removeBlock = async (blockId: string): Promise<void> => {
-    if (isTransitioning.value) return // Prevent multiple rapid operations
+    if (isTransitioning.value) return
     
     const index = blocks.value.findIndex(b => b.id === blockId)
     if (index === -1) return
 
     isTransitioning.value = true
-    
+
     try {
-      // Create new array without the block to remove
-      const newBlocks = blocks.value.filter(b => b.id !== blockId)
+      blocks.value.splice(index, 1)
       
-      // Update sort values for remaining blocks
-      newBlocks.forEach((block, idx) => {
+      // Update sort values
+      blocks.value.forEach((block, idx) => {
         block.sort = idx
       })
       
-      // Update blocks with proper reactivity
-      blocks.value = newBlocks
-      
-      // Wait for DOM update to complete
+      syncBlocksToNewsletter()
       await nextTick()
       
     } finally {
-      // Reset transitioning state after a short delay to allow transition to complete
       setTimeout(() => {
         isTransitioning.value = false
-      }, 300) // Match your CSS transition duration
+      }, 300) // CSS transition duration
     }
   }
 
@@ -99,6 +94,7 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     const newBlocks = [...blocks.value]
     newBlocks[index] = { ...newBlocks[index], ...updates }
     blocks.value = newBlocks
+    syncBlocksToNewsletter()
   }
 
   const moveBlock = async (fromIndex: number, toIndex: number): Promise<void> => {
@@ -119,6 +115,7 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
       })
       
       blocks.value = newBlocks
+      syncBlocksToNewsletter()
       await nextTick()
       
     } finally {
@@ -137,7 +134,8 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     const originalBlock = blocks.value[originalIndex]
     const duplicatedBlock: NewsletterBlock = {
       ...originalBlock,
-      id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: generateBlockId(),
+      content: { ...originalBlock.content },
       sort: originalIndex + 1
     }
 
@@ -153,6 +151,7 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
       })
       
       blocks.value = newBlocks
+      syncBlocksToNewsletter()
       await nextTick()
       
       return duplicatedBlock
@@ -170,6 +169,7 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     
     try {
       blocks.value = []
+      syncBlocksToNewsletter()
       await nextTick()
     } finally {
       setTimeout(() => {
@@ -181,19 +181,21 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
   const loadFromTemplate = (template: any): void => {
     if (!template) return
 
+    // Clear existing blocks
+    blocks.value = []
+
     // Parse blocks configuration
     let templateBlocks: any[] = []
     try {
       templateBlocks = Array.isArray(template.blocks_config)
         ? template.blocks_config
-        : JSON.parse(template.blocks_config)
+        : JSON.parse(template.blocks_config || '[]')
     } catch (error) {
       console.error('Invalid template blocks_config:', error)
       return
     }
 
-    // Create new blocks array
-    const newBlocks: NewsletterBlock[] = []
+    // Create new blocks from template with unique IDs
     templateBlocks.forEach((blockConfig: any, index: number) => {
       const blockType = blockConfig.type || blockConfig.block_type_slug || blockConfig.blockType
       
@@ -203,16 +205,14 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
       }
 
       const newBlock: NewsletterBlock = {
-        id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: generateBlockId(index),
         type: blockType,
-        content: blockConfig.content || blockConfig.data || {},
+        content: { ...(blockConfig.content || blockConfig.data || {}) },
         sort: index
       }
-      newBlocks.push(newBlock)
+      
+      blocks.value.push(newBlock)
     })
-
-    // Update blocks
-    blocks.value = newBlocks
 
     // Apply template settings with validation
     if (template.default_subject_pattern && typeof template.default_subject_pattern === 'string') {
@@ -231,14 +231,47 @@ export function useNewsletterEditor(initialData?: NewsletterData) {
     if (template.default_category) {
       newsletter.value.category = template.default_category
     }
+
+    syncBlocksToNewsletter()
   }
 
+  // Helper functions
+  const generateBlockId = (index?: number): string => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substr(2, 9)
+    const suffix = index !== undefined ? `_${index}` : ''
+    return `block_${timestamp}_${random}${suffix}`
+  }
+
+  const syncBlocksToNewsletter = (): void => {
+    newsletter.value.blocks = blocks.value.map(block => ({
+      ...block,
+      content: { ...block.content }
+    }))
+  }
+
+  // Watch for external changes
+  watch(() => initialNewsletter, (newValue) => {
+    if (newValue) {
+      newsletter.value = { ...newsletter.value, ...newValue }
+      if (newValue.blocks) {
+        blocks.value = newValue.blocks.map(block => ({
+          ...block,
+          content: { ...block.content }
+        }))
+      }
+    }
+  }, { deep: true })
+
   return {
+    // State
     newsletter,
     blocks,
     subject,
     preheader,
-    isTransitioning, // Export this so components can use it
+    isTransitioning,
+    
+    // Methods
     addBlock,
     removeBlock,
     updateBlock,

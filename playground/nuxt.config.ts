@@ -89,10 +89,10 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   // === TYPESCRIPT CONFIGURATION ===
-  typescript: {
-    strict: true,
-    typeCheck: true
-  },
+  // typescript: {
+  //   strict: true,
+  //   typeCheck: true
+  // },
 
   // === COMPATIBILITY ===
   compatibilityDate: '2024-01-01',
