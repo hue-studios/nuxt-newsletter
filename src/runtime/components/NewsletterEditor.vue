@@ -242,11 +242,11 @@
 </template>
 
 <script setup lang="ts">
+import { debounce } from 'lodash'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { NewsletterData } from '../../types'
 import { useDirectusNewsletter } from '../composables/useDirectusNewsletter'
 import { useNewsletterEditor } from '../composables/useNewsletterEditor'
-import { debounce } from '../utils/debounce'
 
 interface Props {
   modelValue: NewsletterData
@@ -805,12 +805,12 @@ onMounted(async () => {
 }
 
 .notification-close {
-  @apply ml-2 p-1 hover:bg-black hover:bg-opacity-10 rounded;
+  @apply ml-2 p-1 hover:bg-black hover:bg-black/10 rounded;
 }
 
 /* Modal Styles */
 .modal-overlay {
-  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
 }
 
 .modal-content {

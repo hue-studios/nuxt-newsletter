@@ -1,477 +1,225 @@
 <template>
-  <div class="newsletter-app">
+  <div class="newsletter-editor-page">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-screen">
-      <div class="loading-content">
-        <div class="loading-spinner">
-          <Icon name="lucide:loader-2" class="animate-spin" />
-        </div>
-        <h3>{{ loadingMessage }}</h3>
-        <p>Setting up your newsletter editor...</p>
-      </div>
+    <div v-if="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>{{ loadingMessage }}</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="error-screen">
-      <div class="error-content">
-        <Icon name="lucide:alert-triangle" class="error-icon" />
-        <h3>Unable to Load Editor</h3>
-        <p>{{ error }}</p>
-        <button @click="initializeEditor" class="retry-button">
-          <Icon name="lucide:refresh-cw" />
-          Try Again
-        </button>
-      </div>
+    <div v-else-if="error" class="error-container">
+      <h2>Error Loading Editor</h2>
+      <p>{{ error }}</p>
+      <button @click="initializeEditor" class="retry-button">Retry</button>
     </div>
 
-    <!-- Main Editor Interface -->
-    <div v-else class="editor-interface">
-      <!-- Mobile-first Top Bar -->
-      <div class="top-bar">
-        <div class="top-bar-content">
-          <div class="newsletter-info">
-            <h1 class="newsletter-title">
-              {{ newsletter.title || newsletter.subject_line || 'Untitled Newsletter' }}
-            </h1>
-            <span class="status-badge" :class="statusClass">
-              {{ newsletter.status || 'draft' }}
-            </span>
-          </div>
-
-          <div class="top-actions">
-            <!-- Template Selector -->
-            <div class="template-selector" ref="templateDropdown">
-              <button 
-                @click="toggleTemplateSelector"
-                class="template-button"
-                :class="{ 'active': showTemplateSelector }"
-              >
-                <Icon name="lucide:layout" />
-                <span class="hidden sm:inline">Templates</span>
-                <Icon name="lucide:chevron-down" class="chevron" />
-              </button>
-
-              <!-- Dropdown Menu -->
-              <Transition name="dropdown">
-                <div v-if="showTemplateSelector" class="template-dropdown">
-                  <div class="dropdown-header">
-                    <h4>Choose Template</h4>
-                    <p>Start with a pre-designed template</p>
-                  </div>
-                  <div class="template-list">
-                    <button
-                      v-for="template in templates"
-                      :key="template.id"
-                      @click="selectTemplate(template)"
-                      class="template-item"
-                    >
-                      <div class="template-icon">
-                        <Icon name="lucide:layout" />
-                      </div>
-                      <div class="template-details">
-                        <span class="template-name">{{ template.name }}</span>
-                        <span class="template-description">{{ template.description }}</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </Transition>
-            </div>
-
-            <!-- Preview Toggle -->
-            <button @click="togglePreview" class="preview-toggle" :class="{ 'active': showPreview }">
-              <Icon name="lucide:eye" />
-              <span class="hidden sm:inline">Preview</span>
-            </button>
-
-            <!-- Save Button with Enhanced States -->
-            <div class="save-group">
-              <button @click="saveNewsletter" class="save-button" :disabled="saving">
-                <Icon :name="saving ? 'lucide:loader-2' : 'lucide:save'" :class="{ 'animate-spin': saving }" />
-                <span class="hidden sm:inline">{{ saving ? 'Saving...' : (newsletter.id ? 'Update' : 'Save') }}</span>
-              </button>
-              
-              <!-- Save & Preview Button (Desktop only) -->
-              <button 
-                v-if="!isMobile" 
-                @click="saveAndRefreshPreview" 
-                class="save-preview-button" 
-                :disabled="saving"
-                title="Save and refresh preview"
-              >
-                <Icon name="lucide:eye" />
-              </button>
-            </div>
-          </div>
-        </div>
+    <!-- Editor -->
+    <div v-else class="editor-container">
+      <!-- Header -->
+      <div class="editor-header">
+        <h1>{{ newsletter.id ? 'Edit' : 'Create' }} Newsletter</h1>
         
-        <!-- Save Status Bar -->
-        <div v-if="saveStatus.message || autoSaveStatus" class="status-bar">
-          <div class="status-content">
-            <div v-if="saveStatus.message" :class="[
-              'status-message',
-              saveStatus.type === 'success' ? 'status-success' : 'status-error'
-            ]">
-              <Icon :name="saveStatus.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'" />
-              <span>{{ saveStatus.message }}</span>
-            </div>
-            
-            <div v-if="autoSaveStatus && !saveStatus.message" class="auto-save-status">
-              <Icon name="lucide:clock" />
-              <span>{{ autoSaveStatus }}</span>
-            </div>
-          </div>
+        <!-- Template Selector -->
+        <div class="template-selector">
+          <label>Apply Template:</label>
+          <select @change="applyTemplate($event.target.value)" v-model="selectedTemplateId">
+            <option value="">Choose template...</option>
+            <option v-for="template in templates" :key="template.id" :value="template.id">
+              {{ template.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Save Status -->
+        <div v-if="saveStatus" :class="['save-status', saveStatus.type]">
+          {{ saveStatus.message }}
         </div>
       </div>
 
-      <!-- Main Content Area -->
-      <div class="main-content">
-        <!-- Editor Panel -->
-        <div class="editor-panel" :class="{ 'hidden-mobile': showPreview && isMobile }">
-          <!-- Newsletter Settings (Collapsible) -->
-          <div class="settings-section">
-            <button @click="toggleSettings" class="settings-toggle">
-              <Icon name="lucide:settings" />
-              <span>Newsletter Settings</span>
-              <Icon name="lucide:chevron-down" class="chevron" :class="{ 'rotated': showSettings }" />
-            </button>
+      <!-- Newsletter Editor Component -->
+      <NewsletterEditor 
+        v-model="newsletter" 
+        :show-preview="true"
+        @save="saveNewsletter"
+      />
+      <BlockStructureDiagnostic 
+        :newsletter="newsletter" 
+        :blockTypes="blockTypes"
+        @update:newsletter="newsletter = $event"
+      />
 
-            <Transition name="slide-down">
-              <div v-if="showSettings" class="settings-form">
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label for="title">Title</label>
-                    <input
-                      id="title"
-                      v-model="newsletter.title"
-                      type="text"
-                      placeholder="Newsletter title"
-                      class="form-input"
-                    />
-                  </div>
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button 
+          @click="saveNewsletter" 
+          :disabled="saving"
+          class="save-button"
+        >
+          <span v-if="saving">Saving...</span>
+          <span v-else>{{ newsletter.id ? 'Update' : 'Create' }} Newsletter</span>
+        </button>
 
-                  <div class="form-group">
-                    <label for="subject">Subject Line*</label>
-                    <input
-                      id="subject"
-                      v-model="newsletter.subject_line"
-                      type="text"
-                      placeholder="Enter email subject"
-                      class="form-input"
-                      required
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="preview">Preview Text</label>
-                    <input
-                      id="preview"
-                      v-model="newsletter.preview_text"
-                      type="text"
-                      placeholder="Preview text shown in inbox"
-                      class="form-input"
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="from-name">From Name</label>
-                    <input
-                      id="from-name"
-                      v-model="newsletter.from_name"
-                      type="text"
-                      placeholder="Your Company"
-                      class="form-input"
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="from-email">From Email</label>
-                    <input
-                      id="from-email"
-                      v-model="newsletter.from_email"
-                      type="email"
-                      placeholder="newsletter@yourcompany.com"
-                      class="form-input"
-                    />
-                  </div>
-
-                  <div class="form-group">
-                    <label for="reply-to">Reply To</label>
-                    <input
-                      id="reply-to"
-                      v-model="newsletter.reply_to"
-                      type="email"
-                      placeholder="replies@yourcompany.com"
-                      class="form-input"
-                    />
-                  </div>
-                </div>
-              </div>
-            </Transition>
-          </div>
-
-          <!-- Block Toolbar -->
-          <div class="block-toolbar">
-            <h3>Add Content Blocks</h3>
-            <div class="block-types-grid">
-              <button
-                v-for="blockType in blockTypes"
-                :key="blockType.id"
-                @click="addBlock(blockType.slug)"
-                class="block-type-button"
-              >
-                <Icon :name="blockType.icon || 'lucide:square'" />
-                <span>{{ blockType.name }}</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Newsletter Blocks -->
-          <div class="blocks-container">
-            <h3>Newsletter Content</h3>
-            
-            <div v-if="newsletter.blocks.length === 0" class="empty-state">
-              <Icon name="lucide:layout" class="empty-icon" />
-              <h4>Start Building Your Newsletter</h4>
-              <p>Add content blocks from the toolbar above to begin creating your newsletter.</p>
-            </div>
-
-            <div v-else class="blocks-list">
-              <TransitionGroup name="block-list" tag="div">
-                <div
-                  v-for="(block, index) in newsletter.blocks"
-                  :key="block.id"
-                  class="block-item"
-                >
-                  <div class="block-header">
-                    <div class="block-info">
-                      <Icon :name="getBlockIcon(block.type)" class="block-icon" />
-                      <span class="block-name">{{ getBlockName(block.type) }}</span>
-                    </div>
-                    <div class="block-actions">
-                      <button @click="moveBlockUp(index)" :disabled="index === 0" class="block-action">
-                        <Icon name="lucide:chevron-up" />
-                      </button>
-                      <button @click="moveBlockDown(index)" :disabled="index === newsletter.blocks.length - 1" class="block-action">
-                        <Icon name="lucide:chevron-down" />
-                      </button>
-                      <button @click="duplicateBlock(block.id)" class="block-action">
-                        <Icon name="lucide:copy" />
-                      </button>
-                      <button @click="removeBlock(block.id)" class="block-action delete">
-                        <Icon name="lucide:trash-2" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="block-content">
-                    <NewsletterBlock
-                      :block="block"
-                      :block-type="getBlockType(block.type)"
-                      @update="updateBlock"
-                    />
-                  </div>
-                </div>
-              </TransitionGroup>
-            </div>
-          </div>
-        </div>
-
-        <!-- Preview Panel -->
-        <div class="preview-panel" :class="{ 'hidden-mobile': !showPreview && isMobile }">
-          <div class="preview-header">
-            <div class="preview-info">
-              <h3>Live Preview</h3>
-              <div v-if="previewStatus.lastRefreshed" class="preview-timestamp">
-                Updated {{ formatTimeAgo(previewStatus.lastRefreshed) }}
-              </div>
-            </div>
-            
-            <div class="preview-controls">
-              <div class="device-selector">
-                <button
-                  v-for="device in devices"
-                  :key="device.type"
-                  @click="currentDevice = device.type"
-                  class="device-button"
-                  :class="{ 'active': currentDevice === device.type }"
-                >
-                  <Icon :name="device.icon" />
-                  <span class="sr-only">{{ device.label }}</span>
-                </button>
-              </div>
-              
-              <button 
-                @click="refreshPreview" 
-                :disabled="previewStatus.isRefreshing"
-                class="refresh-button"
-                title="Refresh preview"
-              >
-                <Icon 
-                  name="lucide:refresh-cw" 
-                  :class="{ 'animate-spin': previewStatus.isRefreshing }" 
-                />
-              </button>
-            </div>
-          </div>
-
-          <div class="preview-container">
-            <NewsletterPreview
-              ref="previewComponent"
-              :newsletter="newsletter"
-              :block-types="blockTypes"
-              :device="currentDevice"
-              @update:compiled="handleCompiled"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mobile Navigation -->
-    <div v-if="isMobile" class="mobile-nav">
-      <button @click="showPreview = false" class="nav-button" :class="{ 'active': !showPreview }">
-        <Icon name="lucide:edit" />
-        <span>Edit</span>
-      </button>
-      <button @click="showPreview = true" class="nav-button" :class="{ 'active': showPreview }">
-        <Icon name="lucide:eye" />
-        <span>Preview</span>
-      </button>
-    </div>
-
-    <!-- Notification System -->
-    <Transition name="notification">
-      <div v-if="notification.show" class="notification" :class="notification.type">
-        <Icon :name="notification.type === 'success' ? 'lucide:check-circle' : 'lucide:alert-circle'" />
-        <span>{{ notification.message }}</span>
-        <button @click="hideNotification" class="notification-close">
-          <Icon name="lucide:x" />
+        <button 
+          @click="sendTestEmail" 
+          :disabled="!newsletter.id || saving"
+          class="test-button"
+        >
+          Send Test Email
+        </button>
+        <button 
+          v-if="newsletter.id"
+          @click="deleteNewsletter"
+          class="delete-button"
+        >
+          Delete Newsletter
         </button>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+<script setup>
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-// Get newsletter ID from route if editing existing newsletter
+// Get newsletter ID from route if editing
 const route = useRoute()
-const newsletterId = computed(() => route.params.id)
+const router = useRouter()
+const newsletterId = ref(route.params.id || null)
 
-// Composables
-const { 
-  newsletter, 
-  addBlock, 
-  removeBlock, 
-  updateBlock, 
-  moveBlock, 
-  duplicateBlock,
-  loadFromTemplate 
-} = useNewsletterEditor()
-
-const { 
-  fetchBlockTypes, 
-  fetchTemplates,
-  createNewsletter,
-  updateNewsletter,
-  fetchNewsletter
-} = useDirectusNewsletter()
-
-// Reactive state
-const loading = ref(true)
-const loadingMessage = ref('Loading editor...')
-const error = ref('')
-const saving = ref(false)
+// State
+const newsletter = ref({
+  title: '',
+  subject_line: '',
+  preview_text: '',
+  from_name: '',
+  from_email: '',
+  reply_to: '',
+  blocks: [],
+  status: 'draft',
+  category: ''
+})
 
 const blockTypes = ref([])
 const templates = ref([])
+const selectedTemplateId = ref('')
+const loading = ref(true)
+const loadingMessage = ref('Initializing editor...')
+const error = ref(null)
+const saving = ref(false)
+const saveStatus = ref(null)
 
-const showTemplateSelector = ref(false)
-const showPreview = ref(false)
-const showSettings = ref(true)
-const currentDevice = ref('mobile')
+// Composables
+const { 
+  fetchBlockTypes, 
+  fetchTemplates, 
+  fetchTemplate,
+  fetchNewsletter,
+  createNewsletter,
+  updateNewsletter,
+  deleteNewsletter: deleteNewsletterApi
+} = useDirectusNewsletter()
 
-const templateDropdown = ref(null)
-const previewComponent = ref(null)
+const { sendTestEmail: sendTest } = useSendGrid()
 
-// Auto-save functionality
-const lastSaved = ref(null)
-const autoSaveTimer = ref(null)
-const autoSaveEnabled = ref(true)
+// Apply template to newsletter
+const applyTemplate = async (templateId) => {
+  if (!templateId) return
 
-// Save status
-const saveStatus = ref({
-  message: '',
-  type: 'success'
-})
+  try {
+    loadingMessage.value = 'Applying template...'
+    loading.value = true
+    
+    // Fetch the full template
+    const template = await fetchTemplate(templateId)
+    
+    // Parse blocks_config if it's a string
+    let templateBlocks = []
+    try {
+      templateBlocks = typeof template.blocks_config === 'string' 
+        ? JSON.parse(template.blocks_config)
+        : template.blocks_config
+    } catch (error) {
+      console.error('Invalid template blocks_config:', error)
+      throw new Error('Template has invalid block configuration')
+    }
 
-// Preview status
-const previewStatus = ref({
-  isRefreshing: false,
-  lastRefreshed: null
-})
+    // Transform template blocks to newsletter blocks
+    const newBlocks = []
+    
+    for (const [index, blockConfig] of templateBlocks.entries()) {
+      // Extract the block type slug from the config
+      const blockTypeSlug = blockConfig.block_type_slug || blockConfig.type || blockConfig.blockType
+      
+      if (!blockTypeSlug) {
+        console.warn('Block config missing type:', blockConfig)
+        continue
+      }
 
-// Notification system
-const notification = ref({
-  show: false,
-  type: 'success',
-  message: ''
-})
+      // Find the corresponding block type
+      const blockType = blockTypes.value.find(bt => bt.slug === blockTypeSlug)
+      
+      if (!blockType) {
+        console.warn(`Block type not found for slug: ${blockTypeSlug}`)
+        continue
+      }
 
-// Mobile detection
-const isMobile = ref(false)
+      // Create the block with proper structure
+      const newBlock = {
+        id: `block_${Date.now()}_${index}`,
+        type: blockType.slug, // Store the slug for the editor
+        block_type: blockType.id, // Store the ID for Directus
+        content: blockConfig.data || blockConfig.content || {},
+        sort: index
+      }
+      
+      newBlocks.push(newBlock)
+    }
 
-// Device options
-const devices = [
-  { type: 'mobile', icon: 'lucide:smartphone', label: 'Mobile' },
-  { type: 'desktop', icon: 'lucide:monitor', label: 'Desktop' }
-]
+    // Update newsletter with template data
+    newsletter.value = {
+      ...newsletter.value,
+      blocks: newBlocks,
+      title: template.default_subject_pattern || newsletter.value.title,
+      subject_line: template.default_subject_pattern || newsletter.value.subject_line,
+      from_name: template.default_from_name || newsletter.value.from_name,
+      from_email: template.default_from_email || newsletter.value.from_email,
+      reply_to: template.default_reply_to || newsletter.value.reply_to,
+      category: template.default_category || newsletter.value.category,
+      template_id: template.id
+    }
 
-// Computed
-const statusClass = computed(() => {
-  const status = newsletter.value.status || 'draft'
-  return `status-${status}`
-})
-
-const autoSaveStatus = computed(() => {
-  if (!autoSaveEnabled.value) return ''
-  if (saving.value) return 'Saving...'
-  if (lastSaved.value) {
-    const elapsed = Math.round((Date.now() - lastSaved.value) / 1000)
-    return `Last saved ${elapsed}s ago`
+    showSaveStatus('Template applied successfully!', 'success')
+    
+  } catch (err) {
+    console.error('Failed to apply template:', err)
+    showSaveStatus('Failed to apply template: ' + err.message, 'error')
+  } finally {
+    loading.value = false
   }
-  return ''
-})
+}
 
-// Methods
+// Initialize editor
 const initializeEditor = async () => {
   try {
     loading.value = true
-    loadingMessage.value = 'Loading block types...'
+    error.value = null
     
-    const [blockTypesData, templatesData] = await Promise.all([
-      fetchBlockTypes(),
-      fetchTemplates({ limit: 50 })
-    ])
-
+    // Load block types
+    loadingMessage.value = 'Loading block types...'
+    const blockTypesData = await fetchBlockTypes()
     blockTypes.value = blockTypesData
+
+    // Load templates
+    loadingMessage.value = 'Loading templates...'
+    const templatesData = await fetchTemplates()
     templates.value = templatesData
 
     // Load existing newsletter if editing
     if (newsletterId.value) {
       loadingMessage.value = 'Loading newsletter...'
       const existingNewsletter = await fetchNewsletter(newsletterId.value)
-      
-      // Update the newsletter data from the composable
-      Object.assign(newsletter.value, existingNewsletter)
-      
-      // Refresh preview after loading
-      nextTick(() => {
-        refreshPreview()
-      })
+      newsletter.value = existingNewsletter
     }
 
     loading.value = false
@@ -480,6 +228,9 @@ const initializeEditor = async () => {
     loading.value = false
   }
 }
+
+// Save newsletter
+// Add this debug version of saveNewsletter to your index.vue to see what's happening
 
 const saveNewsletter = async () => {
   if (saving.value) return
@@ -498,780 +249,289 @@ const saveNewsletter = async () => {
       newsletter.value.title = newsletter.value.subject_line
     }
 
-    // Prepare newsletter data for Directus
-    const newsletterData = {
+    // Debug: Log the newsletter structure before transformation
+    console.log('=== SAVE DEBUG ===')
+    console.log('Newsletter before save:', {
       ...newsletter.value,
-      // Transform blocks to match Directus format
-      blocks: newsletter.value.blocks.map(block => ({
-        id: block.id,
-        block_type: typeof block.block_type === 'string' ? block.block_type : block.block_type?.id,
-        content: block.content || {},
-        sort: block.sort || 0
-      })),
-      // Ensure required fields have fallbacks
-      from_name: newsletter.value.from_name || 'Newsletter',
-      from_email: newsletter.value.from_email || 'newsletter@example.com'
+      blocks: newsletter.value.blocks.map(b => ({
+        id: b.id,
+        type: b.type,
+        block_type: b.block_type,
+        hasContent: !!b.content,
+        contentKeys: Object.keys(b.content || {})
+      }))
+    })
+
+    // Debug: Check block types
+    const blockTypes = await fetchBlockTypes()
+    console.log('Available block types:', blockTypes.map(bt => ({
+      id: bt.id,
+      slug: bt.slug
+    })))
+
+    // Debug: Try transformation
+    const { transformBlocksForDirectus } = useDirectusNewsletter()
+    try {
+      const transformedBlocks = await transformBlocksForDirectus(newsletter.value.blocks)
+      console.log('Transformed blocks:', transformedBlocks.map(b => ({
+        id: b.id,
+        block_type: b.block_type,
+        hasContent: !!b.content
+      })))
+    } catch (transformError) {
+      console.error('Block transformation failed:', transformError)
+      throw new Error(`Block transformation failed: ${transformError.message}`)
     }
+
+    // Debug: Log the final payload
+    console.log('Sending newsletter data...')
 
     let result
 
     if (newsletter.value.id) {
-      // Update existing newsletter
-      result = await updateNewsletter(newsletter.value.id, newsletterData)
+      // Update existing - the composable will handle block transformation
+      result = await updateNewsletter(newsletter.value.id, newsletter.value)
       showSaveStatus('Newsletter updated successfully!', 'success')
     } else {
-      // Create new newsletter
-      result = await createNewsletter(newsletterData)
+      // Create new - the composable will handle block transformation
+      result = await createNewsletter(newsletter.value)
       newsletter.value.id = result.id
       showSaveStatus('Newsletter created successfully!', 'success')
+      
+      // Update URL to include the new ID
+      router.replace({ params: { id: result.id } })
     }
 
-    lastSaved.value = Date.now()
-    
-    // Refresh preview after successful save
-    await refreshPreview()
-    
     return result
 
   } catch (err) {
-    console.error('Save failed:', err)
+    console.error('=== SAVE ERROR ===')
+    console.error('Full error:', err)
+    console.error('Error response:', err.response)
     
-    // User-friendly error messages
+    // More detailed error messages
     let errorMessage = 'Failed to save newsletter'
     
-    if (err.message.includes('Permission denied')) {
-      errorMessage = 'Permission denied. Please check your access rights.'
-    } else if (err.message.includes('required field')) {
-      errorMessage = err.message
-    } else if (err.message.includes('Invalid data')) {
-      errorMessage = 'Invalid data format. Please check all fields.'
+    if (err.response?.status === 403) {
+      errorMessage = 'Permission denied. This might be a data format issue.'
+      console.error('403 Error - Check if blocks have proper block_type UUIDs')
     } else if (err.response?.status === 422) {
-      errorMessage = 'Validation error. Please check required fields.'
+      errorMessage = 'Validation error. Check the browser console for details.'
+      if (err.response?.data?.errors) {
+        console.error('Validation errors:', err.response.data.errors)
+      }
+    } else if (err.message.includes('Block transformation')) {
+      errorMessage = err.message
+    } else if (err.message.includes('Invalid block type')) {
+      errorMessage = `Invalid block type. Make sure all block types exist in Directus.`
     }
     
     showSaveStatus(errorMessage, 'error')
-    throw err
-    
   } finally {
     saving.value = false
   }
 }
 
-const saveAndRefreshPreview = async () => {
-  try {
-    await saveNewsletter()
-    
-    // Ensure preview is visible
-    if (!showPreview.value) {
-      showPreview.value = true
-    }
-    
-    showNotification('Newsletter saved and preview refreshed!', 'success')
-  } catch (error) {
-    // Error already handled in saveNewsletter
-  }
-}
-
-const refreshPreview = async () => {
-  if (!previewComponent.value) {
-    console.warn('Preview component not available')
-    return
-  }
+// Send test email
+const sendTestEmail = async () => {
+  const email = prompt('Enter test email address:')
+  if (!email) return
 
   try {
-    previewStatus.value.isRefreshing = true
-    
-    // Call the preview component's refresh method
-    await previewComponent.value.refreshPreview()
-    
-    previewStatus.value.lastRefreshed = Date.now()
-    
-    // Add a small delay for visual feedback
-    setTimeout(() => {
-      previewStatus.value.isRefreshing = false
-    }, 500)
-    
-  } catch (error) {
-    console.error('Preview refresh failed:', error)
-    previewStatus.value.isRefreshing = false
-  }
-}
-
-const toggleTemplateSelector = (e) => {
-  e.stopPropagation()
-  showTemplateSelector.value = !showTemplateSelector.value
-}
-
-const selectTemplate = async (template) => {
-  try {
-    await loadFromTemplate(template)
-    showTemplateSelector.value = false
-    showNotification(`Loaded template: ${template.name}`, 'success')
+    await sendTest(newsletter.value, email)
+    showSaveStatus('Test email sent!', 'success')
   } catch (err) {
-    showNotification('Failed to load template', 'error')
+    showSaveStatus('Failed to send test email', 'error')
   }
 }
 
-const togglePreview = () => {
-  showPreview.value = !showPreview.value
-  if (showPreview.value) {
-    // Refresh preview when showing it
-    nextTick(() => {
-      refreshPreview()
-    })
+// Delete newsletter
+const deleteNewsletter = async () => {
+  if (!confirm('Are you sure you want to delete this newsletter?')) return
+
+  try {
+    await deleteNewsletterApi(newsletter.value.id)
+    showSaveStatus('Newsletter deleted', 'success')
+    
+    // Redirect to newsletter list
+    setTimeout(() => {
+      router.push('/newsletters')
+    }, 1500)
+  } catch (err) {
+    showSaveStatus('Failed to delete newsletter', 'error')
   }
 }
 
-const toggleSettings = () => {
-  showSettings.value = !showSettings.value
-}
-
-const moveBlockUp = (index) => {
-  if (index > 0) {
-    moveBlock(index, index - 1)
-  }
-}
-
-const moveBlockDown = (index) => {
-  if (index < newsletter.value.blocks.length - 1) {
-    moveBlock(index, index + 1)
-  }
-}
-
-const getBlockType = (slug) => {
-  return blockTypes.value.find(bt => bt.slug === slug)
-}
-
-const getBlockIcon = (slug) => {
-  const blockType = getBlockType(slug)
-  return blockType?.icon || 'lucide:square'
-}
-
-const getBlockName = (slug) => {
-  const blockType = getBlockType(slug)
-  return blockType?.name || slug
-}
-
-const handleCompiled = (compiled) => {
-  newsletter.value.compiled_mjml = compiled.mjml
-  newsletter.value.compiled_html = compiled.html
-}
-
-const showNotification = (message, type = 'success') => {
-  notification.value = {
-    show: true,
-    type,
-    message
-  }
-  setTimeout(() => {
-    notification.value.show = false
-  }, 5000)
-}
-
-const hideNotification = () => {
-  notification.value.show = false
-}
-
+// Status helpers
 const showSaveStatus = (message, type = 'success') => {
   saveStatus.value = { message, type }
-  setTimeout(() => {
-    clearSaveStatus()
-  }, 5000)
+  setTimeout(clearSaveStatus, 5000)
 }
 
 const clearSaveStatus = () => {
-  saveStatus.value = { message: '', type: 'success' }
+  saveStatus.value = null
 }
 
-const formatTimeAgo = (timestamp) => {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ago`
-}
-
-// Auto-save functionality
-const triggerAutoSave = () => {
-  if (!autoSaveEnabled.value) return
-  
-  if (autoSaveTimer.value) {
-    clearTimeout(autoSaveTimer.value)
-  }
-  
-  autoSaveTimer.value = setTimeout(async () => {
-    if (!saving.value && newsletter.value.subject_line?.trim()) {
-      try {
-        await saveNewsletter()
-      } catch (error) {
-        console.warn('Auto-save failed:', error)
-      }
-    }
-  }, 3000) // Auto-save after 3 seconds of inactivity
-}
-
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 768
-}
-
-const handleClickOutside = (event) => {
-  if (templateDropdown.value && !templateDropdown.value.contains(event.target)) {
-    showTemplateSelector.value = false
-  }
-}
-
-// Watchers
-watch(newsletter, () => {
-  triggerAutoSave()
-}, { deep: true })
-
-// Lifecycle
-onMounted(async () => {
-  handleResize()
-  window.addEventListener('resize', handleResize)
-  document.addEventListener('click', handleClickOutside)
-  
-  await initializeEditor()
-  
-  // Auto-show preview on desktop
-  if (!isMobile.value) {
-    showPreview.value = true
-  }
-
-  // Set up keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault()
-      saveNewsletter()
-    }
-  })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  document.removeEventListener('click', handleClickOutside)
-  
-  if (autoSaveTimer.value) {
-    clearTimeout(autoSaveTimer.value)
-  }
+// Initialize on mount
+onMounted(() => {
+  initializeEditor()
 })
 </script>
 
 <style scoped>
-@reference 'tailwindcss';
-.newsletter-app {
-  @apply min-h-screen bg-slate-50;
+.newsletter-editor-page {
+  min-height: 100vh;
+  background-color: #f8fafc;
 }
 
-/* Loading Screen */
-.loading-screen {
-  @apply min-h-screen flex items-center justify-center;
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1rem;
 }
 
-.loading-content {
-  @apply text-center;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.loading-spinner {
-  @apply w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mx-auto shadow-lg;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.loading-spinner svg {
-  @apply w-8 h-8 text-white;
+.editor-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
-.loading-content h3 {
-  @apply text-xl font-semibold text-slate-900 mb-2;
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.loading-content p {
-  @apply text-slate-600;
+.editor-header h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1e293b;
 }
 
-/* Error Screen */
-.error-screen {
-  @apply min-h-screen flex items-center justify-center p-4;
+.template-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.error-content {
-  @apply text-center max-w-md;
+.template-selector label {
+  font-weight: 500;
+  color: #475569;
 }
 
-.error-icon {
-  @apply w-16 h-16 mb-6 text-red-500 mx-auto;
+.template-selector select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background-color: white;
 }
 
-.error-content h3 {
-  @apply text-xl font-semibold text-slate-900 mb-2;
+.save-status {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-.error-content p {
-  @apply text-slate-600 mb-6;
+.save-status.success {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.save-status.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.save-button,
+.test-button,
+.delete-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.save-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.save-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-button {
+  background-color: #8b5cf6;
+  color: white;
+  border: none;
+}
+
+.test-button:hover:not(:disabled) {
+  background-color: #7c3aed;
+}
+
+.test-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  margin-left: auto;
+}
+
+.delete-button:hover {
+  background-color: #dc2626;
 }
 
 .retry-button {
-  @apply inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors;
-}
-
-/* Editor Interface */
-.editor-interface {
-  @apply min-h-screen flex flex-col;
-}
-
-/* Top Bar */
-.top-bar {
-  @apply bg-white border-b border-slate-200 sticky top-0 z-40;
-}
-
-.top-bar-content {
-  @apply px-4 py-3 flex items-center justify-between;
-}
-
-.newsletter-info {
-  @apply flex items-center gap-3;
-}
-
-.newsletter-title {
-  @apply text-lg font-semibold text-slate-900 truncate;
-}
-
-.status-badge {
-  @apply px-2 py-1 text-xs font-medium rounded-full;
-}
-
-.status-draft {
-  @apply bg-gray-100 text-gray-700;
-}
-
-.status-ready {
-  @apply bg-blue-100 text-blue-700;
-}
-
-.status-sent {
-  @apply bg-green-100 text-green-700;
-}
-
-.top-actions {
-  @apply flex items-center gap-2;
-}
-
-/* Save Group */
-.save-group {
-  @apply flex items-center;
-}
-
-.save-preview-button {
-  @apply ml-1 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50;
-}
-
-/* Status Bar */
-.status-bar {
-  @apply border-t border-slate-100 bg-slate-50;
-}
-
-.status-content {
-  @apply px-4 py-2 flex items-center justify-between;
-}
-
-.status-message {
-  @apply flex items-center gap-2 text-sm font-medium;
-}
-
-.status-success {
-  @apply text-green-700;
-}
-
-.status-error {
-  @apply text-red-700;
-}
-
-.auto-save-status {
-  @apply flex items-center gap-2 text-sm text-slate-500;
-}
-
-/* Template Selector */
-.template-selector {
-  @apply relative;
-}
-
-.template-button {
-  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors;
-}
-
-.template-button.active {
-  @apply bg-blue-50 border-blue-300 text-blue-700;
-}
-
-.chevron {
-  @apply w-4 h-4 transition-transform;
-}
-
-.template-button.active .chevron {
-  @apply rotate-180;
-}
-
-.template-dropdown {
-  @apply absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-xl ring-1 ring-black/5 z-50 max-h-96 overflow-hidden;
-}
-
-.dropdown-header {
-  @apply p-4 border-b border-slate-100;
-}
-
-.dropdown-header h4 {
-  @apply text-sm font-semibold text-slate-900;
-}
-
-.dropdown-header p {
-  @apply text-xs text-slate-600 mt-1;
-}
-
-.template-list {
-  @apply max-h-64 overflow-y-auto p-2;
-}
-
-.template-item {
-  @apply flex items-center gap-3 w-full p-3 rounded-lg hover:bg-slate-50 transition-colors text-left;
-}
-
-.template-icon {
-  @apply w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center;
-}
-
-.template-icon svg {
-  @apply w-4 h-4 text-blue-600;
-}
-
-.template-details {
-  @apply flex-1 min-w-0;
-}
-
-.template-name {
-  @apply block text-sm font-medium text-slate-900;
-}
-
-.template-description {
-  @apply block text-xs text-slate-600 truncate;
-}
-
-/* Action Buttons */
-.preview-toggle,
-.save-button {
-  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors;
-}
-
-.preview-toggle {
-  @apply text-slate-700 bg-white border border-slate-300 hover:bg-slate-50;
-}
-
-.preview-toggle.active {
-  @apply bg-blue-50 border-blue-300 text-blue-700;
-}
-
-.save-button {
-  @apply text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed;
-}
-
-/* Main Content */
-.main-content {
-  @apply flex-1 flex overflow-hidden;
-}
-
-.editor-panel,
-.preview-panel {
-  @apply flex-1 overflow-y-auto;
-}
-
-.editor-panel {
-  @apply border-r border-slate-200 bg-white;
-}
-
-.preview-panel {
-  @apply bg-slate-50;
-}
-
-@media (max-width: 767px) {
-  .hidden-mobile {
-    @apply hidden;
-  }
-}
-
-/* Settings Section */
-.settings-section {
-  @apply border-b border-slate-200;
-}
-
-.settings-toggle {
-  @apply w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors;
-}
-
-.settings-toggle svg:first-child {
-  @apply w-5 h-5 text-slate-500;
-}
-
-.settings-toggle span {
-  @apply flex-1 font-medium text-slate-900;
-}
-
-.settings-toggle .chevron {
-  @apply w-4 h-4 text-slate-400 transition-transform;
-}
-
-.settings-toggle .chevron.rotated {
-  @apply rotate-180;
-}
-
-.settings-form {
-  @apply p-4 bg-slate-50 border-t border-slate-200;
-}
-
-.form-grid {
-  @apply grid gap-4 sm:grid-cols-2;
-}
-
-.form-group {
-  @apply space-y-1;
-}
-
-.form-group label {
-  @apply block text-sm font-medium text-slate-700;
-}
-
-.form-input {
-  @apply block w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
-}
-
-/* Block Toolbar */
-.block-toolbar {
-  @apply p-4 border-b border-slate-200;
-}
-
-.block-toolbar h3 {
-  @apply text-sm font-semibold text-slate-900 mb-3;
-}
-
-.block-types-grid {
-  @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2;
-}
-
-.block-type-button {
-  @apply flex flex-col items-center gap-2 p-3 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 transition-colors;
-}
-
-.block-type-button svg {
-  @apply w-5 h-5;
-}
-
-/* Blocks Container */
-.blocks-container {
-  @apply p-4;
-}
-
-.blocks-container h3 {
-  @apply text-sm font-semibold text-slate-900 mb-4;
-}
-
-.empty-state {
-  @apply text-center py-12;
-}
-
-.empty-icon {
-  @apply w-12 h-12 text-slate-300 mx-auto mb-4;
-}
-
-.empty-state h4 {
-  @apply text-sm font-semibold text-slate-900 mb-2;
-}
-
-.empty-state p {
-  @apply text-sm text-slate-600;
-}
-
-/* Block List */
-.blocks-list {
-  @apply space-y-4;
-}
-
-.block-item {
-  @apply bg-white border border-slate-200 rounded-lg overflow-hidden;
-}
-
-.block-header {
-  @apply flex items-center justify-between p-3 bg-slate-50 border-b border-slate-200;
-}
-
-.block-info {
-  @apply flex items-center gap-2;
-}
-
-.block-icon {
-  @apply w-4 h-4 text-slate-500;
-}
-
-.block-name {
-  @apply text-sm font-medium text-slate-900;
-}
-
-.block-actions {
-  @apply flex items-center gap-1;
-}
-
-.block-action {
-  @apply p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors;
-}
-
-.block-action:disabled {
-  @apply opacity-50 cursor-not-allowed;
-}
-
-.block-action.delete {
-  @apply hover:text-red-600 hover:bg-red-50;
-}
-
-.block-content {
-  @apply p-4;
-}
-
-/* Preview Panel */
-.preview-header {
-  @apply flex items-center justify-between p-4 bg-white border-b border-slate-200;
-}
-
-.preview-info h3 {
-  @apply text-sm font-semibold text-slate-900;
-}
-
-.preview-timestamp {
-  @apply text-xs text-slate-500 mt-1;
-}
-
-.preview-controls {
-  @apply flex items-center gap-3;
-}
-
-.device-selector {
-  @apply flex items-center gap-1 bg-slate-100 rounded-lg p-1;
-}
-
-.device-button {
-  @apply p-2 rounded-md transition-colors;
-}
-
-.device-button.active {
-  @apply bg-white shadow-sm;
-}
-
-.device-button svg {
-  @apply w-4 h-4;
-}
-
-.refresh-button {
-  @apply p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50;
-}
-
-.preview-container {
-  @apply p-4 flex justify-center;
-}
-
-/* Mobile Navigation */
-.mobile-nav {
-  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-30;
-}
-
-.nav-button {
-  @apply flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors;
-}
-
-.nav-button.active {
-  @apply text-blue-600;
-}
-
-.nav-button svg {
-  @apply w-5 h-5;
-}
-
-/* Notification */
-.notification {
-  @apply fixed top-4 right-4 flex items-center gap-3 px-4 py-3 bg-white border rounded-lg shadow-lg z-50;
-}
-
-.notification.success {
-  @apply border-green-200 bg-green-50;
-}
-
-.notification.error {
-  @apply border-red-200 bg-red-50;
-}
-
-.notification svg:first-child {
-  @apply w-5 h-5;
-}
-
-.notification.success svg:first-child {
-  @apply text-green-600;
-}
-
-.notification.error svg:first-child {
-  @apply text-red-600;
-}
-
-.notification span {
-  @apply text-sm font-medium text-slate-900;
-}
-
-.notification-close {
-  @apply p-1 text-slate-400 hover:text-slate-600 transition-colors;
-}
-
-.notification-close svg {
-  @apply w-4 h-4;
-}
-
-/* Transitions */
-.dropdown-enter-active,
-.dropdown-leave-active {
-  @apply transition-all duration-200;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  @apply opacity-0 scale-95 translate-y-1;
-}
-
-.slide-down-enter-active,
-.slide-down-leave-active {
-  @apply transition-all duration-300;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to {
-  @apply opacity-0 -translate-y-2;
-}
-
-.block-list-move,
-.block-list-enter-active,
-.block-list-leave-active {
-  @apply transition-all duration-300;
-}
-
-.block-list-enter-from,
-.block-list-leave-to {
-  @apply opacity-0 scale-95;
-}
-
-.notification-enter-active,
-.notification-leave-active {
-  @apply transition-all duration-300;
-}
-
-.notification-enter-from,
-.notification-leave-to {
-  @apply opacity-0 translate-x-full;
-}
-
-/* Screen reader only */
-.sr-only {
-  @apply sr-only;
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.retry-button:hover {
+  background-color: #2563eb;
 }
 </style>

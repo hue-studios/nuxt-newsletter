@@ -1,134 +1,89 @@
 <template>
-  <div class="newsletter-preview-container" :class="deviceClass">
+  <div :class="['newsletter-preview-container', `preview-device-${device}`]">
     <!-- Preview Header -->
     <div class="preview-header">
       <div class="preview-title">
-        <Icon name="lucide:mail" class="w-4 h-4" />
+        <Icon name="lucide:eye" class="w-5 h-5" />
         <span>Newsletter Preview</span>
       </div>
       
-      <!-- Device Controls -->
       <div class="preview-controls">
+        <!-- Device Controls -->
         <div class="device-controls">
-          <!-- <button
-            @click="setDevice('desktop')"
-            :class="{ active: currentDevice === 'desktop' }"
-            class="device-button"
-            title="Desktop preview"
-          >
-            <Icon name="lucide:monitor" class="w-4 h-4" />
-          </button> -->
           <button
-            @click="setDevice('tablet')"
-            :class="{ active: currentDevice === 'tablet' }"
-            class="device-button"
-            title="Tablet preview"
+            @click="setDevice('desktop')"
+            :class="['device-button', { active: device === 'desktop' }]"
+            title="Desktop Preview"
           >
             <Icon name="lucide:monitor" class="w-4 h-4" />
           </button>
           <button
+            @click="setDevice('tablet')"
+            :class="['device-button', { active: device === 'tablet' }]"
+            title="Tablet Preview"
+          >
+            <Icon name="lucide:tablet" class="w-4 h-4" />
+          </button>
+          <button
             @click="setDevice('mobile')"
-            :class="{ active: currentDevice === 'mobile' }"
-            class="device-button"
-            title="Mobile preview"
+            :class="['device-button', { active: device === 'mobile' }]"
+            title="Mobile Preview"
           >
             <Icon name="lucide:smartphone" class="w-4 h-4" />
           </button>
         </div>
-        
+
+        <!-- Action Controls -->
         <div class="action-controls">
-          <button @click="refreshPreview" class="control-button" title="Refresh preview">
-            <Icon name="lucide:refresh-cw" class="w-4 h-4" />
+          <button @click="refreshPreview" class="refresh-button" :disabled="isCompiling">
+            <Icon name="lucide:refresh-cw" :class="['w-4 h-4', { 'animate-spin': isCompiling }]" />
           </button>
-          <button @click="showSourceModal = true" class="control-button" title="View source">
+          <button @click="toggleSource" class="source-button">
             <Icon name="lucide:code" class="w-4 h-4" />
           </button>
-          <button @click="toggleDebugMode" class="control-button" title="Toggle debug">
-            <Icon name="lucide:bug" class="w-4 h-4" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Source View -->
+    <Transition name="collapse">
+      <div v-if="showSource" class="source-container">
+        <div class="source-tabs">
+          <button
+            @click="activeSourceTab = 'mjml'"
+            :class="['source-tab', { active: activeSourceTab === 'mjml' }]"
+          >
+            MJML
+          </button>
+          <button
+            @click="activeSourceTab = 'html'"
+            :class="['source-tab', { active: activeSourceTab === 'html' }]"
+          >
+            HTML
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Debug Information (when enabled) -->
-    <div v-if="showDebug" class="debug-info">
-      <h4>Debug Information</h4>
-      <div class="debug-details">
-        <div class="debug-item">
-          <strong>Status:</strong>
-          <span :class="compilationStatusClass">{{ compilationStatus }}</span>
-        </div>
-        <div class="debug-item">
-          <strong>Device:</strong>
-          <span>{{ currentDevice }}</span>
-        </div>
-        <div class="debug-item">
-          <strong>Blocks:</strong>
-          <span>{{ newsletter?.blocks?.length || 0 }}</span>
-        </div>
-        <div class="debug-item">
-          <strong>Replacements:</strong>
-          <span>{{ replacedPlaceholders }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Source Code Modal -->
-    <Transition name="modal">
-      <div v-if="showSourceModal" class="modal-overlay" @click="showSourceModal = false">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3>Newsletter Source Code</h3>
-            <button @click="showSourceModal = false" class="modal-close">
-              <Icon name="lucide:x" class="w-5 h-5" />
-            </button>
+        
+        <div class="source-content">
+          <div v-if="activeSourceTab === 'mjml'" class="source-panel">
+            <div class="source-header">
+              <span class="source-title">Generated MJML</span>
+              <button @click="copyToClipboard(compiledMjml)" class="copy-button">
+                <Icon name="lucide:copy" class="w-4 h-4" />
+                Copy MJML
+              </button>
+            </div>
+            <pre class="source-code"><code>{{ compiledMjml || 'No MJML generated yet' }}</code></pre>
           </div>
           
-          <div class="modal-body">
-            <!-- Source Tabs -->
-            <div class="source-tabs">
-              <button
-                @click="activeSourceTab = 'mjml'"
-                :class="{ active: activeSourceTab === 'mjml' }"
-                class="tab-button"
-              >
-                <Icon name="lucide:code" class="w-4 h-4" />
-                MJML
-              </button>
-              <button
-                @click="activeSourceTab = 'html'"
-                :class="{ active: activeSourceTab === 'html' }"
-                class="tab-button"
-              >
-                <Icon name="lucide:globe" class="w-4 h-4" />
-                HTML
+          <div v-else-if="activeSourceTab === 'html'" class="source-panel">
+            <div class="source-header">
+              <span class="source-title">Generated HTML</span>
+              <button @click="copyToClipboard(compiledHtml)" class="copy-button">
+                <Icon name="lucide:copy" class="w-4 h-4" />
+                Copy HTML
               </button>
             </div>
-            
-            <!-- Source Content -->
-            <div class="source-content">
-              <div v-if="activeSourceTab === 'mjml'" class="source-panel">
-                <div class="source-header">
-                  <span class="source-title">Generated MJML</span>
-                  <button @click="copyToClipboard(compiledMjml)" class="copy-button">
-                    <Icon name="lucide:copy" class="w-4 h-4" />
-                    Copy MJML
-                  </button>
-                </div>
-                <pre class="source-code"><code>{{ compiledMjml || 'No MJML generated yet. Compiling...' }}</code></pre>
-              </div>
-              
-              <div v-else-if="activeSourceTab === 'html'" class="source-panel">
-                <div class="source-header">
-                  <span class="source-title">Generated HTML</span>
-                  <button @click="copyToClipboard(compiledHtml)" class="copy-button">
-                    <Icon name="lucide:copy" class="w-4 h-4" />
-                    Copy HTML
-                  </button>
-                </div>
-                <pre class="source-code"><code>{{ compiledHtml || 'No HTML generated yet. Compiling...' }}</code></pre>
-              </div>
-            </div>
+            <pre class="source-code"><code>{{ compiledHtml || 'No HTML generated yet' }}</code></pre>
           </div>
         </div>
       </div>
@@ -202,234 +157,339 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:compiled': [value: { mjml: string; html: string }]
-  'device-changed': [device: string]
 }>()
 
 // State
+const device = ref(props.device)
 const compiledMjml = ref('')
 const compiledHtml = ref('')
 const isCompiling = ref(false)
 const compilationError = ref<string | null>(null)
-const showSourceModal = ref(false)
-const activeSourceTab = ref('mjml') // Fixed: Define the sourceTab properly
-const showDebug = ref(false)
-const compilationStatus = ref('Ready')
-const replacedPlaceholders = ref(0)
-const debugInfo = ref('')
-const currentStep = ref('')
+const showSource = ref(false)
+const activeSourceTab = ref<'mjml' | 'html'>('mjml')
 const previewFrame = ref<HTMLIFrameElement | null>(null)
+const currentStep = ref('')
+const debugInfo = ref('')
 
-// Device management
-const currentDevice = ref(props.device)
-
-// Initialize content mapping
+// Composables
 const { mapBlockContent } = useNewsletterContentMapping()
 
 // Computed properties
-const deviceClass = computed(() => `preview-device-${currentDevice.value}`)
-const deviceIframeClass = computed(() => `iframe-${currentDevice.value}`)
-
-const compilationStatusClass = computed(() => {
-  switch (compilationStatus.value) {
-    case 'Success': return 'status-success'
-    case 'Failed': return 'status-error'
-    case 'Compiling': return 'status-progress'
-    default: return 'status-default'
+const deviceIframeClass = computed(() => {
+  switch (device.value) {
+    case 'mobile': return 'device-mobile'
+    case 'tablet': return 'device-tablet'
+    default: return 'device-desktop'
   }
 })
 
-// Device switching
-const setDevice = (device: 'desktop' | 'mobile' | 'tablet') => {
-  currentDevice.value = device
-  emit('device-changed', device)
-  nextTick(() => {
-    adjustIframeSize()
-  })
+// Compilation timeout reference
+let compilationTimeout: any = null
+
+// Methods
+const setDevice = (newDevice: 'desktop' | 'mobile' | 'tablet') => {
+  device.value = newDevice
+  adjustIframeSize()
 }
 
-// Toggle debug mode
-const toggleDebugMode = () => {
-  showDebug.value = !showDebug.value
+const toggleSource = () => {
+  showSource.value = !showSource.value
 }
 
-// Refresh preview
 const refreshPreview = () => {
+  console.log('Refreshing preview...')
   compileNewsletter()
 }
 
-// Adjust iframe size based on device
 const adjustIframeSize = () => {
-  if (!previewFrame.value) return
-  
-  const iframe = previewFrame.value
-  switch (currentDevice.value) {
-    case 'mobile':
-      iframe.style.width = '375px'
-      iframe.style.maxWidth = '100%'
-      iframe.style.margin = '0 auto'
-      break
-    case 'tablet':
-      iframe.style.width = '768px'
-      iframe.style.maxWidth = '100%'
-      iframe.style.margin = '0 auto'
-      break
-    case 'desktop':
-    default:
-      iframe.style.width = '100%'
-      iframe.style.maxWidth = 'none'
-      iframe.style.margin = '0'
-      break
-  }
+  nextTick(() => {
+    if (previewFrame.value) {
+      switch (device.value) {
+        case 'mobile':
+          previewFrame.value.style.maxWidth = '375px'
+          break
+        case 'tablet':
+          previewFrame.value.style.maxWidth = '768px'
+          break
+        default:
+          previewFrame.value.style.maxWidth = '100%'
+      }
+    }
+  })
 }
 
-// Enhanced compilation with better error handling
+// Generate MJML from newsletter
+const generateMjml = () => {
+  if (!props.newsletter) {
+    return createEmptyMjml()
+  }
+
+  let bodyContent = ''
+  
+  if (props.newsletter.blocks && props.newsletter.blocks.length > 0) {
+    props.newsletter.blocks.forEach((block: any) => {
+      const blockType = props.blockTypes?.find(bt => 
+        bt.slug === block.type || bt.id === block.block_type
+      )
+      
+      if (!blockType || !blockType.mjml_template) {
+        console.warn(`Block type not found or missing template: ${block.type}`)
+        return
+      }
+
+      let mjml = blockType.mjml_template
+      
+      // Map and replace content
+      const mappedContent = mapBlockContent(blockType.slug, block.content || {})
+      console.log(`Mapped content for ${blockType.slug}:`, mappedContent)
+      
+      // Replace placeholders
+      mjml = mjml.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+        return mappedContent[key] !== undefined ? String(mappedContent[key]) : match
+      })
+      
+      // Handle conditional content
+      mjml = mjml.replace(/\{\{if (\w+)\}\}(.*?)\{\{\/if\}\}/gs, (match, key, content) => {
+        return mappedContent[key] ? content : ''
+      })
+      
+      bodyContent += mjml
+    })
+  }
+
+  const mjmlDocument = `
+    <mjml>
+      <mj-head>
+        <mj-title>${props.newsletter.subject_line || 'Newsletter'}</mj-title>
+        <mj-preview>${props.newsletter.preview_text || ''}</mj-preview>
+        <mj-attributes>
+          <mj-all font-family="Arial, sans-serif" />
+          <mj-text font-size="14px" line-height="1.6" />
+        </mj-attributes>
+      </mj-head>
+      <mj-body>
+        ${bodyContent || '<mj-section><mj-column><mj-text>No content blocks added yet.</mj-text></mj-column></mj-section>'}
+      </mj-body>
+    </mjml>
+  `
+
+  compiledMjml.value = mjmlDocument
+  return mjmlDocument
+}
+
+const createEmptyMjml = () => {
+  return `
+    <mjml>
+      <mj-body>
+        <mj-section>
+          <mj-column>
+            <mj-text align="center" color="#666666">
+              Add blocks to your newsletter to see the preview.
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-body>
+    </mjml>
+  `
+}
+
+// Generate fallback HTML when MJML compilation fails
+const generateFallbackHtml = () => {
+  const newsletter = props.newsletter
+  
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${newsletter?.subject_line || 'Newsletter Preview'}</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .block { margin-bottom: 30px; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
+        .block-type { font-size: 12px; color: #666; margin-bottom: 10px; text-transform: uppercase; }
+        h1, h2, h3 { color: #2c3e50; }
+        .preview-notice { background: #fffacd; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+        .button { display: inline-block; padding: 10px 20px; background: #3b82f6; color: white; text-decoration: none; border-radius: 4px; }
+      </style>
+    </head>
+    <body>
+      <div class="preview-notice">
+        ⚠️ Simplified preview mode - MJML compilation unavailable
+      </div>
+  `
+
+  if (newsletter?.blocks && newsletter.blocks.length > 0) {
+    newsletter.blocks.forEach((block: any, index: number) => {
+      const blockType = props.blockTypes?.find(bt => 
+        bt.slug === block.type || bt.id === block.block_type
+      )
+      
+      html += `
+        <div class="block">
+          <div class="block-type">${blockType?.name || block.type || 'Unknown Block'}</div>
+      `
+
+      // Render block content based on type
+      const content = block.content || {}
+      
+      if (content.title) {
+        html += `<h2>${content.title}</h2>`
+      }
+      
+      if (content.subtitle) {
+        html += `<h3>${content.subtitle}</h3>`
+      }
+      
+      if (content.text_content) {
+        html += `<div>${content.text_content}</div>`
+      }
+      
+      if (content.button_text && content.button_url) {
+        html += `<p><a href="${content.button_url}" class="button">${content.button_text}</a></p>`
+      }
+
+      // Show other fields as key-value pairs
+      const shownFields = ['title', 'subtitle', 'text_content', 'button_text', 'button_url']
+      const otherFields = Object.entries(content).filter(([key]) => !shownFields.includes(key))
+      
+      if (otherFields.length > 0) {
+        html += '<div style="font-size: 14px; color: #666; margin-top: 10px;">'
+        otherFields.forEach(([key, value]) => {
+          if (value && typeof value !== 'object') {
+            html += `<div><strong>${key}:</strong> ${value}</div>`
+          }
+        })
+        html += '</div>'
+      }
+
+      html += '</div>'
+    })
+  } else {
+    html += '<p>No blocks added yet. Add blocks to see the preview.</p>'
+  }
+
+  html += '</body></html>'
+  
+  return html
+}
+
+// Main compilation function with timeout and error handling
 const compileNewsletter = async () => {
-  if (!props.newsletter?.blocks || !props.blockTypes) {
-    compilationError.value = 'No newsletter content or block types available'
+  if (!props.newsletter || isCompiling.value) {
+    console.log('Skipping compilation:', { 
+      hasNewsletter: !!props.newsletter, 
+      isCompiling: isCompiling.value 
+    })
     return
   }
 
+  console.log('Starting MJML compilation...')
   isCompiling.value = true
   compilationError.value = null
-  compilationStatus.value = 'Compiling'
-  currentStep.value = 'Initializing...'
-  replacedPlaceholders.value = 0
+  currentStep.value = 'Generating MJML...'
+
+  // Add a timeout to prevent hanging
+  const timeoutId = setTimeout(() => {
+    console.error('MJML compilation timeout after 10 seconds')
+    compilationError.value = 'Compilation timeout - showing fallback preview'
+    isCompiling.value = false
+    currentStep.value = ''
+    
+    // Generate a simple fallback preview
+    const fallbackHtml = generateFallbackHtml()
+    compiledHtml.value = fallbackHtml
+    updatePreview(fallbackHtml)
+  }, 10000)
 
   try {
-    currentStep.value = 'Processing blocks...'
-    
     // Generate MJML
-    let mjmlBody = ''
-    let totalReplacements = 0
-
-    props.newsletter.blocks.forEach((block: any, index: number) => {
-      currentStep.value = `Processing block ${index + 1}/${props.newsletter.blocks.length}...`
-      
-      // Find block type
-      const blockType = props.blockTypes.find(bt => 
-        bt.slug === block.type || 
-        bt.id === block.block_type ||
-        bt.id === block.type ||
-        bt.slug === block.block_type
-      )
-
-      if (!blockType) {
-        console.warn(`Block type not found for block ${index + 1}:`, block)
-        return
-      }
-
-      if (!blockType.mjml_template) {
-        console.warn(`No MJML template for block type: ${blockType.name}`)
-        return
-      }
-
-      // Map content using the enhanced mapping system
-      const mappedContent = mapBlockContent(block, blockType)
-      console.log(`Mapped content for ${blockType.slug}:`, mappedContent)
-
-      // Replace placeholders in MJML template
-      let blockMjml = blockType.mjml_template
-      let blockReplacements = 0
-
-      // Handle simple placeholders
-      blockMjml = blockMjml.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-        const value = mappedContent[key]
-        if (value !== undefined) {
-          blockReplacements++
-          return String(value)
-        }
-        return match
-      })
-
-      // Handle triple braces for HTML content
-      blockMjml = blockMjml.replace(/\{\{\{(\w+)\}\}\}/g, (match, key) => {
-        const value = mappedContent[key]
-        if (value !== undefined) {
-          blockReplacements++
-          return String(value)
-        }
-        return match
-      })
-
-      // Handle conditional blocks
-      blockMjml = blockMjml.replace(/\{\{#if (\w+)\}\}(.*?)\{\{\/if\}\}/gs, (match, key, content) => {
-        const value = mappedContent[key]
-        const shouldShow = value && value !== '' && value !== null && value !== undefined
-        return shouldShow ? content : ''
-      })
-
-      mjmlBody += blockMjml
-      totalReplacements += blockReplacements
-      console.log(`Block ${blockType.slug}: ${blockReplacements} replacements made`)
-    })
-
-    currentStep.value = 'Generating MJML...'
+    const mjml = generateMjml()
     
-    // Wrap in complete MJML structure
-    const completeMjml = `
-      <mjml>
-        <mj-head>
-          <mj-title>${props.newsletter.title || 'Newsletter'}</mj-title>
-          <mj-preview>${props.newsletter.preview_text || ''}</mj-preview>
-          <mj-attributes>
-            <mj-all font-family="Arial, sans-serif" />
-            <mj-text font-size="14px" color="#000000" line-height="20px" />
-          </mj-attributes>
-        </mj-head>
-        <mj-body>
-          ${mjmlBody}
-        </mj-body>
-      </mjml>
-    `
-
-    compiledMjml.value = completeMjml
-    replacedPlaceholders.value = totalReplacements
-
-    currentStep.value = 'Compiling to HTML...'
-
-    // Compile MJML to HTML
-    const response = await $fetch('/api/newsletter/compile-mjml', {
-      method: 'POST',
-      body: { mjml: completeMjml }
-    })
-
-    if (response.errors && response.errors.length > 0) {
-      throw new Error(`MJML compilation errors: ${response.errors.join(', ')}`)
+    if (!mjml) {
+      throw new Error('Failed to generate MJML')
     }
 
-    compiledHtml.value = response.html || ''
-    compilationStatus.value = 'Success'
+    console.log('Generated MJML length:', mjml.length)
+    console.log('First 500 chars:', mjml.substring(0, 500))
     
-    // Emit the compiled content
-    emit('update:compiled', {
-      mjml: completeMjml,
-      html: response.html || ''
-    })
+    currentStep.value = 'Compiling to HTML...'
 
-    console.log(`MJML compilation complete: ${totalReplacements} placeholders replaced`)
+    // Try server compilation with better error handling
+    try {
+      const response = await $fetch('/api/newsletter/compile-mjml', {
+        method: 'POST',
+        body: { mjml },
+        timeout: 8000 // 8 second timeout for API call
+      })
 
-    // Adjust iframe size after content loads
-    nextTick(() => {
-      adjustIframeSize()
-    })
+      clearTimeout(timeoutId)
+
+      if (response.html) {
+        console.log('Compilation successful, HTML length:', response.html.length)
+        compiledHtml.value = response.html
+        updatePreview(response.html)
+        compilationError.value = null
+        
+        // Emit compiled result
+        emit('update:compiled', { mjml: compiledMjml.value, html: response.html })
+      } else if (response.errors && response.errors.length > 0) {
+        console.error('MJML compilation errors:', response.errors)
+        compilationError.value = `MJML errors: ${response.errors.join(', ')}`
+        debugInfo.value = JSON.stringify(response.errors, null, 2)
+        
+        // Use fallback HTML on MJML errors
+        const fallbackHtml = generateFallbackHtml()
+        compiledHtml.value = fallbackHtml
+        updatePreview(fallbackHtml)
+      }
+    } catch (serverError: any) {
+      clearTimeout(timeoutId)
+      console.error('Server compilation failed:', serverError)
+      
+      // Check if it's a network error or server not available
+      if (serverError.statusCode === 404 || serverError.message?.includes('fetch')) {
+        compilationError.value = 'MJML server not available - showing simplified preview'
+      } else {
+        compilationError.value = `Server error: ${serverError.message || 'Unknown error'}`
+      }
+      
+      // Use fallback HTML
+      console.log('Using fallback HTML preview')
+      const fallbackHtml = generateFallbackHtml()
+      compiledHtml.value = fallbackHtml
+      updatePreview(fallbackHtml)
+    }
 
   } catch (error: any) {
-    console.error('Compilation failed:', error)
-    compilationError.value = error.message || 'Unknown error'
-    compilationStatus.value = 'Failed'
-    debugInfo.value = JSON.stringify({
-      error: error.message,
-      stack: error.stack,
-      newsletter: props.newsletter,
-      blockTypes: props.blockTypes?.map(bt => ({ id: bt.id, slug: bt.slug, name: bt.name }))
-    }, null, 2)
+    clearTimeout(timeoutId)
+    console.error('Compilation error:', error)
+    compilationError.value = error.message || 'Compilation failed'
+    debugInfo.value = error.stack || ''
+    
+    // Always show something
+    const fallbackHtml = generateFallbackHtml()
+    compiledHtml.value = fallbackHtml
+    updatePreview(fallbackHtml)
   } finally {
     isCompiling.value = false
     currentStep.value = ''
   }
 }
 
-// Utility functions
+// Update preview iframe
+const updatePreview = (html: string) => {
+  if (!html) return
+  
+  nextTick(() => {
+    if (previewFrame.value) {
+      // Force iframe to update by setting srcdoc
+      previewFrame.value.srcdoc = html
+    }
+  })
+}
+
+// Event handlers
 const handleIframeLoad = () => {
   console.log('Newsletter preview loaded successfully')
   adjustIframeSize()
@@ -449,12 +509,24 @@ const copyToClipboard = async (text: string) => {
   }
 }
 
-// Watch for prop changes
-watch(() => props.newsletter, () => {
-  if (props.newsletter?.blocks?.length) {
-    compileNewsletter()
-  }
-}, { deep: true })
+// Watch for prop changes with debouncing
+watch(
+  () => props.newsletter,
+  async (newVal) => {
+    if (newVal) {
+      // Clear existing timeout
+      if (compilationTimeout) {
+        clearTimeout(compilationTimeout)
+      }
+      
+      // Debounce compilation to avoid too many requests
+      compilationTimeout = setTimeout(() => {
+        compileNewsletter()
+      }, 500)
+    }
+  },
+  { deep: true }
+)
 
 watch(() => props.blockTypes, () => {
   if (props.newsletter?.blocks?.length && props.blockTypes?.length) {
@@ -524,96 +596,40 @@ onMounted(() => {
 
 /* Action Controls */
 .action-controls {
-  @apply flex items-center gap-1;
+  @apply flex items-center gap-2;
 }
 
-.control-button {
-  @apply p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50;
+.refresh-button,
+.source-button {
+  @apply p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors;
 }
 
-/* Debug Information */
-.debug-info {
-  @apply p-4 bg-blue-50 border-b border-blue-200;
+.refresh-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
 }
 
-.debug-info h4 {
-  @apply text-lg font-semibold mb-3 text-blue-800;
+/* Source View */
+.source-container {
+  @apply border-b border-gray-200 bg-gray-50;
+  max-height: 400px;
+  overflow: hidden;
 }
 
-.debug-details {
-  @apply grid grid-cols-2 lg:grid-cols-4 gap-4;
-}
-
-.debug-item {
-  @apply bg-white p-3 rounded border;
-}
-
-.debug-item strong {
-  @apply block text-sm font-medium mb-1;
-}
-
-.debug-item span {
-  @apply text-sm;
-}
-
-/* Status indicators */
-.status-success {
-  @apply bg-green-100 text-green-800 px-2 py-1 rounded;
-}
-
-.status-error {
-  @apply bg-red-100 text-red-800 px-2 py-1 rounded;
-}
-
-.status-progress {
-  @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded;
-}
-
-.status-default {
-  @apply bg-gray-100 text-gray-800 px-2 py-1 rounded;
-}
-
-/* Modal Styles */
-.modal-overlay {
-  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
-}
-
-.modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden;
-}
-
-.modal-header {
-  @apply flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50;
-}
-
-.modal-header h3 {
-  @apply text-lg font-semibold text-gray-900;
-}
-
-.modal-close {
-  @apply p-1 hover:bg-gray-200 rounded transition-colors;
-}
-
-.modal-body {
-  @apply flex flex-col h-[70vh];
-}
-
-/* Source Tabs */
 .source-tabs {
-  @apply flex border-b border-gray-200 bg-gray-50;
+  @apply flex border-b border-gray-200;
 }
 
-.tab-button {
-  @apply flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent transition-colors;
+.source-tab {
+  @apply px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent transition-colors;
 }
 
-.tab-button.active {
-  @apply text-blue-600 border-blue-600 bg-white;
+.source-tab.active {
+  @apply text-blue-600 border-blue-600;
 }
 
-/* Source Content */
 .source-content {
-  @apply flex-1 overflow-hidden;
+  @apply overflow-hidden;
+  height: 350px;
 }
 
 .source-panel {
@@ -621,7 +637,7 @@ onMounted(() => {
 }
 
 .source-header {
-  @apply flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200;
+  @apply flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200;
 }
 
 .source-title {
@@ -629,121 +645,127 @@ onMounted(() => {
 }
 
 .copy-button {
-  @apply flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors;
+  @apply flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors;
 }
 
 .source-code {
-  @apply flex-1 overflow-auto p-4 text-xs font-mono bg-gray-900 text-green-400 whitespace-pre-wrap;
+  @apply flex-1 overflow-auto p-4 m-0 text-xs bg-gray-900 text-gray-100;
+}
+
+.source-code code {
+  @apply font-mono;
+  white-space: pre;
 }
 
 /* Preview Content */
 .preview-content {
-  @apply flex-1 overflow-auto;
+  @apply flex-1 overflow-auto bg-gray-100 p-4;
 }
 
 .email-preview-frame {
-  @apply h-full;
-}
-
-.preview-iframe-container {
-  @apply h-full p-4 bg-gray-50;
-}
-
-.preview-iframe {
-  @apply w-full h-full border border-gray-300 rounded-lg bg-white shadow-sm;
-  min-height: 600px;
-}
-
-/* Device-specific iframe styles */
-.iframe-mobile {
-  @apply mx-auto;
-  width: 375px;
-  max-width: 100%;
-}
-
-.iframe-tablet {
-  @apply mx-auto;
-  width: 768px;
-  max-width: 100%;
-}
-
-.iframe-desktop {
-  @apply w-full;
+  @apply bg-white rounded-lg shadow-sm overflow-hidden mx-auto h-full;
 }
 
 /* Loading State */
 .loading-state {
-  @apply flex flex-col items-center justify-center p-8 text-gray-600 min-h-[400px];
+  @apply flex flex-col items-center justify-center h-full py-20 text-gray-500;
 }
 
 .loading-state p {
-  @apply mt-3 text-sm;
+  @apply mt-3 text-base font-medium;
 }
 
 .loading-state small {
-  @apply text-xs text-gray-500;
+  @apply mt-1 text-sm text-gray-400;
 }
 
 /* Error State */
 .compilation-error {
-  @apply p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg m-4;
+  @apply flex flex-col items-center justify-center h-full py-20 px-4 text-center;
 }
 
 .compilation-error h4 {
-  @apply font-medium mb-2;
+  @apply text-lg font-semibold text-red-600 mb-2;
+}
+
+.compilation-error p {
+  @apply text-gray-600 mb-4;
 }
 
 .error-retry-button {
-  @apply flex items-center gap-2 mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors;
+  @apply inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors;
 }
 
 .error-details {
-  @apply mt-4;
+  @apply mt-4 text-left max-w-lg;
 }
 
 .error-details summary {
-  @apply cursor-pointer font-medium;
+  @apply cursor-pointer text-sm text-gray-500 hover:text-gray-700;
 }
 
 .error-details pre {
-  @apply mt-2 text-xs bg-red-100 p-2 rounded overflow-auto max-h-48;
+  @apply mt-2 p-3 bg-gray-100 rounded text-xs overflow-auto;
 }
 
 /* Empty State */
 .empty-content {
-  @apply flex flex-col items-center justify-center p-8 text-gray-500 min-h-[400px];
+  @apply flex flex-col items-center justify-center h-full py-20 text-gray-400;
 }
 
 .empty-content h4 {
-  @apply text-lg font-medium mt-4 mb-2;
+  @apply mt-4 text-lg font-medium text-gray-600;
 }
 
 .empty-content p {
-  @apply text-sm text-center mb-4;
+  @apply mt-2 text-sm text-gray-500;
 }
 
 .empty-refresh-button {
-  @apply flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors;
+  @apply mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors;
+}
+
+/* Preview Iframe */
+.preview-iframe-container {
+  @apply h-full;
+}
+
+.preview-iframe {
+  @apply w-full h-full border-0;
+  min-height: 600px;
+}
+
+/* Device-specific iframe styles */
+.device-mobile {
+  @apply mx-auto;
+  max-width: 375px;
+}
+
+.device-tablet {
+  @apply mx-auto;
+  max-width: 768px;
+}
+
+.device-desktop {
+  @apply w-full;
 }
 
 /* Transitions */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
 }
 
-.modal-enter-from,
-.modal-leave-to {
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
   opacity: 0;
 }
 
-.modal-enter-active .modal-content,
-.modal-leave-active .modal-content {
-  transition: transform 0.3s ease;
-}
-
-.modal-enter-from .modal-content,
-.modal-leave-to .modal-content {
-  transform: scale(0.9);
+.collapse-enter-to,
+.collapse-leave-from {
+  max-height: 400px;
+  opacity: 1;
 }
 </style>
