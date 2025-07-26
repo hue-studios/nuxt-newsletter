@@ -735,3 +735,7 @@ export const dragDropStyles = `
   outline-color: rgba(59, 130, 246, 0.5);
 }
 `
+
+export const useDragAndDrop = useAdvancedDragDrop
+
+export default useDragAndDrop

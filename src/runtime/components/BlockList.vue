@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface Props {
   blocks: any[]
@@ -169,37 +169,63 @@ const hoveredIndex = ref<number | null>(null)
 const expandedBlocks = ref<Set<number>>(new Set())
 const accessibilityAnnouncement = ref('')
 
-// Drag and drop setup
-const {
-  isActive: isDragging,
-  draggedIndex,
-  dragOverIndex,
-  getDragAttributes,
-  getDragClasses,
-  cancelDrag,
-  triggerHapticFeedback
-} = useDragDrop({
-  onMove: handleBlockMove,
-  onStart: handleDragStart,
-  onEnd: handleDragEnd,
-  onCancel: handleDragCancel,
-  disabled: computed(() => props.disabled),
-  scrollContainer: scrollContainer,
-  hapticFeedback: true,
-  autoScroll: true,
-  smoothAnimations: true,
-  longPressDelay: 300,
-  minimumDistance: 8,
-  accessibilityMode: true
-})
-
 // Computed
 const localBlocks = computed({
   get: () => props.blocks,
   set: (value) => emit('update:blocks', value)
 })
 
-// Methods
+// ==================== ALL FUNCTION DECLARATIONS FIRST ====================
+
+// Block utilities
+const getBlockType = (slug: string) => {
+  return props.blockTypes.find(bt => bt.slug === slug)
+}
+
+const getBlockIcon = (slug: string) => {
+  const blockType = getBlockType(slug)
+  return blockType?.icon || 'lucide:square'
+}
+
+const getBlockName = (slug: string) => {
+  const blockType = getBlockType(slug)
+  return blockType?.name || slug
+}
+
+const getBlockDescription = (slug: string) => {
+  const blockType = getBlockType(slug)
+  return blockType?.description || 'Edit block content'
+}
+
+const getBlockIconClass = (slug: string) => {
+  const blockType = getBlockType(slug)
+  const category = blockType?.category || 'content'
+  
+  const categoryClasses = {
+    content: 'bg-blue-100 text-blue-600',
+    layout: 'bg-green-100 text-green-600',
+    media: 'bg-purple-100 text-purple-600',
+    interactive: 'bg-orange-100 text-orange-600'
+  }
+  
+  return categoryClasses[category] || categoryClasses.content
+}
+
+const getBlockStyle = (index: number) => {
+  const style: any = {}
+  
+  // Stagger animation for initial load
+  if (!isDragging.value) {
+    style.animationDelay = `${index * 0.05}s`
+  }
+  
+  // Smooth position transitions
+  style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+  
+  return style
+}
+
+// Drag and drop handlers
 const handleBlockMove = (fromIndex: number, toIndex: number) => {
   const blocks = [...localBlocks.value]
   const [movedBlock] = blocks.splice(fromIndex, 1)
@@ -240,6 +266,7 @@ const handleDragCancel = () => {
   document.body.classList.remove('drag-active')
 }
 
+// Block management functions
 const toggleBlockCollapse = (index: number) => {
   if (expandedBlocks.value.has(index)) {
     expandedBlocks.value.delete(index)
@@ -300,54 +327,6 @@ const updateBlock = (blockId: string, updates: any) => {
   if (index !== -1) {
     emit('block:update', index, { ...props.blocks[index], ...updates })
   }
-}
-
-// Block utilities
-const getBlockType = (slug: string) => {
-  return props.blockTypes.find(bt => bt.slug === slug)
-}
-
-const getBlockIcon = (slug: string) => {
-  const blockType = getBlockType(slug)
-  return blockType?.icon || 'lucide:square'
-}
-
-const getBlockName = (slug: string) => {
-  const blockType = getBlockType(slug)
-  return blockType?.name || slug
-}
-
-const getBlockDescription = (slug: string) => {
-  const blockType = getBlockType(slug)
-  return blockType?.description || 'Edit block content'
-}
-
-const getBlockIconClass = (slug: string) => {
-  const blockType = getBlockType(slug)
-  const category = blockType?.category || 'content'
-  
-  const categoryClasses = {
-    content: 'bg-blue-100 text-blue-600',
-    layout: 'bg-green-100 text-green-600',
-    media: 'bg-purple-100 text-purple-600',
-    interactive: 'bg-orange-100 text-orange-600'
-  }
-  
-  return categoryClasses[category] || categoryClasses.content
-}
-
-const getBlockStyle = (index: number) => {
-  const style: any = {}
-  
-  // Stagger animation for initial load
-  if (!isDragging.value) {
-    style.animationDelay = `${index * 0.05}s`
-  }
-  
-  // Smooth position transitions
-  style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-  
-  return style
 }
 
 // Transition handlers
@@ -415,6 +394,32 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 }
 
+// ==================== NOW DRAG AND DROP SETUP (AFTER ALL FUNCTIONS) ====================
+const {
+  isActive: isDragging,
+  draggedIndex,
+  dragOverIndex,
+  getDragAttributes,
+  getDragClasses,
+  cancelDrag,
+  triggerHapticFeedback
+} = useDragAndDrop({
+  onMove: handleBlockMove,
+  onStart: handleDragStart,
+  onEnd: handleDragEnd,
+  onCancel: handleDragCancel,
+  disabled: computed(() => props.disabled),
+  scrollContainer: scrollContainer,
+  hapticFeedback: true,
+  autoScroll: true,
+  smoothAnimations: true,
+  longPressDelay: 300,
+  minimumDistance: 8,
+  accessibilityMode: true
+})
+
+// ==================== LIFECYCLE HOOKS ====================
+
 // Auto-expand first block on mount
 onMounted(() => {
   if (props.blocks.length > 0) {
@@ -427,6 +432,8 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
 })
+
+// ==================== WATCHERS ====================
 
 // Watch for block changes
 watch(() => props.blocks.length, (newLength, oldLength) => {
