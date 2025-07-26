@@ -80,53 +80,166 @@ const createNew = () => {
   }
 }
 
-const loadSample = () => {
+// Improved loadSample function for playground/pages/index.vue
+// This ensures blocks are properly displayed in the Content Blocks section
+
+const loadSample = async () => {
+  // First, ensure we have block types loaded
+  if (!studioRef.value?.blockTypes || studioRef.value.blockTypes.length === 0) {
+    try {
+      await studioRef.value?.loadBlockTypes()
+    } catch (error) {
+      console.error('Failed to load block types:', error)
+      // Continue with hardcoded sample anyway
+    }
+  }
+
+  // Create sample newsletter with proper block structure
   newsletter.value = {
     subject: 'Monthly Newsletter - {{month_year}}',
     preheader: 'Check out our latest updates and news',
     blocks: [
       {
         id: `block_${Date.now()}_1`,
-        type: 'hero',
-        block_type: '1',
+        type: 'hero', // This should match the block type slug in Directus
+        block_type: findBlockTypeId('hero'), // Find actual ID from loaded block types
         content: {
           title: 'Welcome to Our Newsletter!',
-          subtitle: 'Your monthly dose of updates',
-          image: 'https://via.placeholder.com/600x300',
-          image_alt_text: 'Newsletter header image',
-          button_text: 'Read More',
-          button_url: 'https://example.com'
+          subtitle: 'Your monthly dose of updates and insights',
+          button_text: 'Learn More',
+          button_url: 'https://example.com',
+          background_color: '#f8fafc'
         },
         sort: 0
       },
       {
         id: `block_${Date.now()}_2`,
         type: 'text',
-        block_type: '2',
+        block_type: findBlockTypeId('text'),
         content: {
-          title: 'Latest News',
-          text_content: 'Here\'s what\'s been happening this month. We have exciting updates to share with you!'
+          text_content: '<p>Here\'s what\'s been happening this month. We have exciting updates to share with you.</p><p>Our team has been working hard to bring you new features and improvements.</p>'
         },
         sort: 1
       },
       {
         id: `block_${Date.now()}_3`,
-        type: 'cta-section',
-        block_type: '13',
+        type: 'button',
+        block_type: findBlockTypeId('button'),
         content: {
-          cta_title: 'Ready to Get Started?',
-          cta_subtitle: 'Join thousands of satisfied customers',
-          primary_button_text: 'Sign Up Now',
-          primary_button_url: 'https://example.com/signup'
+          button_text: 'Read Full Newsletter',
+          button_url: 'https://example.com/newsletter',
+          button_color: '#3b82f6'
         },
         sort: 2
       }
     ],
     status: 'draft'
   }
+
+  // Force reactivity update
+  await nextTick()
   
-  studioRef.value?.showNotification('Loaded sample newsletter', 'success')
+  // Notify the studio component
+  if (studioRef.value?.showNotification) {
+    studioRef.value.showNotification('Sample content loaded successfully!', 'success')
+  }
+
+  console.log('Sample newsletter loaded:', newsletter.value)
 }
+
+// Helper function to find block type ID by slug
+const findBlockTypeId = (slug) => {
+  if (!studioRef.value?.blockTypes) return slug
+  
+  const blockType = studioRef.value.blockTypes.find(bt => bt.slug === slug)
+  return blockType ? blockType.id : slug
+}
+
+// Enhanced sample loading with better error handling and validation
+const loadSampleWithErrorHandling = async () => {
+  try {
+    console.log('Loading sample content...')
+    
+    // Ensure block types are loaded first
+    if (studioRef.value?.loadBlockTypes) {
+      await studioRef.value.loadBlockTypes()
+      console.log('Block types loaded:', studioRef.value.blockTypes?.length || 0)
+    }
+    
+    // Load the sample content
+    await loadSample()
+    
+    // Validate the result
+    if (newsletter.value.blocks && newsletter.value.blocks.length > 0) {
+      console.log(`Successfully loaded ${newsletter.value.blocks.length} blocks`)
+      
+      // Log each block for debugging
+      newsletter.value.blocks.forEach((block, index) => {
+        console.log(`Block ${index + 1}:`, {
+          id: block.id,
+          type: block.type,
+          block_type: block.block_type,
+          hasContent: !!block.content,
+          contentKeys: block.content ? Object.keys(block.content) : []
+        })
+      })
+    } else {
+      console.warn('No blocks were created in sample')
+    }
+    
+  } catch (error) {
+    console.error('Failed to load sample:', error)
+    
+    // Fallback: create simple sample without block type validation
+    newsletter.value = {
+      subject: 'Sample Newsletter',
+      preheader: 'Sample preview text',
+      blocks: [
+        {
+          id: `block_${Date.now()}_fallback`,
+          type: 'text',
+          block_type: '1', // Fallback ID
+          content: {
+            text_content: 'This is a fallback sample block.'
+          },
+          sort: 0
+        }
+      ],
+      status: 'draft'
+    }
+    
+    if (studioRef.value?.showNotification) {
+      studioRef.value.showNotification('Loaded fallback sample content', 'info')
+    }
+  }
+}
+
+// Alternative: Use the new block creation method from the studio
+const loadSampleUsingStudioMethods = () => {
+  if (!studioRef.value) return
+  
+  // Clear existing content
+  newsletter.value = {
+    subject: 'Monthly Newsletter Sample',
+    preheader: 'Sample preview text',
+    blocks: [],
+    status: 'draft'
+  }
+  
+  // Add blocks using the studio's methods if available
+  const blockTypesToAdd = ['hero', 'text', 'button']
+  
+  blockTypesToAdd.forEach((blockTypeSlug, index) => {
+    const blockType = studioRef.value.blockTypes?.find(bt => bt.slug === blockTypeSlug)
+    if (blockType && studioRef.value.handleAddBlock) {
+      // Use the studio's block creation method
+      studioRef.value.handleAddBlock(blockType)
+    }
+  })
+}
+
+// Usage in the component - replace the existing loadSample function call:
+// @click="loadSampleWithErrorHandling"
 
 const handleSave = async (data: NewsletterData) => {
   console.log('Newsletter saved:', data)

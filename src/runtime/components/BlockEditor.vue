@@ -1,33 +1,48 @@
-<!-- Enhanced BlockEditor.vue - Fetches real field schemas from Directus -->
+<!-- BlockEditor.vue - Improved block editing with better content handling -->
 <template>
   <div class="block-editor" :class="{ 'is-expanded': isExpanded }">
     <!-- Block Header -->
     <div class="block-header" @click="toggleExpanded">
-      <div class="flex items-center gap-3">
+      <div class="block-info">
         <Icon :name="blockType?.icon || 'lucide:layout-template'" class="w-5 h-5 text-slate-600" />
-        <div>
+        <div class="block-details">
           <h4 class="block-title">{{ blockType?.name || 'Unknown Block' }}</h4>
           <p v-if="blockType?.description" class="block-description">{{ blockType.description }}</p>
         </div>
       </div>
       
-      <div class="flex items-center gap-2">
+      <div class="block-actions">
+        <!-- Move Controls -->
         <button
-          v-if="blockType?.mjml_template"
-          @click.stop="togglePreview"
-          :class="{ active: showPreview }"
-          class="preview-toggle"
-          title="Toggle Preview"
+          v-if="index > 0"
+          @click.stop="$emit('move-up')"
+          class="action-button"
+          title="Move up"
         >
-          <Icon name="lucide:eye" />
+          <Icon name="lucide:chevron-up" class="w-4 h-4" />
         </button>
         
-        <button @click="toggleExpanded" class="expand-toggle">
+        <button
+          @click.stop="$emit('move-down')"
+          class="action-button"
+          title="Move down"
+        >
+          <Icon name="lucide:chevron-down" class="w-4 h-4" />
+        </button>
+        
+        <!-- Toggle Expand -->
+        <button @click.stop="toggleExpanded" class="action-button">
           <Icon name="lucide:chevron-down" :class="{ 'rotate-180': isExpanded }" />
         </button>
         
-        <button @click="removeBlock" class="remove-button" title="Remove Block">
-          <Icon name="lucide:trash-2" />
+        <!-- Duplicate -->
+        <button @click.stop="handleDuplicate" class="action-button" title="Duplicate block">
+          <Icon name="lucide:copy" class="w-4 h-4" />
+        </button>
+        
+        <!-- Remove -->
+        <button @click.stop="handleRemove" class="action-button remove-button" title="Remove block">
+          <Icon name="lucide:trash-2" class="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -39,192 +54,149 @@
       @leave="onLeave"
     >
       <div v-show="isExpanded" class="block-content">
-        <!-- Loading State -->
-        <div v-if="fieldsLoading" class="loading-state">
-          <Icon name="lucide:loader-2" class="w-5 h-5 animate-spin" />
-          <span>Loading field schema...</span>
+        <!-- Content Preview when collapsed -->
+        <div v-if="!isExpanded" class="content-preview">
+          <div v-if="hasContentPreview" class="preview-content">
+            <div v-if="contentPreview.title" class="preview-title">
+              {{ contentPreview.title }}
+            </div>
+            <div v-if="contentPreview.text" class="preview-text">
+              {{ contentPreview.text }}
+            </div>
+          </div>
+          <div v-else class="empty-preview">
+            Click to edit content
+          </div>
         </div>
 
-        <!-- Error State -->
-        <div v-else-if="fieldsError" class="error-state">
-          <Icon name="lucide:alert-circle" class="w-5 h-5 text-red-500" />
-          <span>Failed to load field configuration</span>
-          <button @click="retryLoadFields" class="retry-btn">Retry</button>
-        </div>
+        <!-- Content Fields when expanded -->
+        <div v-if="isExpanded" class="content-fields">
+          <!-- Dynamic fields based on block type -->
+          <div v-if="editableFields.length > 0" class="fields-grid">
+            <div
+              v-for="field in editableFields"
+              :key="field.name"
+              class="field-group"
+              :class="getFieldWidthClass(field.width)"
+            >
+              <label :for="`field-${field.name}`" class="field-label">
+                {{ field.label || field.name }}
+                <span v-if="field.required" class="required-indicator">*</span>
+              </label>
 
-        <!-- Field Editor -->
-        <div v-else class="block-fields">
-          <div v-for="field in dynamicFields" :key="field.field" :class="getFieldWidth(field)" class="field-wrapper">
-            
-            <!-- Rich Text Field -->
-            <template v-if="isRichTextField(field)">
-              <RichTextInput
-                :model-value="localContent[field.field] || ''"
-                @update:model-value="updateFieldContent(field.field, $event)"
-                :label="field.meta?.display_name || field.name || field.field"
-                :placeholder="field.meta?.note || `Enter ${field.field}...`"
-                :required="field.meta?.required || false"
-                :hint="field.meta?.note"
-                :features="{
-                  headings: true,
-                  lists: true,
-                  links: true,
-                  bold: true,
-                  italic: true,
-                  alignment: field.meta?.options?.enable_alignment !== false,
-                  colors: field.meta?.options?.enable_colors !== false
-                }"
+              <!-- Text Input -->
+              <input
+                v-if="field.type === 'string' && !field.multiline"
+                :id="`field-${field.name}`"
+                v-model="localContent[field.name]"
+                type="text"
+                class="field-input"
+                :placeholder="field.placeholder || `Enter ${field.label || field.name}`"
+                @input="debouncedUpdate"
               />
-            </template>
 
-            <!-- Regular Text Field -->
-            <template v-else-if="isTextField(field)">
-              <div class="field-group">
-                <label class="field-label">
-                  {{ field.meta?.display_name || field.name || field.field }}
-                  <span v-if="field.meta?.required" class="required">*</span>
-                </label>
-                <input
-                  v-model="localContent[field.field]"
-                  type="text"
-                  :placeholder="field.meta?.note || `Enter ${field.field}...`"
-                  class="form-input"
-                  @input="updateContent"
-                />
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
-              </div>
-            </template>
+              <!-- Textarea -->
+              <textarea
+                v-else-if="field.type === 'text' || field.multiline"
+                :id="`field-${field.name}`"
+                v-model="localContent[field.name]"
+                class="field-textarea"
+                :placeholder="field.placeholder || `Enter ${field.label || field.name}`"
+                :rows="field.rows || 3"
+                @input="debouncedUpdate"
+              />
 
-            <!-- Textarea Field -->
-            <template v-else-if="isTextareaField(field)">
-              <div class="field-group">
-                <label class="field-label">
-                  {{ field.meta?.display_name || field.name || field.field }}
-                  <span v-if="field.meta?.required" class="required">*</span>
-                </label>
+              <!-- Rich Text Editor (simplified) -->
+              <div
+                v-else-if="field.type === 'html'"
+                class="field-html"
+              >
                 <textarea
-                  v-model="localContent[field.field]"
-                  :placeholder="field.meta?.note || `Enter ${field.field}...`"
-                  rows="4"
-                  class="form-textarea"
-                  @input="updateContent"
-                ></textarea>
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
-              </div>
-            </template>
-
-            <!-- Number Field -->
-            <template v-else-if="isNumberField(field)">
-              <div class="field-group">
-                <label class="field-label">
-                  {{ field.meta?.display_name || field.name || field.field }}
-                  <span v-if="field.meta?.required" class="required">*</span>
-                </label>
-                <input
-                  v-model.number="localContent[field.field]"
-                  type="number"
-                  :placeholder="field.meta?.note || `Enter ${field.field}...`"
-                  class="form-input"
-                  @input="updateContent"
+                  v-model="localContent[field.name]"
+                  class="field-textarea"
+                  :placeholder="field.placeholder || 'Enter HTML content'"
+                  @input="debouncedUpdate"
                 />
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
+                <small class="field-help">HTML content supported</small>
               </div>
-            </template>
 
-            <!-- Color Field -->
-            <template v-else-if="isColorField(field)">
-              <div class="field-group">
-                <label class="field-label">
-                  {{ field.meta?.display_name || field.name || field.field }}
-                  <span v-if="field.meta?.required" class="required">*</span>
-                </label>
-                <div class="color-picker-container">
-                  <input
-                    v-model="localContent[field.field]"
-                    type="color"
-                    class="color-input"
-                    @input="updateContent"
-                  />
-                  <input
-                    v-model="localContent[field.field]"
-                    type="text"
-                    :placeholder="field.meta?.note || '#000000'"
-                    class="color-text-input"
-                    @input="updateContent"
-                  />
-                </div>
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
-              </div>
-            </template>
+              <!-- URL Input -->
+              <input
+                v-else-if="field.type === 'url'"
+                :id="`field-${field.name}`"
+                v-model="localContent[field.name]"
+                type="url"
+                class="field-input"
+                :placeholder="field.placeholder || 'https://'"
+                @input="debouncedUpdate"
+              />
 
-            <!-- Boolean/Switch Field -->
-            <template v-else-if="isBooleanField(field)">
-              <div class="field-group">
-                <label class="switch-container">
-                  <input
-                    v-model="localContent[field.field]"
-                    type="checkbox"
-                    class="switch-input"
-                    @change="updateContent"
-                  />
-                  <span class="switch-slider"></span>
-                  <span class="switch-label">{{ field.meta?.display_name || field.name || field.field }}</span>
-                </label>
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
-              </div>
-            </template>
+              <!-- Number Input -->
+              <input
+                v-else-if="field.type === 'integer' || field.type === 'float'"
+                :id="`field-${field.name}`"
+                v-model.number="localContent[field.name]"
+                type="number"
+                class="field-input"
+                :placeholder="field.placeholder || '0'"
+                @input="debouncedUpdate"
+              />
 
-            <!-- File/Image Field -->
-            <template v-else-if="isFileField(field)">
-              <div class="field-group">
-                <label class="field-label">
-                  {{ field.meta?.display_name || field.name || field.field }}
-                  <span v-if="field.meta?.required" class="required">*</span>
-                </label>
+              <!-- Boolean Checkbox -->
+              <label
+                v-else-if="field.type === 'boolean'"
+                class="field-checkbox"
+              >
                 <input
-                  v-model="localContent[field.field]"
-                  type="text"
-                  :placeholder="field.meta?.note || 'File ID or URL'"
-                  class="form-input"
-                  @input="updateContent"
+                  v-model="localContent[field.name]"
+                  type="checkbox"
+                  @change="debouncedUpdate"
                 />
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
-              </div>
-            </template>
+                <span class="checkbox-label">{{ field.checkboxLabel || 'Enable' }}</span>
+              </label>
 
-            <!-- Fallback for Unknown Fields -->
-            <template v-else>
-              <div class="field-group">
-                <label class="field-label">
-                  {{ field.meta?.display_name || field.name || field.field }}
-                  <span v-if="field.meta?.required" class="required">*</span>
-                </label>
-                <input
-                  v-model="localContent[field.field]"
-                  type="text"
-                  :placeholder="field.meta?.note || `Enter ${field.field}...`"
-                  class="form-input"
-                  @input="updateContent"
-                />
-                <p v-if="field.meta?.note" class="field-help">{{ field.meta.note }}</p>
-                <p class="text-xs text-amber-600">
-                  Unknown field type: {{ field.type }} / {{ field.meta?.interface }}
-                </p>
-              </div>
-            </template>
+              <!-- Color Input -->
+              <input
+                v-else-if="field.type === 'color'"
+                :id="`field-${field.name}`"
+                v-model="localContent[field.name]"
+                type="color"
+                class="field-color"
+                @input="debouncedUpdate"
+              />
 
+              <!-- Default text input for unknown types -->
+              <input
+                v-else
+                :id="`field-${field.name}`"
+                v-model="localContent[field.name]"
+                type="text"
+                class="field-input"
+                :placeholder="field.placeholder || `Enter ${field.label || field.name}`"
+                @input="debouncedUpdate"
+              />
+
+              <!-- Field Help Text -->
+              <small v-if="field.help" class="field-help">
+                {{ field.help }}
+              </small>
+            </div>
           </div>
-        </div>
 
-        <!-- MJML Preview (if enabled) -->
-        <div v-if="showPreview && blockType?.mjml_template" class="block-preview">
-          <div class="preview-header">
-            <h5>MJML Preview</h5>
-            <button @click="refreshPreview" :disabled="isRefreshing" class="refresh-btn">
-              <Icon name="lucide:refresh-cw" :class="{ 'animate-spin': isRefreshing }" />
-            </button>
+          <!-- Fallback: JSON editor for unknown structure -->
+          <div v-else class="fallback-editor">
+            <label class="field-label">Block Content (JSON)</label>
+            <textarea
+              v-model="jsonContent"
+              class="field-textarea json-editor"
+              placeholder="Enter block content as JSON"
+              rows="8"
+              @input="handleJsonUpdate"
+            />
+            <small class="field-help">
+              Editing raw JSON content. This block type may not have field definitions configured.
+            </small>
           </div>
-          <div class="preview-content" v-html="compiledHtml"></div>
         </div>
       </div>
     </Transition>
@@ -232,156 +204,94 @@
 </template>
 
 <script setup lang="ts">
+import { debounce } from 'lodash-es'
 import { computed, onMounted, ref, watch } from 'vue'
-import type { BlockType, NewsletterBlock } from '../../types'
 
-interface DirectusField {
-  field: string
-  name?: string
+interface BlockField {
+  name: string
   type: string
-  meta?: {
-    interface?: string
-    display_name?: string
-    required?: boolean
-    note?: string
-    width?: string
-    options?: Record<string, any>
-  }
-  schema?: {
-    is_nullable?: boolean
-  }
+  label?: string
+  placeholder?: string
+  required?: boolean
+  multiline?: boolean
+  rows?: number
+  width?: string
+  help?: string
+  checkboxLabel?: string
 }
 
 interface Props {
-  block: NewsletterBlock
-  blockType?: BlockType
-}
-
-interface Emits {
-  (e: 'update', block: NewsletterBlock): void
-  (e: 'remove', blockId: string): void
+  block: any
+  blockType?: any
+  index?: number
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
 
-// Component state
-const isExpanded = ref(true)
-const showPreview = ref(false)
-const isRefreshing = ref(false)
-const compiledHtml = ref('')
-const localContent = ref({ ...props.block.content })
-const fieldsLoading = ref(false)
-const fieldsError = ref(false)
-const directusFields = ref<DirectusField[]>([])
+const emit = defineEmits<{
+  'update': [block: any]
+  'remove': [blockId: string]
+  'move-up': []
+  'move-down': []
+  'duplicate': [blockId: string]
+}>()
 
-// Composables
-const { fetchCollectionFields } = useDirectusNewsletter()
-const { compileMjmlToHtml } = useMjmlCompiler()
+// State
+const isExpanded = ref(false)
+const localContent = ref(props.block?.content || {})
+const jsonContent = ref('')
 
-// Helper functions to determine field types based on Directus schema
-const isRichTextField = (field: DirectusField) => {
-  return field.meta?.interface === 'wysiwyg' || 
-         field.meta?.interface === 'rich-text-html' ||
-         field.meta?.interface === 'input-rich-text-html' ||
-         (field.type === 'text' && field.meta?.interface === 'input-rich-text-md')
-}
+// Computed
+const editableFields = computed((): BlockField[] => {
+  if (!props.blockType) return []
 
-const isTextField = (field: DirectusField) => {
-  return field.meta?.interface === 'input' && field.type === 'string'
-}
-
-const isTextareaField = (field: DirectusField) => {
-  return field.meta?.interface === 'input-multiline' || 
-         (field.meta?.interface === 'textarea' && !isRichTextField(field))
-}
-
-const isNumberField = (field: DirectusField) => {
-  return field.type === 'integer' || field.type === 'float' || field.type === 'decimal'
-}
-
-const isColorField = (field: DirectusField) => {
-  return field.meta?.interface === 'select-color' || 
-         field.meta?.interface === 'color'
-}
-
-const isBooleanField = (field: DirectusField) => {
-  return field.type === 'boolean' || field.meta?.interface === 'boolean'
-}
-
-const isFileField = (field: DirectusField) => {
-  return field.meta?.interface === 'file-image' || 
-         field.meta?.interface === 'files' ||
-         field.type === 'uuid' && field.field.includes('image')
-}
-
-const getFieldWidth = (field: DirectusField) => {
-  const width = field.meta?.width
-  switch (width) {
-    case 'half': return 'w-1/2'
-    case 'third': return 'w-1/3'
-    case 'quarter': return 'w-1/4'
-    case 'full': return 'w-full'
-    default: return 'w-full'
-  }
-}
-
-// Get dynamic fields based on block type configuration and actual Directus schema
-const dynamicFields = computed(() => {
-  if (!props.blockType?.field_visibility_config || directusFields.value.length === 0) {
-    return []
-  }
+  // Try to get fields from block type configuration
+  const fields = props.blockType.fields || props.blockType.field_config || []
   
-  return props.blockType.field_visibility_config
-    .map(fieldKey => directusFields.value.find(f => f.field === fieldKey))
-    .filter(Boolean) as DirectusField[]
+  if (Array.isArray(fields) && fields.length > 0) {
+    return fields
+  }
+
+  // Fallback: generate fields from existing content
+  if (localContent.value && typeof localContent.value === 'object') {
+    return Object.keys(localContent.value).map(key => ({
+      name: key,
+      type: inferFieldType(localContent.value[key]),
+      label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }))
+  }
+
+  // Default fields for common block types
+  return getDefaultFields(props.blockType?.slug || props.block?.type)
 })
 
-// Load field schemas from Directus
-const loadFieldSchemas = async () => {
-  if (!props.blockType?.field_visibility_config) return
+const hasContentPreview = computed(() => {
+  return Object.values(localContent.value).some(value => 
+    value !== null && value !== undefined && value !== ''
+  )
+})
 
-  fieldsLoading.value = true
-  fieldsError.value = false
-
-  try {
-    // Fetch field schemas from the newsletter_blocks collection
-    // This assumes your block content fields are defined in the newsletter_blocks collection
-    const fields = await fetchCollectionFields('newsletter_blocks')
-    directusFields.value = fields.filter(field => 
-      props.blockType?.field_visibility_config?.includes(field.field)
-    )
-  } catch (error) {
-    console.error('Failed to load field schemas:', error)
-    fieldsError.value = true
-  } finally {
-    fieldsLoading.value = false
+const contentPreview = computed(() => {
+  const content = localContent.value
+  return {
+    title: content.title || content.heading || content.subject,
+    text: content.text_content || content.text || content.description || content.subtitle
   }
-}
+})
 
-const retryLoadFields = () => {
-  loadFieldSchemas()
-}
-
-// Component methods
+// Methods
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value
 }
 
-const togglePreview = () => {
-  showPreview.value = !showPreview.value
-  if (showPreview.value) {
-    refreshPreview()
+const handleRemove = () => {
+  if (confirm('Remove this block?')) {
+    emit('remove', props.block.id)
   }
 }
 
-const removeBlock = () => {
-  emit('remove', props.block.id)
-}
-
-const updateFieldContent = (fieldKey: string, value: any) => {
-  localContent.value[fieldKey] = value
-  updateContent()
+const handleDuplicate = () => {
+  emit('duplicate', props.block.id)
 }
 
 const updateContent = () => {
@@ -391,23 +301,63 @@ const updateContent = () => {
   })
 }
 
-const refreshPreview = async () => {
-  if (!props.blockType?.mjml_template) return
+const debouncedUpdate = debounce(updateContent, 300)
 
-  isRefreshing.value = true
+const handleJsonUpdate = () => {
   try {
-    // Simple template replacement - you might want more sophisticated templating
-    let mjml = props.blockType.mjml_template
-    Object.entries(localContent.value).forEach(([key, value]) => {
-      mjml = mjml.replace(new RegExp(`{{${key}}}`, 'g'), String(value || ''))
-    })
-
-    const result = await compileMjmlToHtml(mjml)
-    compiledHtml.value = result.html || ''
+    const parsed = JSON.parse(jsonContent.value)
+    localContent.value = parsed
+    debouncedUpdate()
   } catch (error) {
-    console.error('Preview compilation failed:', error)
-  } finally {
-    isRefreshing.value = false
+    // Invalid JSON, don't update
+  }
+}
+
+const inferFieldType = (value: any): string => {
+  if (typeof value === 'boolean') return 'boolean'
+  if (typeof value === 'number') return Number.isInteger(value) ? 'integer' : 'float'
+  if (typeof value === 'string') {
+    if (value.includes('http')) return 'url'
+    if (value.includes('<') && value.includes('>')) return 'html'
+    if (value.length > 100) return 'text'
+  }
+  return 'string'
+}
+
+const getDefaultFields = (blockType: string): BlockField[] => {
+  const defaults: Record<string, BlockField[]> = {
+    hero: [
+      { name: 'title', type: 'string', label: 'Title', required: true },
+      { name: 'subtitle', type: 'text', label: 'Subtitle' },
+      { name: 'button_text', type: 'string', label: 'Button Text' },
+      { name: 'button_url', type: 'url', label: 'Button URL' },
+      { name: 'background_color', type: 'color', label: 'Background Color' }
+    ],
+    text: [
+      { name: 'text_content', type: 'html', label: 'Content', required: true, rows: 6 }
+    ],
+    button: [
+      { name: 'button_text', type: 'string', label: 'Button Text', required: true },
+      { name: 'button_url', type: 'url', label: 'Button URL', required: true },
+      { name: 'button_color', type: 'color', label: 'Button Color' }
+    ],
+    image: [
+      { name: 'image_url', type: 'url', label: 'Image URL', required: true },
+      { name: 'image_alt_text', type: 'string', label: 'Alt Text' },
+      { name: 'caption', type: 'text', label: 'Caption' }
+    ]
+  }
+
+  return defaults[blockType] || [
+    { name: 'content', type: 'text', label: 'Content' }
+  ]
+}
+
+const getFieldWidthClass = (width?: string): string => {
+  switch (width) {
+    case 'half': return 'col-span-1'
+    case 'full': return 'col-span-2'
+    default: return 'col-span-2'
   }
 }
 
@@ -424,87 +374,136 @@ const onLeave = (el: HTMLElement) => {
   el.style.height = '0'
 }
 
-// Watch for block type changes
-watch(
-  () => props.blockType,
-  (newBlockType) => {
-    if (newBlockType) {
-      loadFieldSchemas()
-    }
-  },
-  { immediate: true }
-)
-
-// Watch for content changes from parent
-watch(
-  () => props.block.content,
-  (newContent) => {
+// Watchers
+watch(() => props.block?.content, (newContent) => {
+  if (newContent) {
     localContent.value = { ...newContent }
-  },
-  { deep: true }
-)
-
-// Load fields on mount
-onMounted(() => {
-  if (props.blockType) {
-    loadFieldSchemas()
+    jsonContent.value = JSON.stringify(newContent, null, 2)
   }
+}, { deep: true })
+
+// Lifecycle
+onMounted(() => {
+  jsonContent.value = JSON.stringify(localContent.value, null, 2)
 })
 </script>
 
 <style scoped>
 @reference 'tailwindcss';
-/* Enhanced styles for the improved block editor */
+/* Block Editor Container */
 .block-editor {
-  @apply bg-white border border-slate-200 rounded-lg overflow-hidden mb-4;
+  @apply bg-white border border-slate-200 rounded-lg overflow-hidden mb-4 transition-all duration-200;
 }
 
+.block-editor:hover {
+  @apply shadow-sm;
+}
+
+.dark-mode .block-editor {
+  @apply bg-gray-800 border-gray-700;
+}
+
+/* Block Header */
 .block-header {
   @apply flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors;
 }
 
+.dark-mode .block-header {
+  @apply bg-gray-700 border-gray-600 hover:bg-gray-600;
+}
+
+.block-info {
+  @apply flex items-center gap-3;
+}
+
+.block-details {
+  @apply min-w-0 flex-1;
+}
+
 .block-title {
-  @apply font-medium text-slate-900;
+  @apply font-medium text-slate-900 text-sm;
+}
+
+.dark-mode .block-title {
+  @apply text-white;
 }
 
 .block-description {
-  @apply text-sm text-slate-600 mt-1;
+  @apply text-xs text-slate-600 mt-1 truncate;
 }
 
-.preview-toggle, .expand-toggle, .remove-button {
+.dark-mode .block-description {
+  @apply text-gray-400;
+}
+
+.block-actions {
+  @apply flex items-center gap-1;
+}
+
+.action-button {
   @apply p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors;
 }
 
-.preview-toggle.active {
-  @apply bg-blue-100 text-blue-700;
-}
-
-.remove-button:hover {
+.action-button.remove-button:hover {
   @apply text-red-600 bg-red-50;
 }
 
+.dark-mode .action-button {
+  @apply text-gray-400 hover:text-white hover:bg-gray-600;
+}
+
+.dark-mode .action-button.remove-button:hover {
+  @apply text-red-400 bg-red-900;
+}
+
+/* Block Content */
 .block-content {
   @apply overflow-hidden transition-all duration-300;
 }
 
-.loading-state, .error-state {
-  @apply flex items-center gap-2 p-4 text-slate-600;
+.content-preview {
+  @apply p-4 bg-gray-50;
 }
 
-.error-state {
-  @apply text-red-600;
+.dark-mode .content-preview {
+  @apply bg-gray-700;
 }
 
-.retry-btn {
-  @apply ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors;
-}
-
-.block-fields {
-  @apply p-4 space-y-4;
-}
-
-.field-wrapper {
+.preview-content {
   @apply space-y-2;
+}
+
+.preview-title {
+  @apply font-medium text-slate-900 text-sm;
+}
+
+.dark-mode .preview-title {
+  @apply text-white;
+}
+
+.preview-text {
+  @apply text-xs text-slate-600 line-clamp-2;
+}
+
+.dark-mode .preview-text {
+  @apply text-gray-400;
+}
+
+.empty-preview {
+  @apply text-xs text-slate-500 italic;
+}
+
+.dark-mode .empty-preview {
+  @apply text-gray-500;
+}
+
+/* Content Fields */
+.content-fields {
+  @apply p-4;
+}
+
+.fields-grid {
+  @apply grid grid-cols-2 gap-4;
 }
 
 .field-group {
@@ -515,81 +514,88 @@ onMounted(() => {
   @apply block text-sm font-medium text-slate-700;
 }
 
-.required {
+.dark-mode .field-label {
+  @apply text-gray-300;
+}
+
+.required-indicator {
   @apply text-red-500;
 }
 
-.form-input, .form-textarea {
-  @apply block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all;
+.field-input, .field-textarea {
+  @apply w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
 }
 
-.color-picker-container {
-  @apply flex gap-2;
+.dark-mode .field-input,
+.dark-mode .field-textarea {
+  @apply bg-gray-700 border-gray-600 text-white placeholder-gray-400;
 }
 
-.color-input {
-  @apply w-12 h-10 border border-slate-300 rounded cursor-pointer;
+.field-textarea {
+  @apply resize-vertical;
 }
 
-.color-text-input {
-  @apply flex-1 px-3 py-2 border border-slate-300 rounded shadow-sm;
+.field-color {
+  @apply w-20 h-10 border border-slate-300 rounded-md cursor-pointer;
 }
 
-.switch-container {
-  @apply flex items-center gap-3 cursor-pointer;
+.field-checkbox {
+  @apply flex items-center gap-2 cursor-pointer;
 }
 
-.switch-input {
-  @apply sr-only;
+.field-checkbox input[type="checkbox"] {
+  @apply rounded;
 }
 
-.switch-slider {
-  @apply relative w-10 h-6 bg-slate-300 rounded-full transition-colors;
+.checkbox-label {
+  @apply text-sm text-slate-700;
 }
 
-.switch-input:checked + .switch-slider {
-  @apply bg-blue-600;
-}
-
-.switch-slider::before {
-  @apply absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform;
-  content: '';
-}
-
-.switch-input:checked + .switch-slider::before {
-  @apply translate-x-4;
+.dark-mode .checkbox-label {
+  @apply text-gray-300;
 }
 
 .field-help {
   @apply text-xs text-slate-500;
 }
 
-.block-preview {
-  @apply border-t border-slate-200 bg-slate-50;
+.dark-mode .field-help {
+  @apply text-gray-400;
 }
 
-.preview-header {
-  @apply flex items-center justify-between p-3 border-b border-slate-200;
+/* Fallback Editor */
+.fallback-editor {
+  @apply space-y-2;
 }
 
-.preview-header h5 {
-  @apply font-medium text-slate-900;
+.json-editor {
+  @apply font-mono text-xs;
 }
 
-.refresh-btn {
-  @apply p-1 text-slate-600 hover:text-slate-900 rounded transition-colors;
-}
-
-.preview-content {
-  @apply p-4 bg-white max-h-64 overflow-auto;
-}
-
-/* Collapse transition */
-.collapse-enter-active, .collapse-leave-active {
+/* Transitions */
+.collapse-enter-active,
+.collapse-leave-active {
   @apply transition-all duration-300;
 }
 
-.collapse-enter-from, .collapse-leave-to {
-  @apply h-0;
+.collapse-enter-from,
+.collapse-leave-to {
+  @apply h-0 opacity-0;
+}
+
+/* Utility classes */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.col-span-1 {
+  grid-column: span 1;
+}
+
+.col-span-2 {
+  grid-column: span 2;
 }
 </style>

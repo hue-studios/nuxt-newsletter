@@ -207,7 +207,7 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
       <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 transform scale-100 opacity-100 transition-all duration-300">
         <h3 class="text-xl font-semibold text-gray-900 mb-4">Delete Newsletter</h3>
         <p class="text-gray-600 mb-2">Are you sure you want to delete "<span class="font-medium">{{ newsletterToDelete?.title }}</span>"?</p>
@@ -224,7 +224,7 @@
     </div>
 
     <!-- Test Email Modal -->
-    <div v-if="showTestModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+    <div v-if="showTestModal" class="fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
       <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 sm:p-8 transform scale-100 opacity-100 transition-all duration-300">
         <h3 class="text-xl font-semibold text-gray-900 mb-4">Send Test Email</h3>
         <p class="text-gray-600 mb-6">Send test email for "<span class="font-medium">{{ testNewsletter?.title }}</span>"</p>
