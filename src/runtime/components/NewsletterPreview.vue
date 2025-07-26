@@ -1,10 +1,13 @@
-<!-- NewsletterPreview.vue - Device controls only in preview component -->
+<!-- NewsletterPreview.vue - Complete component with manual refresh only -->
 <template>
   <div class="newsletter-preview-container" :class="`preview-device-${device}`">
     <div class="preview-header">
       <div class="preview-title">
         <Icon name="lucide:eye" class="w-4 h-4" />
         <span>Preview</span>
+        <span v-if="lastRefreshTime" class="last-refresh">
+          Last updated: {{ formatTime(lastRefreshTime) }}
+        </span>
       </div>
       
       <div class="preview-controls">
@@ -25,8 +28,15 @@
         <div class="divider" />
         
         <!-- Action Controls -->
-        <button @click="refreshPreview" class="control-button" title="Refresh preview">
-          <Icon name="lucide:refresh-cw" class="w-4 h-4" />
+        <button 
+          @click="refreshPreview" 
+          :disabled="isCompiling"
+          :class="['control-button', 'refresh-button', { 'loading': isCompiling }]" 
+          title="Refresh preview (Ctrl+R)"
+        >
+          <Icon :name="isCompiling ? 'lucide:loader-2' : 'lucide:refresh-cw'" 
+                :class="['w-4 h-4', { 'animate-spin': isCompiling }]" />
+          <span class="button-text">{{ isCompiling ? 'Updating...' : 'Refresh' }}</span>
         </button>
         
         <button @click="toggleFullscreen" class="control-button" title="Toggle fullscreen">
@@ -46,6 +56,7 @@
 
         <!-- Error State -->
         <div v-else-if="compilationError" class="compilation-error">
+          <Icon name="lucide:alert-triangle" class="w-8 h-8 text-red-500" />
           <h4>Compilation Error</h4>
           <p>{{ compilationError }}</p>
           <button @click="refreshPreview" class="error-retry-button">
@@ -67,9 +78,9 @@
 
         <!-- Empty State -->
         <div v-else class="empty-content">
-          <Icon name="lucide:mail-plus" class="w-12 h-12" />
-          <h4>No Content Yet</h4>
-          <p>Add some blocks to your newsletter to see the preview here.</p>
+          <Icon name="lucide:mail-plus" class="w-12 h-12 text-gray-400" />
+          <h4>No Preview Available</h4>
+          <p>Click "Refresh" to generate preview from your current blocks.</p>
           <button @click="refreshPreview" class="empty-refresh-button">
             <Icon name="lucide:refresh-cw" class="w-4 h-4" />
             Generate Preview
@@ -106,7 +117,7 @@
 
 <script setup lang="ts">
 import { $fetch } from 'ofetch'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 interface Props {
   newsletter?: any
@@ -133,6 +144,7 @@ const compiledHtml = ref<string | null>(null)
 const currentStep = ref<string | null>(null)
 const isFullscreen = ref(false)
 const previewFrame = ref<HTMLIFrameElement>()
+const lastRefreshTime = ref<Date | null>(null)
 
 // Device options
 const deviceOptions = [
@@ -172,6 +184,7 @@ const refreshPreview = async () => {
 const compileNewsletter = async () => {
   if (!props.newsletter || !props.blockTypes) {
     compiledHtml.value = null
+    compilationError.value = 'No newsletter data or block types available'
     return
   }
 
@@ -201,13 +214,16 @@ const compileNewsletter = async () => {
 
     if (response.success || response.html) {
       compiledHtml.value = response.html
+      lastRefreshTime.value = new Date()
       currentStep.value = null
+      compilationError.value = null
     } else {
       throw new Error(response.error || 'Compilation failed')
     }
   } catch (error) {
     console.error('Newsletter compilation failed:', error)
-    compilationError.value = error instanceof Error ? error.message : 'Unknown compilation error'
+    compilationError.value = error instanceof Error ? 
+      error.message : 'Unknown compilation error'
     emit('error', error)
   } finally {
     isCompiling.value = false
@@ -269,7 +285,7 @@ const createEmptyMjml = (): string => {
         <mj-section>
           <mj-column>
             <mj-text align="center" color="#666666">
-              Add blocks to your newsletter to see the preview.
+              Add blocks to your newsletter to see the preview here.
             </mj-text>
           </mj-column>
         </mj-section>
@@ -287,16 +303,13 @@ const handleIframeError = (error: Event) => {
   emit('error', new Error('Preview iframe failed to load'))
 }
 
-// Watchers
-watch(() => props.newsletter, () => {
-  // Auto-refresh when newsletter changes
-  refreshPreview()
-}, { deep: true })
-
-watch(() => props.blockTypes, () => {
-  // Auto-refresh when block types change
-  refreshPreview()
-}, { deep: true })
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
 
 // Keyboard shortcuts
 const handleKeydown = (e: KeyboardEvent) => {
@@ -313,10 +326,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 // Lifecycle
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
-  // Initial compilation
-  if (props.newsletter?.blocks?.length > 0) {
-    refreshPreview()
-  }
+  // NO automatic initial compilation - user must click refresh
 })
 
 onUnmounted(() => {
@@ -352,212 +362,151 @@ defineExpose({
   @apply flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50;
 }
 
-.dark-mode .preview-header {
-  @apply border-gray-700 bg-gray-800;
-}
-
 .preview-title {
   @apply flex items-center gap-2 text-sm font-medium text-gray-900;
 }
 
-.dark-mode .preview-title {
-  @apply text-white;
+.last-refresh {
+  @apply text-xs text-gray-500 ml-2;
 }
 
 .preview-controls {
-  @apply flex items-center gap-3;
+  @apply flex items-center gap-2;
 }
 
-/* Device Switcher */
 .device-switcher {
-  @apply flex items-center gap-1 bg-white rounded-lg p-1 border border-gray-200;
-}
-
-.dark-mode .device-switcher {
-  @apply bg-gray-700 border-gray-600;
+  @apply flex bg-white border border-gray-300 rounded-lg overflow-hidden;
 }
 
 .device-button {
-  @apply flex items-center gap-2 px-3 py-2 rounded-md transition-colors text-sm font-medium;
-}
-
-.device-button:hover {
-  @apply bg-gray-100;
+  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors;
 }
 
 .device-button.active {
-  @apply bg-blue-100 text-blue-600 shadow-sm;
-}
-
-.dark-mode .device-button:hover {
-  @apply bg-gray-600;
-}
-
-.dark-mode .device-button.active {
-  @apply bg-blue-900 text-blue-400;
+  @apply bg-blue-50 text-blue-700;
 }
 
 .device-label {
   @apply hidden sm:inline;
 }
 
-.control-button {
-  @apply p-2 rounded transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100;
-}
-
-.dark-mode .control-button {
-  @apply text-gray-400 hover:text-white hover:bg-gray-700;
-}
-
 .divider {
   @apply w-px h-6 bg-gray-300;
 }
 
-.dark-mode .divider {
-  @apply bg-gray-600;
+.control-button {
+  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.refresh-button {
+  @apply bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100;
+}
+
+.refresh-button.loading {
+  @apply opacity-75 cursor-not-allowed;
+}
+
+.button-text {
+  @apply hidden sm:inline;
 }
 
 /* Preview Content */
 .preview-content {
-  @apply flex-1 overflow-auto bg-gray-100 p-4;
-}
-
-.dark-mode .preview-content {
-  @apply bg-gray-900;
+  @apply flex-1 bg-gray-100 overflow-auto;
 }
 
 .email-preview-frame {
-  @apply bg-white rounded shadow-sm min-h-full;
+  @apply h-full p-4;
 }
 
-.dark-mode .email-preview-frame {
-  @apply bg-gray-800;
-}
-
-/* States */
-.loading-state {
-  @apply flex flex-col items-center justify-center p-12 text-gray-500;
-}
-
-.loading-state p {
-  @apply mt-3 text-sm;
-}
-
-.loading-state small {
-  @apply text-xs text-gray-400 mt-1;
-}
-
-.compilation-error {
-  @apply p-8 text-center;
-}
-
-.compilation-error h4 {
-  @apply text-red-600 font-semibold mb-2;
-}
-
-.compilation-error p {
-  @apply text-gray-600 mb-4;
-}
-
-.error-retry-button {
-  @apply inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors;
-}
-
-.empty-content {
-  @apply flex flex-col items-center justify-center p-12 text-gray-400;
-}
-
-.empty-content h4 {
-  @apply text-lg font-medium mt-4 mb-2;
-}
-
-.empty-refresh-button {
-  @apply inline-flex items-center gap-2 px-4 py-2 mt-4 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors;
-}
-
-/* Iframe styles */
 .preview-iframe-container {
   @apply h-full;
 }
 
 .preview-iframe {
-  @apply w-full h-full border-0;
-  min-height: 600px;
+  @apply w-full h-full border-0 bg-white rounded-lg shadow-sm;
 }
 
-/* Responsive iframe sizes */
-.device-mobile {
-  width: 375px;
-  min-height: 667px;
+/* States */
+.loading-state {
+  @apply flex flex-col items-center justify-center h-full text-gray-600;
 }
 
-.device-tablet {
-  width: 100%;
-  min-height: 800px;
+.loading-state p {
+  @apply mt-4 text-lg font-medium;
+}
+
+.loading-state small {
+  @apply mt-2 text-sm text-gray-500;
+}
+
+.compilation-error {
+  @apply flex flex-col items-center justify-center h-full text-center p-8;
+}
+
+.compilation-error h4 {
+  @apply text-lg font-semibold text-red-700 mt-4;
+}
+
+.compilation-error p {
+  @apply text-red-600 mt-2 max-w-md;
+}
+
+.error-retry-button {
+  @apply flex items-center gap-2 mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors;
+}
+
+.empty-content {
+  @apply flex flex-col items-center justify-center h-full text-center p-8;
+}
+
+.empty-content h4 {
+  @apply text-lg font-semibold text-gray-700 mt-4;
+}
+
+.empty-content p {
+  @apply text-gray-600 mt-2 max-w-md;
+}
+
+.empty-refresh-button {
+  @apply flex items-center gap-2 mt-4 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors;
 }
 
 /* Fullscreen Modal */
 .fullscreen-modal {
-  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
+  @apply fixed inset-0 bg-black/75 flex items-center justify-center z-50;
 }
 
 .fullscreen-content {
-  @apply bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-full flex flex-col;
-}
-
-.dark-mode .fullscreen-content {
-  @apply bg-gray-800;
+  @apply bg-white rounded-lg shadow-xl w-full h-full max-w-6xl max-h-full overflow-hidden;
 }
 
 .fullscreen-header {
   @apply flex items-center justify-between p-4 border-b border-gray-200;
 }
 
-.dark-mode .fullscreen-header {
-  @apply border-gray-700;
-}
-
 .fullscreen-header h3 {
-  @apply text-lg font-semibold text-gray-900;
-}
-
-.dark-mode .fullscreen-header h3 {
-  @apply text-white;
+  @apply text-lg font-semibold;
 }
 
 .close-button {
-  @apply p-2 rounded hover:bg-gray-100 transition-colors;
-}
-
-.dark-mode .close-button {
-  @apply hover:bg-gray-700;
+  @apply p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100;
 }
 
 .fullscreen-preview {
-  @apply flex-1 overflow-auto p-4 bg-gray-100;
-}
-
-.dark-mode .fullscreen-preview {
-  @apply bg-gray-900;
+  @apply h-full p-4 bg-gray-100;
 }
 
 .fullscreen-iframe {
-  @apply w-full h-full border-0 bg-white rounded shadow-sm;
-  min-height: 800px;
-}
-
-.dark-mode .fullscreen-iframe {
-  @apply bg-gray-800;
+  @apply w-full h-full border-0 bg-white rounded-lg shadow-sm;
 }
 
 /* Transitions */
-.modal-enter-active,
-.modal-leave-active {
-  @apply transition-all duration-300;
+.modal-enter-active, .modal-leave-active {
+  transition: opacity 0.3s;
 }
 
-.modal-enter-from,
-.modal-leave-to {
-  @apply opacity-0 scale-95;
+.modal-enter-from, .modal-leave-to {
+  opacity: 0;
 }
 </style>

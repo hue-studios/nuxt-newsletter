@@ -1,23 +1,38 @@
-<!-- NewsletterStudio.vue - Improved three-panel layout -->
+<!-- NewsletterStudio.vue - Bulletproof recursion fix -->
 <template>
-  <div class="newsletter-studio" :class="[`layout-${layout}`, { 'dark-mode': darkMode }]">
+  <div class="newsletter-studio" :class="{ 'dark-mode': darkMode }">
     <!-- Header Bar -->
     <header v-if="showHeader" class="studio-header">
       <div class="header-content">
         <div class="header-title">
-          <slot name="header-title">
-            <h1>{{ title }}</h1>
-          </slot>
+          <h1>{{ title }}</h1>
+          <div v-if="newsletter.id" class="newsletter-meta">
+            <span class="newsletter-id">ID: {{ newsletter.id }}</span>
+            <span v-if="lastSaved" class="last-saved">
+              Saved {{ formatRelativeTime(lastSaved) }}
+            </span>
+          </div>
         </div>
         
         <div class="header-actions">
           <slot name="header-actions">
-            <button @click="handleNew" class="btn btn-secondary">
-              <Icon name="lucide:plus" />
+            <button @click="handleNew" class="action-button secondary">
+              <Icon name="lucide:file-plus" class="w-4 h-4" />
               New
             </button>
-            <button @click="handleSave" class="btn btn-primary" :disabled="saving">
-              <Icon name="lucide:save" />
+            
+            <button @click="loadTemplates" class="action-button secondary">
+              <Icon name="lucide:layout-template" class="w-4 h-4" />
+              Templates
+            </button>
+            
+            <button 
+              @click="handleSave" 
+              :disabled="saving"
+              class="action-button primary"
+            >
+              <Icon :name="saving ? 'lucide:loader-2' : 'lucide:save'" 
+                    :class="['w-4 h-4', { 'animate-spin': saving }]" />
               {{ saving ? 'Saving...' : 'Save' }}
             </button>
           </slot>
@@ -27,8 +42,8 @@
 
     <!-- Main Content - Three Panel Layout -->
     <div class="studio-content">
-      <!-- Left Panel: Settings & Block Types -->
-      <div class="settings-blocks-panel">
+      <!-- Panel 1: Settings & Block Types (Narrow Left) -->
+      <div v-if="showEditor" class="left-panel">
         <!-- Newsletter Settings -->
         <div class="settings-section">
           <h3 class="panel-title">Newsletter Settings</h3>
@@ -41,7 +56,7 @@
               type="text"
               class="form-input"
               placeholder="Enter subject line"
-              @input="debouncedUpdate"
+              @input="handleSubjectChange"
             />
           </div>
 
@@ -53,7 +68,7 @@
               type="text"
               class="form-input"
               placeholder="Enter preview text"
-              @input="debouncedUpdate"
+              @input="handlePreheaderChange"
             />
           </div>
         </div>
@@ -61,10 +76,9 @@
         <!-- Block Types -->
         <div class="block-types-section">
           <div class="section-header">
-            <h3 class="panel-title">Block Types</h3>
-            <button @click="loadTemplates" class="btn btn-xs btn-secondary">
-              <Icon name="lucide:layout-template" class="w-3 h-3" />
-              Templates
+            <h3 class="panel-title">Add Blocks</h3>
+            <button @click="loadTemplates" class="btn-icon" title="Load template">
+              <Icon name="lucide:layout-template" class="w-4 h-4" />
             </button>
           </div>
           
@@ -79,140 +93,72 @@
           </div>
           
           <div v-else class="block-types-grid">
-            <button
-              v-for="blockType in blockTypes"
+            <button 
+              v-for="blockType in blockTypes" 
               :key="blockType.id"
               @click="handleAddBlock(blockType)"
               class="block-type-button"
-              :title="blockType.description"
+              :title="`Add ${blockType.name} block`"
             >
-              <Icon :name="blockType.icon || 'lucide:square'" class="w-4 h-4" />
-              <span>{{ blockType.name }}</span>
+              <Icon :name="blockType.icon || 'lucide:plus'" class="w-4 h-4" />
+              <span class="block-type-name">{{ blockType.name }}</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Middle Panel: Content Blocks -->
-      <div class="content-blocks-panel">
-        <div class="panel-header">
-          <h3 class="panel-title">Content Blocks</h3>
-          <div class="panel-actions">
+      <!-- Panel 2: Content Editor (Middle) -->
+      <div v-if="showEditor" class="content-panel">
+        <div class="content-header">
+          <h3 class="panel-title">Newsletter Content</h3>
+          <div class="content-actions">
             <span class="block-count">{{ newsletter.blocks?.length || 0 }} blocks</span>
-            <button @click="clearAllBlocks" v-if="newsletter.blocks?.length > 0" class="btn btn-xs btn-secondary">
-              <Icon name="lucide:trash-2" class="w-3 h-3" />
-              Clear All
+            <button 
+              v-if="newsletter.blocks?.length > 0"
+              @click="clearAllBlocks"
+              class="btn-clear"
+              title="Clear all blocks"
+            >
+              <Icon name="lucide:trash-2" class="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <div class="blocks-container">
-          <div v-if="!newsletter.blocks || newsletter.blocks.length === 0" class="empty-blocks">
-            <Icon name="lucide:plus-circle" class="w-12 h-12 text-gray-300" />
-            <h4>No content blocks yet</h4>
-            <p>Select a block type from the left panel to add your first block.</p>
+        <div class="content-body">
+          <div v-if="!newsletter.blocks?.length" class="empty-content">
+            <Icon name="lucide:plus-circle" class="w-8 h-8 text-gray-400" />
+            <p>No blocks added yet</p>
+            <small>Choose a block type from the left panel</small>
           </div>
-          
+
           <div v-else class="blocks-list">
             <NewsletterBlock
               v-for="(block, index) in newsletter.blocks"
               :key="block.id"
               :block="block"
               :block-type="getBlockType(block.type)"
+              :index="index"
+              :total-blocks="newsletter.blocks.length"
               @update="handleUpdateBlock"
-            >
-              <template #actions>
-                <div class="block-actions">
-                  <button 
-                    v-if="index > 0"
-                    @click="handleMoveBlock(index, index - 1)"
-                    class="action-btn"
-                    title="Move up"
-                  >
-                    <Icon name="lucide:chevron-up" class="w-4 h-4" />
-                  </button>
-                  
-                  <button 
-                    v-if="index < newsletter.blocks.length - 1"
-                    @click="handleMoveBlock(index, index + 1)"
-                    class="action-btn"
-                    title="Move down"
-                  >
-                    <Icon name="lucide:chevron-down" class="w-4 h-4" />
-                  </button>
-                  
-                  <button 
-                    @click="handleDuplicateBlock(block.id)"
-                    class="action-btn"
-                    title="Duplicate"
-                  >
-                    <Icon name="lucide:copy" class="w-4 h-4" />
-                  </button>
-                  
-                  <button 
-                    @click="handleRemoveBlock(block.id)"
-                    class="action-btn remove-btn"
-                    title="Remove"
-                  >
-                    <Icon name="lucide:trash-2" class="w-4 h-4" />
-                  </button>
-                </div>
-              </template>
-            </NewsletterBlock>
+              @remove="handleRemoveBlock"
+              @move="handleMoveBlock"
+              @duplicate="handleDuplicateBlock"
+            />
           </div>
         </div>
       </div>
 
-      <!-- Right Panel: Preview -->
-      <div class="preview-panel">
+      <!-- Panel 3: Preview (Right) -->
+      <div v-if="showPreview" class="preview-panel">
         <NewsletterPreview
           ref="previewRef"
-          :newsletter="newsletter"
+          :newsletter="frozenNewsletter"
           :block-types="blockTypes"
+          :device="defaultDevice"
           @error="handlePreviewError"
         />
       </div>
     </div>
-
-    <!-- Template Loading Modal (Simple) -->
-    <Teleport to="body" v-if="showTemplateSelector">
-      <div class="modal-overlay" @click="showTemplateSelector = false">
-        <div class="modal-container" @click.stop>
-          <div class="modal-header">
-            <h2 class="modal-title">Choose a Template</h2>
-            <button @click="showTemplateSelector = false" class="close-button">
-              <Icon name="lucide:x" class="w-5 h-5" />
-            </button>
-          </div>
-
-          <div class="modal-content">
-            <div v-if="templates.length === 0" class="empty-state">
-              <Icon name="lucide:layout-template" class="w-12 h-12 text-gray-300" />
-              <p>No templates available</p>
-              <button @click="showTemplateSelector = false" class="btn btn-secondary">
-                Close
-              </button>
-            </div>
-            
-            <div v-else class="templates-grid">
-              <button
-                v-for="template in templates"
-                :key="template.id"
-                @click="handleTemplateSelect(template)"
-                class="template-card"
-              >
-                <div class="template-info">
-                  <h3 class="template-name">{{ template.name }}</h3>
-                  <p v-if="template.description" class="template-description">
-                    {{ template.description }}
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
 
     <!-- Status Bar -->
     <footer v-if="showStatusBar" class="studio-status">
@@ -232,35 +178,86 @@
       
       <div class="status-actions">
         <slot name="status-right">
-          <button @click="toggleLayout" class="status-btn">
-            <Icon :name="layout === 'horizontal' ? 'lucide:columns' : 'lucide:rows'" />
+          <button 
+            @click="refreshPreview" 
+            class="status-button refresh-preview"
+            title="Refresh preview to see latest changes"
+          >
+            <Icon name="lucide:refresh-cw" class="w-4 h-4" />
+            Update Preview
           </button>
         </slot>
       </div>
     </footer>
 
-    <!-- Notifications -->
+    <!-- Template Selector Modal -->
     <Teleport to="body">
-      <Transition name="notification">
-        <div
-          v-if="notification.show"
-          :class="['notification', `notification-${notification.type}`]"
-        >
-          <Icon :name="notificationIcon" />
-          <span>{{ notification.message }}</span>
+      <Transition name="modal">
+        <div v-if="showTemplateSelector" class="template-modal" @click="showTemplateSelector = false">
+          <div class="template-modal-content" @click.stop>
+            <div class="template-modal-header">
+              <h3>Choose Template</h3>
+              <button @click="showTemplateSelector = false" class="close-button">
+                <Icon name="lucide:x" class="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div class="template-modal-body">
+              <div v-if="templates.length === 0" class="empty-templates">
+                <Icon name="lucide:layout-template" class="w-12 h-12 text-gray-300" />
+                <p>No templates available</p>
+                <button @click="showTemplateSelector = false" class="action-button secondary">
+                  Close
+                </button>
+              </div>
+              
+              <div v-else class="templates-grid">
+                <div
+                  v-for="template in templates"
+                  :key="template.id"
+                  @click="handleTemplateSelect(template)"
+                  class="template-card"
+                >
+                  <div class="template-preview">
+                    <Icon name="lucide:file-text" class="w-8 h-8" />
+                  </div>
+                  <div class="template-info">
+                    <h4>{{ template.name }}</h4>
+                    <p>{{ template.description || 'No description' }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Notification Toast -->
+    <Transition name="notification">
+      <div v-if="notification.show" class="notification-toast" :class="notification.type">
+        <Icon :name="notificationIcon" class="w-5 h-5" />
+        <span>{{ notification.message }}</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { debounce } from 'lodash-es'
 import { computed, onMounted, provide, ref, watch } from 'vue'
-import type { NewsletterData } from '../../types'
+
+// Types
+interface NewsletterData {
+  id?: string
+  subject?: string
+  preheader?: string
+  blocks?: any[]
+  status?: string
+  [key: string]: any
+}
 
 interface Props {
-  // Initial newsletter data
   modelValue?: NewsletterData
   
   // UI Configuration
@@ -319,6 +316,9 @@ const newsletter = ref<NewsletterData>(props.modelValue || {
   status: 'draft'
 })
 
+// FIXED: Separate frozen newsletter for preview to prevent circular updates
+const frozenNewsletter = ref<NewsletterData>({ ...newsletter.value })
+
 const blockTypes = ref<any[]>([])
 const templates = ref<any[]>([])
 const loadingBlockTypes = ref(false)
@@ -339,6 +339,36 @@ const notification = ref({
 
 // Composables
 const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
+
+// Computed
+const notificationIcon = computed(() => {
+  switch (notification.value.type) {
+    case 'success': return 'lucide:check-circle'
+    case 'error': return 'lucide:x-circle'
+    case 'info': return 'lucide:info'
+    default: return 'lucide:info'
+  }
+})
+
+// FIXED: Simple, direct emit without debouncing for immediate actions
+const emitUpdate = () => {
+  emit('update:modelValue', newsletter.value)
+  setupAutoSave()
+}
+
+// FIXED: Debounced update only for content changes
+const debouncedEmitUpdate = debounce(() => {
+  emit('update:modelValue', newsletter.value)
+  setupAutoSave()
+}, 300)
+
+// FIXED: Manual refresh function for preview
+const refreshPreview = () => {
+  // Update frozen newsletter with current data
+  frozenNewsletter.value = JSON.parse(JSON.stringify(newsletter.value))
+  // Trigger preview refresh
+  previewRef.value?.refreshPreview()
+}
 
 // Methods
 const loadBlockTypes = async () => {
@@ -363,6 +393,16 @@ const loadTemplates = async () => {
   }
 }
 
+// FIXED: Completely separate input handlers
+const handleSubjectChange = () => {
+  debouncedEmitUpdate()
+}
+
+const handlePreheaderChange = () => {
+  debouncedEmitUpdate()
+}
+
+// FIXED: Block operations with direct emit
 const handleAddBlock = (blockType: any) => {
   const newBlock = {
     id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -377,12 +417,11 @@ const handleAddBlock = (blockType: any) => {
   }
   
   newsletter.value.blocks.push(newBlock)
-  debouncedUpdate()
+  emitUpdate()
   showNotification(`Added ${blockType.name} block`, 'success')
 }
 
 const generateDefaultContent = (blockType: any) => {
-  // Generate sensible defaults based on block type
   const defaults: Record<string, any> = {
     hero: {
       title: 'Welcome to Our Newsletter!',
@@ -410,7 +449,7 @@ const handleUpdateBlock = (updatedBlock: any) => {
   const index = newsletter.value.blocks?.findIndex(b => b.id === updatedBlock.id)
   if (index !== -1 && newsletter.value.blocks) {
     newsletter.value.blocks[index] = { ...newsletter.value.blocks[index], ...updatedBlock }
-    debouncedUpdate()
+    debouncedEmitUpdate()
   }
 }
 
@@ -421,7 +460,7 @@ const handleRemoveBlock = (blockId: string) => {
     newsletter.value.blocks.forEach((block, index) => {
       block.sort = index
     })
-    debouncedUpdate()
+    emitUpdate()
     showNotification('Block removed', 'info')
   }
 }
@@ -441,7 +480,7 @@ const handleMoveBlock = (fromIndex: number, toIndex: number) => {
   })
   
   newsletter.value.blocks = blocks
-  debouncedUpdate()
+  emitUpdate()
 }
 
 const handleDuplicateBlock = (blockId: string) => {
@@ -461,7 +500,7 @@ const handleDuplicateBlock = (blockId: string) => {
       block.sort = index
     })
     
-    debouncedUpdate()
+    emitUpdate()
     showNotification('Block duplicated', 'success')
   }
 }
@@ -469,7 +508,7 @@ const handleDuplicateBlock = (blockId: string) => {
 const clearAllBlocks = () => {
   if (confirm('Remove all blocks? This action cannot be undone.')) {
     newsletter.value.blocks = []
-    debouncedUpdate()
+    emitUpdate()
     showNotification('All blocks removed', 'info')
   }
 }
@@ -526,7 +565,7 @@ const loadFromTemplate = (template: any) => {
     newsletter.value.subject = template.default_subject_pattern
   }
   
-  debouncedUpdate()
+  emitUpdate()
 }
 
 const getBlockType = (blockTypeSlug: string) => {
@@ -564,6 +603,7 @@ const handleNew = async () => {
       status: 'draft'
     }
     lastSaved.value = null
+    emitUpdate()
     showNotification('Created new newsletter', 'info')
     emit('create', newsletter.value)
   }
@@ -580,11 +620,6 @@ const showNotification = (message: string, type: 'success' | 'error' | 'info' = 
     notification.value.show = false
   }, 3000)
 }
-
-const debouncedUpdate = debounce(() => {
-  emit('update:modelValue', newsletter.value)
-  setupAutoSave()
-}, 300)
 
 const setupAutoSave = () => {
   if (props.autoSave && props.autoSaveDelay > 0) {
@@ -612,25 +647,13 @@ const formatRelativeTime = (date: Date): string => {
   return date.toLocaleDateString()
 }
 
-const toggleLayout = () => {
-  // Layout toggle functionality if needed
-}
-
-const notificationIcon = computed(() => {
-  switch (notification.value.type) {
-    case 'success': return 'lucide:check-circle'
-    case 'error': return 'lucide:x-circle'
-    case 'info': return 'lucide:info'
-    default: return 'lucide:info'
-  }
-})
-
-// Watchers
+// FIXED: Simple watcher that only updates from external props
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    newsletter.value = newVal
+    newsletter.value = { ...newVal }
+    frozenNewsletter.value = { ...newVal }
   }
-}, { deep: true })
+}, { immediate: true })
 
 // Lifecycle
 onMounted(() => {
@@ -648,25 +671,25 @@ provide('newsletterStudio', {
 // Expose methods for parent components
 defineExpose({
   save: handleSave,
-  refresh: () => previewRef.value?.refreshPreview(),
-  getNewsletter: () => newsletter.value,
-  showNotification
+  refresh: refreshPreview,
+  getNewsletter: () => newsletter.value
 })
 </script>
 
 <style scoped>
 @reference 'tailwindcss';
+/* Studio Container */
 .newsletter-studio {
-  @apply h-screen flex flex-col bg-gray-50;
+  @apply h-full flex flex-col bg-white;
 }
 
-.newsletter-studio.dark-mode {
-  @apply bg-gray-900;
+.dark-mode {
+  @apply bg-gray-900 text-white;
 }
 
 /* Header */
 .studio-header {
-  @apply bg-white border-b border-gray-200 px-6 py-4;
+  @apply flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4;
 }
 
 .dark-mode .studio-header {
@@ -678,15 +701,40 @@ defineExpose({
 }
 
 .header-title h1 {
-  @apply text-2xl font-bold text-gray-900;
+  @apply text-xl font-semibold text-gray-900;
 }
 
 .dark-mode .header-title h1 {
   @apply text-white;
 }
 
+.newsletter-meta {
+  @apply flex items-center gap-3 mt-1 text-sm text-gray-600;
+}
+
+.dark-mode .newsletter-meta {
+  @apply text-gray-300;
+}
+
 .header-actions {
-  @apply flex items-center gap-3;
+  @apply flex items-center gap-2;
+}
+
+/* Action Buttons */
+.action-button {
+  @apply flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors;
+}
+
+.action-button.primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.action-button.secondary {
+  @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50;
+}
+
+.dark-mode .action-button.secondary {
+  @apply bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700;
 }
 
 /* Three Panel Layout */
@@ -694,54 +742,29 @@ defineExpose({
   @apply flex-1 flex overflow-hidden;
 }
 
-.settings-blocks-panel {
-  @apply w-80 bg-white border-r border-gray-200 overflow-y-auto;
+.left-panel {
+  @apply w-80 bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0;
 }
 
-.content-blocks-panel {
-  @apply flex-1 bg-white border-r border-gray-200 overflow-y-auto;
+.content-panel {
+  @apply flex-1 bg-gray-50 border-r border-gray-200 overflow-y-auto min-w-0;
 }
 
 .preview-panel {
-  @apply flex-1 bg-white overflow-hidden flex flex-col;
+  @apply flex-1 bg-white overflow-hidden min-w-0;
 }
 
-.dark-mode .settings-blocks-panel,
-.dark-mode .content-blocks-panel,
+.dark-mode .left-panel,
+.dark-mode .content-panel,
 .dark-mode .preview-panel {
-  @apply bg-gray-800;
+  @apply bg-gray-800 border-gray-700;
 }
 
-/* Panel Headers */
-.panel-header {
-  @apply flex items-center justify-between p-4 border-b border-gray-200;
+.dark-mode .content-panel {
+  @apply bg-gray-900;
 }
 
-.dark-mode .panel-header {
-  @apply border-gray-700;
-}
-
-.panel-title {
-  @apply text-lg font-semibold text-gray-900;
-}
-
-.dark-mode .panel-title {
-  @apply text-white;
-}
-
-.panel-actions {
-  @apply flex items-center gap-2;
-}
-
-.block-count {
-  @apply text-sm text-gray-600;
-}
-
-.dark-mode .block-count {
-  @apply text-gray-400;
-}
-
-/* Settings Section */
+/* Left Panel Styles */
 .settings-section {
   @apply p-4 border-b border-gray-200;
 }
@@ -750,27 +773,6 @@ defineExpose({
   @apply border-gray-700;
 }
 
-.form-group {
-  @apply mb-4;
-}
-
-.form-group label {
-  @apply block text-sm font-medium text-gray-700 mb-1;
-}
-
-.dark-mode .form-group label {
-  @apply text-gray-300;
-}
-
-.form-input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
-
-.dark-mode .form-input {
-  @apply bg-gray-700 border-gray-600 text-white;
-}
-
-/* Block Types Section */
 .block-types-section {
   @apply p-4;
 }
@@ -779,52 +781,42 @@ defineExpose({
   @apply flex items-center justify-between mb-3;
 }
 
-.block-types-grid {
-  @apply space-y-2;
+.panel-title {
+  @apply text-sm font-semibold text-gray-900;
 }
 
-.block-type-button {
-  @apply w-full flex items-center gap-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors;
-}
-
-.dark-mode .block-type-button {
-  @apply border-gray-600 hover:bg-gray-700 hover:border-blue-500 text-white;
-}
-
-.block-type-button span {
-  @apply text-sm font-medium;
-}
-
-/* Content Blocks Panel */
-.blocks-container {
-  @apply p-4;
-}
-
-.empty-blocks {
-  @apply flex flex-col items-center justify-center py-12 text-center;
-}
-
-.empty-blocks h4 {
-  @apply text-lg font-medium text-gray-900 mt-4;
-}
-
-.dark-mode .empty-blocks h4 {
+.dark-mode .panel-title {
   @apply text-white;
 }
 
-.empty-blocks p {
-  @apply text-gray-600 mt-2;
+.btn-icon {
+  @apply p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded;
 }
 
-.dark-mode .empty-blocks p {
-  @apply text-gray-400;
+.dark-mode .btn-icon {
+  @apply text-gray-500 hover:text-gray-300 hover:bg-gray-700;
 }
 
-.blocks-list {
-  @apply space-y-4;
+.form-group {
+  @apply mb-3;
 }
 
-/* Loading and Empty States */
+.form-group label {
+  @apply block text-xs font-medium text-gray-700 mb-1;
+}
+
+.dark-mode .form-group label {
+  @apply text-gray-300;
+}
+
+.form-input {
+  @apply w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500;
+}
+
+.dark-mode .form-input {
+  @apply bg-gray-700 border-gray-600 text-white;
+}
+
 .loading-state, .empty-state {
   @apply flex items-center gap-2 text-sm text-gray-600 py-3;
 }
@@ -834,186 +826,248 @@ defineExpose({
   @apply text-gray-400;
 }
 
-/* Buttons */
-.btn {
-  @apply inline-flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors;
+.block-types-grid {
+  @apply space-y-1;
 }
 
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50;
+.block-type-button {
+  @apply w-full flex items-center gap-2 p-2 text-left text-sm bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 transition-colors;
 }
 
-.btn-secondary {
-  @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+.dark-mode .block-type-button {
+  @apply bg-gray-700 hover:bg-gray-600 border-gray-600;
 }
 
-.btn-xs {
-  @apply px-2 py-1 text-xs;
+.block-type-name {
+  @apply text-gray-900 font-medium;
 }
 
-.dark-mode .btn-secondary {
-  @apply bg-gray-700 text-gray-200 hover:bg-gray-600;
+.dark-mode .block-type-name {
+  @apply text-white;
+}
+
+/* Content Panel Styles */
+.content-header {
+  @apply flex items-center justify-between p-4 bg-white border-b border-gray-200;
+}
+
+.dark-mode .content-header {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.content-actions {
+  @apply flex items-center gap-2;
+}
+
+.block-count {
+  @apply text-xs text-gray-600;
+}
+
+.dark-mode .block-count {
+  @apply text-gray-400;
+}
+
+.btn-clear {
+  @apply p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded;
+}
+
+.dark-mode .btn-clear {
+  @apply hover:text-red-400 hover:bg-red-900;
+}
+
+.content-body {
+  @apply p-4;
+}
+
+.empty-content {
+  @apply flex flex-col items-center justify-center py-12 text-center text-gray-500;
+}
+
+.dark-mode .empty-content {
+  @apply text-gray-400;
+}
+
+.empty-content p {
+  @apply mt-2 font-medium;
+}
+
+.empty-content small {
+  @apply mt-1 text-xs;
+}
+
+.blocks-list {
+  @apply space-y-3;
 }
 
 /* Status Bar */
 .studio-status {
-  @apply bg-white border-t border-gray-200 px-6 py-2 flex items-center justify-between text-sm;
+  @apply flex items-center justify-between px-4 py-2 border-t border-gray-200 bg-gray-50 text-sm;
 }
 
 .dark-mode .studio-status {
-  @apply bg-gray-800 border-gray-700 text-gray-300;
+  @apply border-gray-700 bg-gray-800;
 }
 
 .status-info {
-  @apply flex items-center gap-4 text-gray-600;
-}
-
-.dark-mode .status-info {
-  @apply text-gray-400;
+  @apply flex items-center gap-4;
 }
 
 .status-item {
-  @apply flex items-center gap-1;
+  @apply text-gray-600;
 }
 
-.status-btn {
-  @apply p-1 rounded hover:bg-gray-100 transition-colors;
+.dark-mode .status-item {
+  @apply text-gray-300;
 }
 
-.dark-mode .status-btn {
-  @apply hover:bg-gray-700;
+.status-actions {
+  @apply flex items-center gap-2;
 }
 
-/* Notifications */
-.notification {
-  @apply fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50;
+.status-button {
+  @apply flex items-center gap-2 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors;
 }
 
-.notification-success {
-  @apply bg-green-50 text-green-800;
+.refresh-preview {
+  @apply border border-blue-200;
 }
 
-.notification-error {
-  @apply bg-red-50 text-red-800;
+.dark-mode .status-button {
+  @apply text-blue-400 bg-blue-900 hover:bg-blue-800 border-blue-700;
 }
 
-.notification-info {
-  @apply bg-blue-50 text-blue-800;
+/* Template Modal */
+.template-modal {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
 }
 
-.notification-enter-active,
-.notification-leave-active {
-  @apply transition-all duration-300;
+.template-modal-content {
+  @apply bg-white rounded-lg shadow-xl max-w-4xl max-h-full overflow-hidden;
 }
 
-.notification-enter-from,
-.notification-leave-to {
-  @apply translate-x-full opacity-0;
-}
-
-/* Simple Modal Styles */
-.modal-overlay {
-  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
-}
-
-.modal-container {
-  @apply bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col;
-}
-
-.dark-mode .modal-container {
+.dark-mode .template-modal-content {
   @apply bg-gray-800;
 }
 
-.modal-header {
-  @apply flex items-center justify-between p-6 border-b border-gray-200;
+.template-modal-header {
+  @apply flex items-center justify-between p-4 border-b border-gray-200;
 }
 
-.dark-mode .modal-header {
+.dark-mode .template-modal-header {
   @apply border-gray-700;
 }
 
-.modal-title {
-  @apply text-xl font-bold text-gray-900;
-}
-
-.dark-mode .modal-title {
-  @apply text-white;
+.template-modal-header h3 {
+  @apply text-lg font-semibold;
 }
 
 .close-button {
-  @apply p-2 rounded-lg hover:bg-gray-100 transition-colors;
+  @apply p-2 text-gray-500 hover:text-gray-700 rounded hover:bg-gray-100;
 }
 
 .dark-mode .close-button {
-  @apply hover:bg-gray-700 text-gray-300;
+  @apply text-gray-400 hover:text-gray-200 hover:bg-gray-700;
 }
 
-.modal-content {
-  @apply flex-1 overflow-auto p-6;
+.template-modal-body {
+  @apply p-4 max-h-96 overflow-y-auto;
+}
+
+.empty-templates {
+  @apply text-center text-gray-500 py-8;
+}
+
+.dark-mode .empty-templates {
+  @apply text-gray-400;
 }
 
 .templates-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
 }
 
 .template-card {
-  @apply p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all text-left;
+  @apply p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors;
 }
 
 .dark-mode .template-card {
-  @apply border-gray-600 hover:border-blue-500;
+  @apply border-gray-700 hover:bg-gray-700;
 }
 
-.template-info {
-  @apply space-y-2;
+.template-preview {
+  @apply flex items-center justify-center h-20 bg-gray-100 rounded mb-3;
 }
 
-.template-name {
-  @apply font-semibold text-gray-900;
+.dark-mode .template-preview {
+  @apply bg-gray-700;
 }
 
-.dark-mode .template-name {
+.template-info h4 {
+  @apply font-medium text-gray-900 mb-1;
+}
+
+.dark-mode .template-info h4 {
   @apply text-white;
 }
 
-.template-description {
+.template-info p {
   @apply text-sm text-gray-600;
 }
 
-.dark-mode .template-description {
-  @apply text-gray-400;
+.dark-mode .template-info p {
+  @apply text-gray-300;
 }
 
-.empty-state {
-  @apply flex flex-col items-center justify-center py-12 text-center;
+/* Notification Toast */
+.notification-toast {
+  @apply fixed top-4 right-4 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg z-50;
 }
 
-.empty-state p {
-  @apply text-gray-600 mt-4 mb-6;
+.notification-toast.success {
+  @apply bg-green-100 text-green-800 border border-green-200;
 }
 
-.dark-mode .empty-state p {
-  @apply text-gray-400;
+.notification-toast.error {
+  @apply bg-red-100 text-red-800 border border-red-200;
 }
 
-/* Block Actions */
-.block-actions {
-  @apply flex items-center gap-1;
+.notification-toast.info {
+  @apply bg-blue-100 text-blue-800 border border-blue-200;
 }
 
-.action-btn {
-  @apply p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors;
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .studio-content {
+    @apply flex-col;
+  }
+  
+  .left-panel {
+    @apply w-full h-auto border-r-0 border-b border-gray-200;
+  }
+  
+  .content-panel {
+    @apply border-r-0 border-b border-gray-200;
+  }
+  
+  .preview-panel {
+    @apply min-h-96;
+  }
 }
 
-.action-btn.remove-btn:hover {
-  @apply text-red-600 bg-red-50;
+/* Transitions */
+.modal-enter-active, .modal-leave-active {
+  transition: opacity 0.3s;
 }
 
-.dark-mode .action-btn {
-  @apply text-gray-400 hover:text-white hover:bg-gray-600;
+.modal-enter-from, .modal-leave-to {
+  opacity: 0;
 }
 
-.dark-mode .action-btn.remove-btn:hover {
-  @apply text-red-400 bg-red-900;
+.notification-enter-active, .notification-leave-active {
+  transition: all 0.3s;
+}
+
+.notification-enter-from, .notification-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
 }
 </style>
