@@ -532,6 +532,13 @@ Get your API key from: https://app.sendgrid.com/settings/api_keys
           description: 'Advanced Tiptap rich text editor with full formatting capabilities'
         }
       },
+      // {
+      //   name: 'useDragAndDrop',
+      //   from: resolver.resolve('./runtime/composables/useDragAndDrop'),
+      //   meta: {
+      //     description: 'Access drag and drop fucntionality for newsletter blocks'
+      //   }
+      // },
       // NEW: Progressive enhancement composables (ADDITIVE)
       {
         name: 'useProgressiveEnhancement',
