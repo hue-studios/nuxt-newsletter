@@ -11,7 +11,7 @@
     @error="handleError"
   >
     <!-- Custom header actions -->
-    <template #header-actions>
+    <!-- <template #header-actions>
       <button @click="createNew" class="btn btn-secondary">
         <Icon name="lucide:plus" class="w-4 h-4" />
         New Newsletter
@@ -24,7 +24,7 @@
         <Icon name="lucide:save" class="w-4 h-4" />
         Save
       </button>
-    </template>
+    </template> -->
 
     <!-- Custom status bar -->
     <template #status-right>

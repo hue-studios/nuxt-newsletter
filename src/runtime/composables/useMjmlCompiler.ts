@@ -1,9 +1,8 @@
-// src/runtime/composables/useMjmlCompiler.ts
-import { debounce } from 'lodash'
-import { $fetch } from 'ofetch'
-import { readonly, ref } from 'vue'
-import { useDirectusNewsletter } from './useDirectusNewsletter'
-import type { NewsletterBlock, NewsletterData } from './useNewsletterEditor'
+// Fixed useMjmlCompiler.ts
+import { debounce } from 'lodash';
+import { $fetch } from 'ofetch';
+import { readonly, ref } from 'vue';
+import type { NewsletterBlock, NewsletterData } from '../../types';
 
 // Declare window.mjml2html for TypeScript
 declare global {
@@ -26,121 +25,219 @@ export function useMjmlCompiler() {
   const isCompiling = ref(false)
   const compilationError = ref<string | null>(null)
 
-  // Compile Handlebars template with block data
- const compileHandlebars = (template: string, data: any): string => {
-  // Basic Handlebars implementation for common patterns
-  let compiled = template
-
-  // Handle triple mustache for unescaped HTML {{{variable}}} FIRST
-  Object.keys(data).forEach(key => {
-    const value = data[key]
-    if (typeof value === 'string') {
-      const regex = new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g')
-      compiled = compiled.replace(regex, value)
+  // Pre-process MJML template to replace variables with valid defaults
+  const preprocessMjmlTemplate = (mjml: string): string => {
+    // Define default values for common MJML attributes
+    const defaults: Record<string, string> = {
+      // Colors
+      background_color: '#ffffff',
+      text_color: '#000000',
+      button_color: '#3182ce',
+      link_color: '#3182ce',
+      border_color: '#e5e7eb',
+      
+      // Spacing
+      padding: '20px',
+      margin: '0px',
+      spacing: '10px',
+      
+      // Alignment
+      text_align: 'left',
+      align: 'center',
+      vertical_align: 'middle',
+      
+      // Sizes
+      font_size: '16px',
+      line_height: '1.5',
+      width: '100%',
+      height: 'auto',
+      
+      // Typography
+      font_family: 'Arial, sans-serif',
+      font_weight: 'normal',
+      text_decoration: 'none',
+      
+      // Common content
+      title: 'Newsletter Title',
+      subtitle: 'Newsletter Subtitle',
+      text_content: 'Your content here',
+      button_text: 'Click Here',
+      button_url: '#',
+      image_url: 'https://via.placeholder.com/600x300',
+      image_alt_text: 'Image'
     }
-  })
 
-  // Then replace simple variables {{variable}}
-  Object.keys(data).forEach(key => {
-    const value = data[key]
-    if (typeof value === 'string' || typeof value === 'number') {
+    // Replace all {{variable}} patterns with defaults
+    let processed = mjml
+    
+    // First pass: Replace known variables with defaults
+    Object.entries(defaults).forEach(([key, value]) => {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
-      compiled = compiled.replace(regex, String(value))
-    }
-  })
-
-  // Handle {{#if variable}} ... {{/if}}
-  compiled = compiled.replace(/{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g, (match, variable, content) => {
-    return data[variable] ? content : ''
-  })
-
-  return compiled
-}
-
-  // Compile a single block to MJML
-  const compileBlockToMjml = async (block: NewsletterBlock, blockType: BlockType): Promise<string> => {
-    try {
-      // Merge block content with settings
-      const blockData = {
-        ...block.content,
-        ...block.settings,
-        // Provide defaults for common fields
-        background_color: block.settings?.backgroundColor || '#ffffff',
-        text_color: block.settings?.textColor || '#333333',
-        text_align: block.settings?.textAlign || 'left',
-        padding: block.settings?.padding || '20px 0',
-        font_size: block.settings?.fontSize || '16px'
-      }
-
-      // Compile the template with block data
-      const mjmlBlock = compileHandlebars(blockType.mjml_template, blockData)
-      return mjmlBlock
-    } catch (error) {
-      console.error('Error compiling block to MJML:', error)
-      return `<!-- Error compiling block ${block.id} -->`
-    }
+      processed = processed.replace(regex, value)
+    })
+    
+    // Second pass: Replace any remaining {{variable}} with safe defaults
+    processed = processed.replace(/\{\{(\w+)\}\}/g, (match, variable) => {
+      console.warn(`Unknown template variable: ${variable}, using default value`)
+      
+      // Guess appropriate default based on variable name
+      if (variable.includes('color')) return '#000000'
+      if (variable.includes('url') || variable.includes('link')) return '#'
+      if (variable.includes('padding') || variable.includes('margin')) return '0px'
+      if (variable.includes('size')) return '16px'
+      if (variable.includes('align')) return 'left'
+      
+      return '' // Empty string as last resort
+    })
+    
+    return processed
   }
 
-  // Compile full newsletter to MJML
-  const compileNewsletterToMjml = async (
-    newsletter: NewsletterData,
-    blockTypes: BlockType[]
-  ): Promise<string> => {
-    isCompiling.value = true
-    compilationError.value = null
+  // Compile Handlebars template with block data
+  const compileHandlebars = (template: string, data: any): string => {
+    let compiled = template
 
+    // Handle triple mustache for unescaped HTML {{{variable}}} FIRST
+    Object.keys(data).forEach(key => {
+      const value = data[key]
+      if (typeof value === 'string') {
+        const regex = new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g')
+        compiled = compiled.replace(regex, value)
+      }
+    })
+
+    // Then replace simple variables {{variable}}
+    Object.keys(data).forEach(key => {
+      const value = data[key]
+      if (typeof value === 'string' || typeof value === 'number') {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
+        compiled = compiled.replace(regex, String(value))
+      }
+    })
+
+    // Handle {{#if variable}} ... {{/if}}
+    compiled = compiled.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, variable, content) => {
+      const value = data[variable]
+      const shouldShow = value && value !== '' && value !== null && value !== undefined
+      return shouldShow ? content : ''
+    })
+
+    // Handle {{#unless variable}} ... {{/unless}}
+    compiled = compiled.replace(/\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g, (match, variable, content) => {
+      const value = data[variable]
+      const shouldShow = !value || value === '' || value === null || value === undefined
+      return shouldShow ? content : ''
+    })
+
+    return compiled
+  }
+
+  // Generate MJML from newsletter data
+  const generateMjml = (newsletter: NewsletterData, blockTypes: BlockType[]): string => {
+    const blocks = newsletter.blocks || []
+    
+    let mjmlBlocks = ''
+
+    blocks.forEach((block: NewsletterBlock) => {
+      const blockType = blockTypes.find(bt => 
+        bt.id === block.block_type || bt.slug === block.type
+      )
+      
+      if (!blockType?.mjml_template) {
+        console.warn(`No template found for block type: ${block.type}`)
+        return
+      }
+
+      // Compile the template with the block's content
+      const compiledBlock = compileHandlebars(blockType.mjml_template, block.content || {})
+      mjmlBlocks += compiledBlock + '\n'
+    })
+
+    // If no blocks, add a placeholder
+    if (!mjmlBlocks) {
+      mjmlBlocks = `
+        <mj-section>
+          <mj-column>
+            <mj-text align="center" color="#999">
+              Add blocks to see your newsletter preview
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      `
+    }
+
+    const mjml = `
+      <mjml>
+        <mj-head>
+          <mj-title>${newsletter.subject || 'Newsletter'}</mj-title>
+          <mj-preview>${newsletter.preheader || ''}</mj-preview>
+          <mj-attributes>
+            <mj-all font-family="Arial, sans-serif" />
+            <mj-section background-color="#f4f4f4" padding="20px 0" />
+            <mj-wrapper background-color="#ffffff" padding="0" />
+            <mj-text font-size="16px" line-height="1.6" color="#333333" />
+            <mj-button background-color="#3182ce" color="#ffffff" font-size="16px" inner-padding="12px 24px" />
+          </mj-attributes>
+        </mj-head>
+        <mj-body background-color="#f4f4f4">
+          <mj-wrapper>
+            ${mjmlBlocks}
+          </mj-wrapper>
+        </mj-body>
+      </mjml>
+    `
+
+    return mjml.trim()
+  }
+
+  // Compile MJML to HTML
+  const compileMjml = async (mjml: string, options: any = {}): Promise<{ html: string; errors: any[] }> => {
     try {
-      const blockTypesMap = new Map(blockTypes.map(bt => [bt.slug, bt]))
-      
-      // Compile each block
-      const compiledBlocks: string[] = []
-      
-      for (const block of newsletter.blocks) {
-        const blockType = blockTypesMap.get(block.type)
-        if (blockType) {
-          const mjmlBlock = await compileBlockToMjml(block, blockType)
-          compiledBlocks.push(mjmlBlock)
-        } else {
-          compiledBlocks.push(`<!-- Unknown block type: ${block.type} -->`)
+      isCompiling.value = true
+      compilationError.value = null
+
+      // Pre-process MJML if it contains template variables
+      let processedMjml = mjml
+      if (mjml.includes('{{')) {
+        console.log('Pre-processing MJML template variables...')
+        processedMjml = preprocessMjmlTemplate(mjml)
+      }
+
+      // Try server-side compilation first
+      try {
+        const response = await $fetch('/api/newsletter/compile-mjml', {
+          method: 'POST',
+          body: { 
+            mjml: processedMjml,
+            validationLevel: 'soft', // Use soft validation to allow more flexibility
+            ...options
+          }
+        })
+
+        if (response.html) {
+          return {
+            html: response.html,
+            errors: response.errors || []
+          }
+        }
+      } catch (error) {
+        console.warn('Server-side MJML compilation failed, trying client-side:', error)
+      }
+
+      // Try client-side compilation
+      if (typeof window !== 'undefined' && window.mjml2html) {
+        const result = window.mjml2html(processedMjml, {
+          validationLevel: 'soft',
+          ...options
+        })
+        
+        return {
+          html: result.html,
+          errors: result.errors || []
         }
       }
 
-      // Build complete MJML document
-      const mjmlDocument = `
-<mjml>
-  <mj-head>
-    <mj-title>${newsletter.subject || 'Newsletter'}</mj-title>
-    <mj-preview>${newsletter.preheader || ''}</mj-preview>
-    <mj-attributes>
-      <mj-all font-family="${newsletter.settings?.fontFamily || 'Arial, sans-serif'}" />
-      <mj-text color="${newsletter.settings?.textColor || '#333333'}" />
-      <mj-section background-color="${newsletter.settings?.backgroundColor || '#ffffff'}" />
-    </mj-attributes>
-    <mj-style>
-      .link { color: #3b82f6; text-decoration: underline; }
-    </mj-style>
-  </mj-head>
-  <mj-body background-color="#f5f5f5">
-    <mj-wrapper padding="20px 0">
-      ${compiledBlocks.join('\n')}
-      
-      <!-- Footer -->
-      <mj-section padding="20px 0">
-        <mj-column>
-          <mj-divider border-color="#e5e5e5" />
-          <mj-text align="center" font-size="12px" color="#6b7280" padding="20px 0">
-            © ${new Date().getFullYear()} Your Company. All rights reserved.<br/>
-            <a href="{{unsubscribe_url}}" class="link">Unsubscribe</a> | 
-            <a href="{{preferences_url}}" class="link">Update Preferences</a> | 
-            <a href="{{view_in_browser_url}}" class="link">View in Browser</a>
-          </mj-text>
-        </mj-column>
-      </mj-section>
-    </mj-wrapper>
-  </mj-body>
-</mjml>`
-
-      return mjmlDocument
+      throw new Error('No MJML compiler available')
     } catch (error) {
       compilationError.value = error instanceof Error ? error.message : 'Unknown compilation error'
       throw error
@@ -149,78 +246,28 @@ export function useMjmlCompiler() {
     }
   }
 
-  // Compile MJML to HTML (requires server-side processing or MJML browser library)
-  const compileMjmlToHtml = async (mjml: string): Promise<{ html: string; errors: any[] }> => {
-    try {
-      // Option 1: Use MJML browser version (for client-side)
-      if (typeof window !== 'undefined' && window.mjml2html) {
-        return window.mjml2html(mjml, {
-          keepComments: false,
-          minify: true,
-          validationLevel: 'soft'
-        })
-      }
+  // Debounced compilation
+  const debouncedCompileMjml = debounce(compileMjml, 500)
 
-      // Option 2: Call server endpoint for compilation
-      const response = await $fetch('/api/newsletter/compile-mjml', {
-        method: 'POST',
-        body: { mjml }
-      })
-
-      return response as { html: string; errors: any[] }
-    } catch (error) {
-      console.error('Error compiling MJML to HTML:', error)
-      return {
-        html: '<p>Error compiling email template</p>',
-        errors: [error]
-      }
-    }
+  // Compile newsletter to HTML
+  const compileNewsletter = async (
+    newsletter: NewsletterData, 
+    blockTypes: BlockType[]
+  ): Promise<{ html: string; mjml: string; errors: any[] }> => {
+    const mjml = generateMjml(newsletter, blockTypes)
+    const { html, errors } = await compileMjml(mjml)
+    
+    return { html, mjml, errors }
   }
-
-  // Load block types from Directus
-  const loadBlockTypes = async (): Promise<BlockType[]> => {
-    try {
-      const { fetchBlockTypes } = useDirectusNewsletter()
-      return await fetchBlockTypes()
-    } catch (error) {
-      console.error('Error loading block types:', error)
-      return []
-    }
-  }
-
-  // Debounced compilation for smooth preview updates
-  const debouncedCompile = debounce(async (newsletter: NewsletterData, blockTypes: BlockType[]) => {
-    if (!newsletter || !blockTypes || blockTypes.length === 0) {
-      return null
-    }
-
-    try {
-      // Compile newsletter to MJML
-      const mjml = await compileNewsletterToMjml(newsletter, blockTypes)
-      
-      // Compile MJML to HTML
-      const result = await compileMjmlToHtml(mjml)
-      
-      return {
-        mjml,
-        html: result.html,
-        errors: result.errors
-      }
-    } catch (error) {
-      console.error('Debounced compilation failed:', error)
-      compilationError.value = error instanceof Error ? error.message : 'Compilation failed'
-      return null
-    }
-  }, 300)
 
   return {
     isCompiling: readonly(isCompiling),
     compilationError: readonly(compilationError),
+    generateMjml,
+    compileMjml,
+    debouncedCompileMjml,
+    compileNewsletter,
     compileHandlebars,
-    compileBlockToMjml,
-    compileNewsletterToMjml,
-    compileMjmlToHtml,
-    loadBlockTypes,
-    debouncedCompile // Add this to exports
+    preprocessMjmlTemplate
   }
 }

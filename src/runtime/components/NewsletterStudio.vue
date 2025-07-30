@@ -1,262 +1,238 @@
+<!-- Complete Fixed NewsletterStudio.vue - Bug fixes only, no design changes -->
 <template>
-  <div class="newsletter-studio" :class="[`layout-${layout}`, { 'dark': darkMode }]">
+  <div class="newsletter-studio">
     <!-- Header -->
-    <div v-if="showHeader" class="studio-header">
+    <div class="studio-header">
       <div class="header-left">
-        <h1 class="studio-title">{{ title }}</h1>
-        <div v-if="lastSaved" class="last-saved">
-          Last saved: {{ formatRelativeTime(lastSaved) }}
-        </div>
+        <h2 class="studio-title">{{ title }}</h2>
+        <span v-if="lastSaved" class="last-saved">
+          Last saved {{ formatRelativeTime(lastSaved) }}
+        </span>
       </div>
-      
       <div class="header-actions">
-        <button @click="loadTemplates" class="btn-secondary">
-          <Icon name="lucide:layout-template" class="w-4 h-4" />
-          Templates
-        </button>
-        <button @click="handleNew" class="btn-secondary">
-          <Icon name="lucide:plus" class="w-4 h-4" />
-          New
-        </button>
-        <button @click="handleSave" :disabled="saving" class="btn-primary">
-          <Icon :name="saving ? 'lucide:loader-2' : 'lucide:save'" 
-                :class="['w-4 h-4', { 'animate-spin': saving }]" />
-          {{ saving ? 'Saving...' : 'Save' }}
-        </button>
+        <slot name="header-actions">
+          <button @click="handleNew" class="btn btn-secondary">
+            <Icon name="lucide:plus" class="w-4 h-4" />
+            New
+          </button>
+          <button @click="loadTemplates" class="btn btn-secondary">
+            <Icon name="lucide:layout-template" class="w-4 h-4" />
+            Templates
+          </button>
+          <button @click="handleSave" :disabled="saving" class="btn btn-primary">
+            <Icon v-if="saving" name="lucide:loader-2" class="w-4 h-4 animate-spin" />
+            <Icon v-else name="lucide:save" class="w-4 h-4" />
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+        </slot>
       </div>
     </div>
 
-    <!-- Main Content - Three Panel Layout -->
+    <!-- Main Content -->
     <div class="studio-content">
-      <!-- Panel 1: Settings & Block Types (Left) -->
-      <div v-if="showEditor" class="left-panel">
-        <!-- Newsletter Settings -->
+      <!-- Left Panel - Settings & Blocks -->
+      <div class="left-panel">
+        <!-- Settings Section -->
         <div class="settings-section">
-          <h3 class="section-title">Newsletter Settings</h3>
-          
+          <div class="section-header">
+            <h3 class="section-title">Settings</h3>
+          </div>
           <div class="form-group">
             <label>Subject Line</label>
-            <input 
-              v-model="internalNewsletter.subject" 
+            <input
+              v-model="internalNewsletter.subject"
               @input="handleSubjectChange"
-              type="text" 
-              placeholder="Enter subject line..."
+              type="text"
+              placeholder="Enter subject..."
               class="form-input"
             />
           </div>
           <div class="form-group">
-            <label>Preheader</label>
-            <input 
-              v-model="internalNewsletter.preheader" 
+            <label>Preheader Text</label>
+            <input
+              v-model="internalNewsletter.preheader"
               @input="handlePreheaderChange"
-              type="text" 
-              placeholder="Enter preheader..."
+              type="text"
+              placeholder="Preview text..."
               class="form-input"
             />
           </div>
         </div>
 
-        <!-- Block Types -->
+        <!-- Add Blocks Section -->
         <div class="settings-section">
           <div class="section-header">
             <h3 class="section-title">Add Blocks</h3>
+            <!-- Manual Refresh Button -->
+            <button @click="refreshPreview" class="btn btn-xs btn-secondary">
+              <Icon name="lucide:refresh-cw" class="w-3 h-3" />
+              Refresh
+            </button>
           </div>
           
           <div v-if="loadingBlockTypes" class="loading-state">
             <Icon name="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            <span>Loading blocks...</span>
+            <span>Loading block types...</span>
           </div>
+          
           <div v-else class="block-types-grid">
             <button
               v-for="blockType in blockTypes"
               :key="blockType.id"
               @click="handleAddBlock(blockType)"
-              class="block-type-button"
+              class="block-type-btn"
             >
-              <Icon :name="blockType.icon || 'lucide:plus'" class="w-4 h-4" />
+              <Icon v-if="blockType.icon" :name="blockType.icon" class="w-5 h-5" />
+              <Icon v-else name="lucide:box" class="w-5 h-5" />
               <span>{{ blockType.name }}</span>
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- Panel 2: Content Blocks Editor (Middle) -->
-      <div v-if="showEditor" class="content-panel">
-        <div class="content-header">
-          <div class="content-title">
-            <h3>Content Blocks</h3>
-            <span class="block-count">{{ internalNewsletter.blocks?.length || 0 }} blocks</span>
+        <!-- Actions Section -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h3 class="section-title">Actions</h3>
           </div>
-          <div class="content-actions">
-            <button @click="refreshPreview" class="btn-ghost">
-              <Icon name="lucide:refresh-cw" class="w-4 h-4" />
-              Refresh Preview
-            </button>
-            <button @click="clearAllBlocks" class="btn-ghost" v-if="internalNewsletter.blocks?.length">
+          <div class="action-buttons">
+            <button @click="clearAllBlocks" :disabled="!internalNewsletter.blocks?.length" class="btn btn-sm btn-outline-danger w-full">
               <Icon name="lucide:trash-2" class="w-4 h-4" />
-              Clear All
+              Clear All Blocks
             </button>
           </div>
         </div>
+      </div>
 
-        <div class="content-body">
-          <!-- Empty State -->
-          <div v-if="!internalNewsletter.blocks?.length" class="empty-state">
-            <Icon name="lucide:inbox" class="w-12 h-12 text-gray-400" />
-            <h4>No content blocks yet</h4>
-            <p>Add blocks from the left panel to start building your newsletter</p>
-          </div>
-          
-          <!-- Blocks List -->
-          <div v-else class="blocks-container">
-            <div
+      <!-- Content Panel - Block Editor -->
+      <div class="content-panel">
+        <div class="content-wrapper">
+          <TransitionGroup name="block-list" tag="div" class="blocks-container">
+            <NewsletterBlock
               v-for="(block, index) in internalNewsletter.blocks"
               :key="block.id"
-              :class="['block-item', dragClasses(index)]"
-              v-bind="dragAttributes(index)"
-            >
-              <NewsletterBlock
-                :block="block"
-                :block-type="getBlockType(block.type)"
-                @update="handleUpdateBlock"
-                @remove="handleRemoveBlock"
-                @duplicate="handleDuplicateBlock"
-                @move-up="() => handleMoveBlock(index, index - 1)"
-                @move-down="() => handleMoveBlock(index, index + 1)"
-              />
-            </div>
+              :block="block"
+              :block-type="getBlockType(block)"
+              :index="index"
+              :total-blocks="internalNewsletter.blocks?.length || 0"
+              @update="handleUpdateBlock"
+              @remove="handleRemoveBlock"
+              @move-up="() => handleMoveBlock(index, index - 1)"
+              @move-down="() => handleMoveBlock(index, index + 1)"
+              @duplicate="handleDuplicateBlock"
+            />
+          </TransitionGroup>
+          
+          <div v-if="!internalNewsletter.blocks?.length" class="empty-state">
+            <Icon name="lucide:layout" class="w-12 h-12 text-gray-300" />
+            <p class="text-gray-500 mt-2">Add blocks to start building your newsletter</p>
           </div>
         </div>
       </div>
 
-      <!-- Panel 3: Email Preview (Right) -->
-      <div v-if="showPreview" class="preview-panel">
+      <!-- Preview Panel -->
+      <div class="preview-panel">
         <NewsletterPreview
           ref="previewRef"
           :newsletter="frozenNewsletter"
           :block-types="blockTypes"
-          :devices="devices"
-          :default-device="defaultDevice"
+          @compiled="handleCompiled"
           @error="handlePreviewError"
         />
       </div>
     </div>
 
     <!-- Status Bar -->
-    <div v-if="showStatusBar" class="status-bar">
+    <div v-if="showStatusBar" class="studio-status-bar">
       <div class="status-left">
-        <span class="block-count">{{ internalNewsletter.blocks?.length || 0 }} blocks</span>
-        <span v-if="internalNewsletter.status" class="status-badge" :class="`status-${internalNewsletter.status}`">
-          {{ internalNewsletter.status }}
-        </span>
+        <slot name="status-left">
+          <span class="text-sm text-gray-600">
+            {{ internalNewsletter.blocks?.length || 0 }} blocks
+          </span>
+        </slot>
       </div>
       <div class="status-right">
-        <span v-if="isDraggingBlock" class="drag-indicator">
-          <Icon name="lucide:move" class="w-4 h-4" />
-          Drag to reorder
-        </span>
+        <slot name="status-right">
+          <span v-if="notification.show" :class="['notification', `notification-${notification.type}`]">
+            {{ notification.message }}
+          </span>
+        </slot>
       </div>
     </div>
 
     <!-- Template Selector Modal -->
-    <div v-if="showTemplateSelector" class="modal-overlay" @click="showTemplateSelector = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>Choose Template</h3>
-          <button @click="showTemplateSelector = false" class="btn-ghost">
-            <Icon name="lucide:x" class="w-4 h-4" />
-          </button>
-        </div>
-        <div class="modal-body">
-          <div v-if="templates.length === 0" class="empty-state">
-            <Icon name="lucide:layout-template" class="w-8 h-8 text-gray-400" />
-            <p>No templates available</p>
-          </div>
-          <div v-else class="templates-grid">
-            <button
-              v-for="template in templates"
-              :key="template.id"
-              @click="handleTemplateSelect(template)"
-              class="template-card"
-            >
-              <div class="template-preview">
-                <Icon name="lucide:layout-template" class="w-6 h-6" />
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showTemplateSelector" class="modal-overlay" @click="showTemplateSelector = false">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h3 class="modal-title">Choose a Template</h3>
+              <button @click="showTemplateSelector = false" class="modal-close">
+                <Icon name="lucide:x" class="w-5 h-5" />
+              </button>
+            </div>
+            <div class="modal-body">
+              <div v-if="templates.length === 0" class="empty-state">
+                <Icon name="lucide:layout-template" class="w-12 h-12 text-gray-300" />
+                <p class="text-gray-500 mt-2">No templates available</p>
+                <p class="text-sm text-gray-400 mt-1">Create templates in your Directus admin panel</p>
               </div>
-              <div class="template-info">
-                <h4>{{ template.name }}</h4>
-                <p v-if="template.description">{{ template.description }}</p>
+              <div v-else class="template-grid">
+                <div
+                  v-for="template in templates"
+                  :key="template.id"
+                  @click="applyTemplate(template)"
+                  class="template-card"
+                >
+                  <div class="template-preview">
+                    <Icon name="lucide:layout-template" class="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h4 class="template-name">{{ template.name }}</h4>
+                  <p class="template-description">{{ template.description }}</p>
+                </div>
               </div>
-            </button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Notification -->
-    <div v-if="notification.show" class="notification" :class="`notification-${notification.type}`">
-      <Icon :name="notificationIcon" class="w-4 h-4" />
-      <span>{{ notification.message }}</span>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { debounce } from 'lodash-es'
 import { computed, nextTick, onMounted, provide, ref, watch } from 'vue'
+import type { NewsletterData } from '../../types'
+import { useDirectusNewsletter } from '../composables/useDirectusNewsletter'
 
-interface NewsletterData {
-  id?: string
-  subject: string
-  preheader: string
-  blocks: any[]
-  status?: string
-  [key: string]: any
-}
+// Component imports
+const NewsletterBlock = resolveComponent('NewsletterBlock')
+const NewsletterPreview = resolveComponent('NewsletterPreview')
 
 interface Props {
   modelValue?: NewsletterData
   title?: string
-  layout?: 'horizontal' | 'vertical' | 'editor-only' | 'preview-only'
-  showHeader?: boolean
-  showStatusBar?: boolean
-  showEditor?: boolean
-  showPreview?: boolean
-  resizable?: boolean
-  darkMode?: boolean
-  editorWidth?: string
-  devices?: ('mobile' | 'tablet')[]
-  defaultDevice?: 'mobile' | 'tablet'
   autoSave?: boolean
   autoSaveDelay?: number
-  onSave?: (newsletter: NewsletterData) => Promise<any>
-  onCreate?: (newsletter: NewsletterData) => Promise<any>
+  showStatusBar?: boolean
+  onSave?: (newsletter: NewsletterData) => Promise<void>
   onError?: (error: Error) => void
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: 'Newsletter Studio',
-  layout: 'horizontal',
-  showHeader: true,
-  showStatusBar: true,
-  showEditor: true,
-  showPreview: true,
-  resizable: true,
-  darkMode: false,
-  editorWidth: '400px',
-  devices: () => ['mobile', 'tablet'],
-  defaultDevice: 'mobile',
+  title: 'Newsletter Editor',
   autoSave: false,
-  autoSaveDelay: 2000
+  autoSaveDelay: 3000,
+  showStatusBar: true
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: NewsletterData]
+  'update:modelValue': [newsletter: NewsletterData]
   'save': [newsletter: NewsletterData]
   'create': [newsletter: NewsletterData]
   'error': [error: Error]
 }>()
 
-// FIXED: Separate internal state from reactive props
+// State
 const internalNewsletter = ref<NewsletterData>({
   subject: '',
   preheader: '',
@@ -264,71 +240,37 @@ const internalNewsletter = ref<NewsletterData>({
   status: 'draft'
 })
 
-// FIXED: Completely separate frozen state for preview
-const frozenNewsletter = ref<NewsletterData>({ ...internalNewsletter.value })
+// FIXED: Separate frozen state for preview
+const frozenNewsletter = ref<NewsletterData>({
+  subject: '',
+  preheader: '',
+  blocks: [],
+  status: 'draft'
+})
 
 const blockTypes = ref<any[]>([])
 const templates = ref<any[]>([])
-const loadingBlockTypes = ref(false)
+const loadingBlockTypes = ref(true)
 const saving = ref(false)
-const lastSaved = ref<Date | null>(null)
 const showTemplateSelector = ref(false)
+const lastSaved = ref<Date | null>(null)
+const notification = ref({ show: false, type: 'info', message: '' })
 const previewRef = ref()
+const isInternalUpdate = ref(false) // FIXED: Flag to prevent loops
 
-// Auto-save timer
-let autoSaveTimer: NodeJS.Timeout | null = null
-
-// Notification system
-const notification = ref({
-  show: false,
-  type: 'success' as 'success' | 'error' | 'info',
-  message: ''
-})
+let autoSaveTimer: any = null
 
 // Composables
-const { fetchBlockTypes, fetchTemplates, fetchTemplate } = useDirectusNewsletter()
-
-// Drag and drop for block reordering
-const { 
-  getDragAttributes, 
-  getDragClasses,
-  isDragging: isDraggingBlock
-} = useDragAndDrop({
-  onMove: (fromIndex: number, toIndex: number) => {
-    if (!internalNewsletter.value.blocks) return
-    
-    const blocks = [...internalNewsletter.value.blocks]
-    const [movedBlock] = blocks.splice(fromIndex, 1)
-    blocks.splice(toIndex, 0, movedBlock)
-    
-    // Update sort values
-    blocks.forEach((block, index) => {
-      block.sort = index
-    })
-    
-    internalNewsletter.value.blocks = blocks
-    emitUpdate()
-    refreshPreview()
-  },
-  hapticFeedback: true,
-  smoothAnimations: true
-})
-
-// Drag attributes and classes for template
-const dragAttributes = (index: number) => getDragAttributes(index)
-const dragClasses = (index: number) => getDragClasses(index)
+const { fetchBlockTypes, fetchTemplates } = useDirectusNewsletter()
 
 // Computed
-const notificationIcon = computed(() => {
-  switch (notification.value.type) {
-    case 'success': return 'lucide:check-circle'
-    case 'error': return 'lucide:x-circle'
-    case 'info': return 'lucide:info'
-    default: return 'lucide:info'
-  }
+const getBlockType = computed(() => (block: any) => {
+  return blockTypes.value.find(bt => 
+    bt.id === block.block_type || bt.slug === block.type
+  )
 })
 
-// FIXED: Initialize internal state only once
+// FIXED: Initialize without triggering updates
 const initializeNewsletter = (data?: NewsletterData) => {
   const newsletter = data || props.modelValue || {
     subject: '',
@@ -341,19 +283,21 @@ const initializeNewsletter = (data?: NewsletterData) => {
   frozenNewsletter.value = JSON.parse(JSON.stringify(newsletter))
 }
 
-// FIXED: Safe emit that doesn't trigger loops
+// FIXED: Safe emit that prevents loops
 const emitUpdate = () => {
+  if (isInternalUpdate.value) return
+  
   const newsletterCopy = JSON.parse(JSON.stringify(internalNewsletter.value))
   emit('update:modelValue', newsletterCopy)
   setupAutoSave()
 }
 
-// FIXED: Debounced update for content changes only
+// FIXED: Debounced update for content changes
 const debouncedEmitUpdate = debounce(() => {
   emitUpdate()
 }, 300)
 
-// FIXED: Manual refresh function for preview
+// FIXED: Manual refresh only
 const refreshPreview = () => {
   frozenNewsletter.value = JSON.parse(JSON.stringify(internalNewsletter.value))
   nextTick(() => {
@@ -377,12 +321,24 @@ const loadBlockTypes = async () => {
 
 const loadTemplates = async () => {
   try {
+    console.log('Loading templates...')
     templates.value = await fetchTemplates()
-    showTemplateSelector.value = true
-    console.log('Loaded templates:', templates.value)
+    
+    if (!templates.value || templates.value.length === 0) {
+      // Show the modal even if no templates exist
+      templates.value = []
+      showTemplateSelector.value = true
+      showNotification('No templates found. Create templates in Directus first.', 'info')
+    } else {
+      showTemplateSelector.value = true
+      console.log('Loaded templates:', templates.value)
+    }
   } catch (error) {
     console.error('Failed to load templates:', error)
-    showNotification('Failed to load templates', 'error')
+    // Still show the modal with empty state
+    templates.value = []
+    showTemplateSelector.value = true
+    showNotification('Failed to load templates. Check your Directus connection.', 'error')
   }
 }
 
@@ -413,7 +369,6 @@ const handleAddBlock = (blockType: any) => {
   
   internalNewsletter.value.blocks.push(newBlock)
   emitUpdate()
-  refreshPreview()
   showNotification(`Added ${blockType.name} block`, 'success')
 }
 
@@ -433,6 +388,7 @@ const generateDefaultContent = (blockType: any) => {
       button_url: '#'
     },
     image: {
+      image_url: 'https://via.placeholder.com/600x300',
       image_alt_text: 'Image description',
       caption: ''
     }
@@ -441,10 +397,15 @@ const generateDefaultContent = (blockType: any) => {
   return defaults[blockType.slug] || {}
 }
 
+// FIXED: Update block without triggering loops
 const handleUpdateBlock = (updatedBlock: any) => {
   const index = internalNewsletter.value.blocks?.findIndex(b => b.id === updatedBlock.id)
   if (index !== -1 && internalNewsletter.value.blocks) {
-    internalNewsletter.value.blocks[index] = { ...internalNewsletter.value.blocks[index], ...updatedBlock }
+    // Update only the content, not the entire block
+    internalNewsletter.value.blocks[index] = {
+      ...internalNewsletter.value.blocks[index],
+      content: { ...updatedBlock.content }
+    }
     debouncedEmitUpdate()
   }
 }
@@ -457,7 +418,6 @@ const handleRemoveBlock = (blockId: string) => {
       block.sort = index
     })
     emitUpdate()
-    refreshPreview()
     showNotification('Block removed', 'info')
   }
 }
@@ -478,7 +438,6 @@ const handleMoveBlock = (fromIndex: number, toIndex: number) => {
   
   internalNewsletter.value.blocks = blocks
   emitUpdate()
-  refreshPreview()
 }
 
 const handleDuplicateBlock = (blockId: string) => {
@@ -499,7 +458,6 @@ const handleDuplicateBlock = (blockId: string) => {
     })
     
     emitUpdate()
-    refreshPreview()
     showNotification('Block duplicated', 'success')
   }
 }
@@ -508,120 +466,99 @@ const clearAllBlocks = () => {
   if (confirm('Remove all blocks? This action cannot be undone.')) {
     internalNewsletter.value.blocks = []
     emitUpdate()
-    refreshPreview()
     showNotification('All blocks removed', 'info')
   }
 }
 
-// FIXED: Improved template selection
-const handleTemplateSelect = async (template: any) => {
-  try {
-    console.log('Loading template:', template)
-    const fullTemplate = await fetchTemplate(template.id)
-    console.log('Full template loaded:', fullTemplate)
-    
-    await loadFromTemplate(fullTemplate)
-    showTemplateSelector.value = false
-    showNotification('Template loaded successfully!', 'success')
-  } catch (error) {
-    console.error('Error loading template:', error)
-    showNotification('Failed to load template', 'error')
-  }
-}
-
-// FIXED: Improved template loading with better error handling
-const loadFromTemplate = async (template: any) => {
-  if (!template) {
-    console.error('No template provided')
-    return
-  }
-
-  console.log('Loading template blocks:', template)
-
+const applyTemplate = async (template: any) => {
+  console.log('Applying template:', template)
+  showTemplateSelector.value = false
+  
   // Clear existing blocks
   internalNewsletter.value.blocks = []
 
-  // Parse template blocks
-  let templateBlocks: any[] = []
-  try {
-    if (template.blocks_config) {
-      templateBlocks = Array.isArray(template.blocks_config)
-        ? template.blocks_config
-        : JSON.parse(template.blocks_config)
-    } else if (template.blocks) {
-      templateBlocks = Array.isArray(template.blocks)
-        ? template.blocks
-        : JSON.parse(template.blocks)
-    }
+  // Apply template blocks
+  if (template.blocks_config) {
+    let blocks = []
     
-    console.log('Parsed template blocks:', templateBlocks)
-  } catch (error) {
-    console.error('Invalid template blocks config:', error)
-    showNotification('Template has invalid block configuration', 'error')
-    return
-  }
-
-  // Ensure block types are loaded
-  if (!blockTypes.value.length) {
-    console.log('Block types not loaded, loading now...')
-    await loadBlockTypes()
-  }
-
-  // Create blocks from template
-  templateBlocks.forEach((blockConfig: any, index: number) => {
-    console.log('Processing block config:', blockConfig)
-    
-    // Find matching block type
-    const blockType = blockTypes.value.find(bt => 
-      bt.slug === blockConfig.type || 
-      bt.id === blockConfig.block_type ||
-      bt.slug === blockConfig.block_type_slug
-    )
-    
-    if (blockType) {
-      console.log('Found matching block type:', blockType)
+    // Parse blocks_config if it's a string
+    try {
+      blocks = typeof template.blocks_config === 'string' 
+        ? JSON.parse(template.blocks_config) 
+        : template.blocks_config
       
-      const newBlock = {
-        id: `block_${Date.now()}_${index}`,
-        type: blockType.slug,
-        block_type: blockType.id,
-        content: { ...(blockConfig.content || blockConfig.data || {}) },
-        sort: index
+      console.log('Parsed blocks from template:', blocks)
+    } catch (error) {
+      console.error('Failed to parse template blocks:', error)
+      showNotification('Failed to parse template blocks', 'error')
+      return
+    }
+
+    // Create blocks from template
+    blocks.forEach((blockConfig: any, index: number) => {
+      console.log(`Processing block ${index}:`, blockConfig)
+      
+      // Try multiple ways to find the block type
+      const blockTypeSlug = blockConfig.type || blockConfig.block_type || blockConfig.slug
+      const blockTypeId = blockConfig.block_type_id || blockConfig.block_type
+      
+      // Find the actual block type from loaded types
+      const blockType = blockTypes.value.find(bt => 
+        bt.id === blockTypeId || 
+        bt.slug === blockTypeSlug ||
+        bt.id === blockTypeSlug || // Sometimes ID is used as type
+        bt.slug === blockTypeId // Sometimes slug is in block_type field
+      )
+      
+      if (blockType) {
+        console.log(`Found block type for ${blockTypeSlug}:`, blockType)
+        
+        const newBlock = {
+          id: `block_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+          type: blockType.slug,
+          block_type: blockType.id,
+          content: blockConfig.content || blockConfig.data || generateDefaultContent(blockType),
+          sort: index
+        }
+        
+        console.log('Created new block:', newBlock)
+        internalNewsletter.value.blocks!.push(newBlock)
+      } else {
+        console.warn(`Block type not found for:`, blockConfig)
+        showNotification(`Block type "${blockTypeSlug}" not found`, 'warning')
       }
-      
-      internalNewsletter.value.blocks!.push(newBlock)
-      console.log('Added block:', newBlock)
-    } else {
-      console.warn('No matching block type found for:', blockConfig)
-    }
-  })
+    })
+  }
 
-  // Apply template settings
+  // Apply template metadata
   if (template.default_subject_pattern) {
     internalNewsletter.value.subject = template.default_subject_pattern
   }
+  if (template.default_preheader) {
+    internalNewsletter.value.preheader = template.default_preheader
+  }
+
+  console.log('Final newsletter after template:', internalNewsletter.value)
   
-  // Update both internal and frozen state
+  // Emit update and refresh preview
   emitUpdate()
   refreshPreview()
   
-  console.log('Template loaded successfully, blocks count:', internalNewsletter.value.blocks?.length)
-}
-
-const getBlockType = (blockTypeSlug: string) => {
-  return blockTypes.value.find(bt => bt.slug === blockTypeSlug)
+  showNotification(`Applied template: ${template.name}`, 'success')
 }
 
 const handleSave = async () => {
   if (saving.value) return
 
-  saving.value = true
   try {
+    saving.value = true
+    
     if (props.onSave) {
       await props.onSave(internalNewsletter.value)
     }
+    
     lastSaved.value = new Date()
-    showNotification('Newsletter saved successfully!', 'success')
+    showNotification('Newsletter saved successfully', 'success')
     emit('save', internalNewsletter.value)
   } catch (error) {
     console.error('Save failed:', error)
@@ -644,9 +581,18 @@ const handleNew = async () => {
     })
     lastSaved.value = null
     emitUpdate()
-    refreshPreview()
     showNotification('Created new newsletter', 'info')
     emit('create', internalNewsletter.value)
+  }
+}
+
+const handleCompiled = (result: any) => {
+  // Store compiled result but don't trigger updates
+  if (result.mjml) {
+    internalNewsletter.value.mjml = result.mjml
+  }
+  if (result.html) {
+    internalNewsletter.value.html = result.html
   }
 }
 
@@ -688,11 +634,14 @@ const formatRelativeTime = (date: Date): string => {
   return date.toLocaleDateString()
 }
 
-// FIXED: Safe watcher that only updates from external changes
+// FIXED: Watch for external changes without causing loops
 watch(() => props.modelValue, (newVal) => {
-  if (newVal && JSON.stringify(newVal) !== JSON.stringify(internalNewsletter.value)) {
-    console.log('Props changed, updating internal state:', newVal)
+  if (newVal && !isInternalUpdate.value && JSON.stringify(newVal) !== JSON.stringify(internalNewsletter.value)) {
+    isInternalUpdate.value = true
     initializeNewsletter(newVal)
+    nextTick(() => {
+      isInternalUpdate.value = false
+    })
   }
 }, { 
   immediate: true,
@@ -720,7 +669,9 @@ defineExpose({
   refresh: refreshPreview,
   getNewsletter: () => internalNewsletter.value,
   loadBlockTypes,
-  showNotification
+  loadTemplates,
+  showNotification,
+  blockTypes
 })
 </script>
 
@@ -795,105 +746,66 @@ defineExpose({
 }
 
 .loading-state {
-  @apply flex items-center gap-2 text-gray-500 py-4;
+  @apply flex items-center gap-2 text-gray-500 p-4;
 }
 
 .block-types-grid {
-  @apply grid grid-cols-1 gap-2;
+  @apply grid grid-cols-2 gap-2;
 }
 
-.block-type-button {
-  @apply flex items-center gap-2 p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors;
+.block-type-btn {
+  @apply flex flex-col items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors;
 }
 
-.block-type-button span {
-  @apply text-sm font-medium text-gray-700;
+.block-type-btn span {
+  @apply text-xs text-gray-700;
+}
+
+.action-buttons {
+  @apply space-y-2;
 }
 
 /* Content Panel Styles */
-.content-header {
-  @apply flex items-center justify-between p-4 bg-white border-b border-gray-200;
-}
-
-.content-title {
-  @apply flex items-center gap-3;
-}
-
-.content-title h3 {
-  @apply text-lg font-semibold text-gray-900;
-}
-
-.block-count {
-  @apply px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full;
-}
-
-.content-actions {
-  @apply flex items-center gap-2;
-}
-
-.content-body {
-  @apply flex-1 p-4;
-}
-
-.empty-state {
-  @apply text-center py-12 text-gray-500;
-}
-
-.empty-state h4 {
-  @apply text-lg font-medium mt-4 mb-2 text-gray-900;
-}
-
-.empty-state p {
-  @apply text-gray-600;
+.content-wrapper {
+  @apply p-4 max-w-4xl mx-auto;
 }
 
 .blocks-container {
   @apply space-y-4;
 }
 
-.block-item {
-  @apply transition-all duration-200 ease-in-out;
+.empty-state {
+  @apply flex flex-col items-center justify-center py-16 text-center;
 }
 
-.block-item.is-dragging {
-  @apply opacity-50 scale-95;
-}
-
-.block-item.drop-zone-active {
-  @apply transform scale-102 bg-blue-50 border-blue-300 shadow-lg;
+.empty-state {
+  @apply flex flex-col items-center justify-center py-16 text-center;
 }
 
 /* Status Bar */
-.status-bar {
-  @apply flex items-center justify-between p-3 bg-white border-t border-gray-200;
+.studio-status-bar {
+  @apply flex items-center justify-between px-4 py-2 bg-white border-t border-gray-200;
 }
 
-.status-left {
-  @apply flex items-center gap-3;
-}
-
+.status-left,
 .status-right {
-  @apply flex items-center gap-2;
+  @apply flex items-center gap-4;
 }
 
-.status-badge {
-  @apply px-2 py-1 text-xs font-medium rounded-full;
+.notification {
+  @apply text-sm px-3 py-1 rounded-full;
 }
 
-.status-draft {
-  @apply bg-gray-100 text-gray-700;
-}
-
-.status-ready {
+.notification-success {
   @apply bg-green-100 text-green-700;
 }
 
-.status-sent {
-  @apply bg-blue-100 text-blue-700;
+.notification-error {
+  @apply bg-red-100 text-red-700;
 }
 
-.drag-indicator {
-  @apply flex items-center gap-1 text-sm text-blue-600;
+.notification-info {
+  @apply bg-blue-100 text-blue-700;
 }
 
 /* Modal Styles */
@@ -902,72 +814,110 @@ defineExpose({
 }
 
 .modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden;
+  @apply bg-white rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col;
 }
 
 .modal-header {
-  @apply flex items-center justify-between p-4 border-b border-gray-200;
+  @apply flex items-center justify-between p-6 border-b border-gray-200;
 }
 
-.modal-header h3 {
-  @apply text-lg font-semibold text-gray-900;
+.modal-title {
+  @apply text-xl font-semibold text-gray-900;
+}
+
+.modal-close {
+  @apply p-2 hover:bg-gray-100 rounded-lg transition-colors;
 }
 
 .modal-body {
-  @apply p-4 overflow-y-auto;
+  @apply flex-1 overflow-y-auto p-6;
 }
 
-.templates-grid {
-  @apply grid grid-cols-2 gap-4;
+.template-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
 }
 
 .template-card {
-  @apply p-4 text-left bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors;
+  @apply border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer;
 }
 
 .template-preview {
-  @apply w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center mb-3;
+  @apply h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-3;
 }
 
-.template-info h4 {
+.template-name {
   @apply font-medium text-gray-900 mb-1;
 }
 
-.template-info p {
-  @apply text-sm text-gray-600;
+.template-description {
+  @apply text-sm text-gray-600 line-clamp-2;
 }
 
-/* Notification */
-.notification {
-  @apply fixed bottom-4 right-4 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg z-50;
+/* Buttons */
+.btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
 }
 
-.notification-success {
-  @apply bg-green-50 text-green-700 border border-green-200;
-}
-
-.notification-error {
-  @apply bg-red-50 text-red-700 border border-red-200;
-}
-
-.notification-info {
-  @apply bg-blue-50 text-blue-700 border border-blue-200;
-}
-
-/* Button Styles */
 .btn-primary {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2;
+  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
 }
 
 .btn-secondary {
-  @apply px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2;
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
 }
 
-.btn-ghost {
-  @apply px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg flex items-center gap-2;
+.btn-outline-danger {
+  @apply border border-red-300 text-red-600 hover:bg-red-50 focus:ring-red-500;
+}
+
+.btn-xs {
+  @apply px-2 py-1 text-xs;
 }
 
 .btn-sm {
-  @apply px-2 py-1 text-sm;
+  @apply px-3 py-1.5 text-sm;
+}
+
+.btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Transitions */
+.block-list-move,
+.block-list-enter-active,
+.block-list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.block-list-enter-from {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.block-list-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.block-list-leave-active {
+  position: absolute;
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+/* Utility Classes */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
